@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="utf-8">
+    <title>Proje Dosya Yapısı — QR Menü Otomasyonu</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.7;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            color: #e67e22;
+            font-size: 1.6rem;
+            margin-bottom: 6px;
+        }
+
+        h2 {
+            color: #2c3e50;
+            font-size: 1.2rem;
+            margin: 30px 0 12px;
+            border-bottom: 2px solid #e67e22;
+            padding-bottom: 6px;
+        }
+
+        h3 {
+            color: #555;
+            font-size: 1rem;
+            margin: 16px 0 8px;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 0.85rem;
+            margin-bottom: 24px;
+        }
+
+        pre {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            margin: 10px 0 16px;
+        }
+
+        .file {
+            color: #f9e2af;
+        }
+
+        .folder {
+            color: #fab387;
+        }
+
+        .comment {
+            color: #6c7086;
+        }
+
+        .highlight {
+            color: #a6e3a1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 16px;
+            font-size: 0.85rem;
+        }
+
+        th {
+            background: #2c3e50;
+            color: #fff;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:nth-child(even) td {
+            background: #fafafa;
+        }
+
+        ul {
+            margin: 6px 0 12px 20px;
+            font-size: 0.9rem;
+        }
+
+        li {
+            margin: 3px 0;
+        }
+
+        .info-box {
+            background: #eaf2f8;
+            border-left: 4px solid #3498db;
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin: 12px 0;
+            font-size: 0.85rem;
+        }
+
+        code {
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.82rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <h1>📁 Proje Dosya Yapısı</h1>
+        <div class="subtitle">QR Menü Otomasyonu — Son Güncelleme: 28 Şubat 2026</div>
+
+        <!-- ===== GENEL YAPI ===== -->
+        <h2>1. Genel Proje Yapısı</h2>
+
+        <div class="info-box">
+            <strong>Mimari:</strong> Katmanlı Yapı (Core → Data → Web) | <strong>Framework:</strong> ASP.NET Core 8.0
+            MVC | <strong>DB:</strong> PostgreSQL (Supabase)
+        </div>
+
+        <pre>
+<span class="folder">QRMenu/</span>
+├── <span class="file">QRMenu.sln</span>                          <span class="comment">← Solution dosyası</span>
+│
+├── <span class="folder">src/</span>
+│   ├── <span class="folder">QRMenu.Core/</span>                     <span class="comment">← Domain katmanı (Entity, Enum, Interface)</span>
+│   ├── <span class="folder">QRMenu.Data/</span>                     <span class="comment">← Veri erişim katmanı (DbContext, Service, Migration)</span>
+│   └── <span class="folder">QRMenu.Web/</span>                      <span class="comment">← Sunum katmanı (MVC: Controller, View, Middleware)</span>
+│
+├── <span class="folder">tests/</span>
+│   └── <span class="folder">QRMenu.Tests/</span>                    <span class="comment">← xUnit test projesi (16 test)</span>
+│
+└── <span class="folder">docs/</span>
+    ├── <span class="file">Hafta1_Rapor.html</span>
+    ├── <span class="file">Hafta2_Rapor.html</span>
+    └── <span class="file">DosyaYapisi_Rapor.html</span>
+</pre>
+
+        <!-- ===== QRMenu.Core ===== -->
+        <h2>2. QRMenu.Core (Domain Katmanı)</h2>
+        <p>Projenin kalbi. Hiçbir dış bağımlılığı yoktur.</p>
+
+        <pre>
+<span class="folder">QRMenu.Core/</span>
+├── <span class="file">QRMenu.Core.csproj</span>
+│
+├── <span class="folder">Entities/</span>                            <span class="comment">← 13 veritabanı modeli</span>
+│   ├── <span class="file">AuditLog.cs</span>                      <span class="comment">← Değişiklik loglama</span>
+│   ├── <span class="file">Kategori.cs</span>                      <span class="comment">← Ürün kategorileri (Ad, AdEN, SiraNo)</span>
+│   ├── <span class="file">Kullanici.cs</span>                     <span class="comment">← Personel bilgileri (KullaniciAdi, Rol)</span>
+│   ├── <span class="file">Masa.cs</span>                          <span class="comment">← Masalar (MasaNo, AktifMi, QrKodUrl)</span>
+│   ├── <span class="file">Odeme.cs</span>                         <span class="comment">← Ödeme kayıtları (Tutar, OdemeTipi)</span>
+│   ├── <span class="file">Opsiyon.cs</span>                       <span class="comment">← Ürün seçenekleri (Boyut, Süt Tipi)</span>
+│   ├── <span class="file">Oturum.cs</span>                        <span class="comment">← Token bazlı oturum (TokenHash, SonIslemTarihi)</span>
+│   ├── <span class="file">Sepet.cs</span>                         <span class="comment">← Müşteri sepeti</span>
+│   ├── <span class="file">SepetDetay.cs</span>                    <span class="comment">← Sepetteki ürünler</span>
+│   ├── <span class="file">Siparis.cs</span>                       <span class="comment">← Siparişler (Durum, RowVersion)</span>
+│   ├── <span class="file">SiparisDetay.cs</span>                  <span class="comment">← Sipariş kalemleri</span>
+│   ├── <span class="file">Urun.cs</span>                          <span class="comment">← Menü ürünleri (Ad, Fiyat, PopulerMi)</span>
+│   └── <span class="file">UrunOpsiyon.cs</span>                   <span class="comment">← M2M: Ürün ↔ Opsiyon ilişkisi</span>
+│
+├── <span class="folder">Enums/</span>                               <span class="comment">← 3 adet enum</span>
+│   ├── <span class="file">SiparisDurum.cs</span>                  <span class="comment">← 9 durum: Sepette → Ödendi → İptal</span>
+│   ├── <span class="file">OdemeTipi.cs</span>                     <span class="comment">← Nakit, KrediKarti</span>
+│   └── <span class="file">KullaniciRol.cs</span>                  <span class="comment">← Admin, Garson, Barista, Kasiyer</span>
+│
+└── <span class="folder">Interfaces/</span>                          <span class="comment">← Servis arayüzleri</span>
+    ├── <span class="file">ITokenService.cs</span>                 <span class="comment">← Token üretimi, oturum doğrulama</span>
+    └── <span class="file">IUrunService.cs</span>                  <span class="comment">← Ürün CRUD işlemleri</span>
+</pre>
+
+        <!-- ===== QRMenu.Data ===== -->
+        <h2>3. QRMenu.Data (Veri Erişim Katmanı)</h2>
+        <p>Entity Framework Core + PostgreSQL. DbContext, servisler ve migration'lar burada.</p>
+
+        <pre>
+<span class="folder">QRMenu.Data/</span>
+├── <span class="file">QRMenu.Data.csproj</span>
+│
+├── <span class="folder">Data/</span>
+│   ├── <span class="file">QRMenuDbContext.cs</span>               <span class="comment">← Fluent API config + 13 DbSet tanımı</span>
+│   └── <span class="file">SeedData.cs</span>                      <span class="comment">← 5 masa, 3 kategori, 10 ürün, 5 opsiyon</span>
+│
+├── <span class="folder">Services/</span>
+│   ├── <span class="file">TokenService.cs</span>                  <span class="comment">← CSPRNG token üretimi, SHA256 hash, oturum CRUD</span>
+│   └── <span class="file">UrunService.cs</span>                   <span class="comment">← Ürün ekleme, güncelleme, silme, filtreleme</span>
+│
+└── <span class="folder">Migrations/</span>
+    ├── <span class="file">20260227210126_InitialCreate.cs</span>  <span class="comment">← İlk migration (tüm tablolar + seed data)</span>
+    ├── <span class="file">20260227210126_InitialCreate.Designer.cs</span>
+    └── <span class="file">QRMenuDbContextModelSnapshot.cs</span>
+</pre>
+
+        <!-- ===== QRMenu.Web ===== -->
+        <h2>4. QRMenu.Web (Sunum Katmanı — MVC)</h2>
+        <p>Controller'lar, View'lar, Middleware, CSS dosyaları ve statik içerik.</p>
+
+        <pre>
+<span class="folder">QRMenu.Web/</span>
+├── <span class="file">QRMenu.Web.csproj</span>
+├── <span class="file">Program.cs</span>                           <span class="comment">← Uygulama ayarları, DI, middleware pipeline</span>
+├── <span class="file">appsettings.json</span>                     <span class="comment">← Supabase bağlantı + Serilog config</span>
+├── <span class="file">appsettings.Development.json</span>
+│
+├── <span class="folder">Controllers/</span>                         <span class="comment">← 3 controller</span>
+│   ├── <span class="file">AdminController.cs</span>               <span class="comment">← Admin paneli: /admin, /admin/masalar</span>
+│   │                                    <span class="comment">   Masa CRUD + QR oluşturma/silme</span>
+│   ├── <span class="file">MenuController.cs</span>                <span class="comment">← Müşteri menü sayfası: /menu</span>
+│   └── <span class="file">QRController.cs</span>                  <span class="comment">← QR tarama endpoint: /qr/{masaNo}</span>
+│                                        <span class="comment">   Token üretimi + cookie + redirect</span>
+│
+├── <span class="folder">Middleware/</span>                          <span class="comment">← 1 middleware</span>
+│   └── <span class="file">TokenValidationMiddleware.cs</span>    <span class="comment">← Her istekte cookie → DB oturum kontrolü</span>
+│                                        <span class="comment">   Excluded: /admin, /qr, static files</span>
+│
+├── <span class="folder">ViewModels/</span>                          <span class="comment">← 1 ViewModel</span>
+│   └── <span class="file">QrKodViewModel.cs</span>               <span class="comment">← MasaNo, QrUrl, QrBase64</span>
+│
+├── <span class="folder">Models/</span>
+│   └── <span class="file">ErrorViewModel.cs</span>               <span class="comment">← Hata sayfası modeli</span>
+│
+├── <span class="folder">Views/</span>
+│   ├── <span class="file">_ViewImports.cshtml</span>              <span class="comment">← Global using'ler ve tag helper'lar</span>
+│   ├── <span class="file">_ViewStart.cshtml</span>                <span class="comment">← Varsayılan layout ayarı</span>
+│   │
+│   ├── <span class="folder">Admin/</span>
+│   │   └── <span class="file">Masalar.cshtml</span>               <span class="comment">← Masa kartları + QR yönetimi</span>
+│   │                                    <span class="comment">   Masa Ekle modal, QR Oluştur/İndir/Sil</span>
+│   │
+│   ├── <span class="folder">Menu/</span>
+│   │   └── <span class="file">Index.cshtml</span>                 <span class="comment">← Müşteri menü sayfası (koyu tema)</span>
+│   │                                    <span class="comment">   Kategori filtreleme, ürün kartları</span>
+│   │
+│   └── <span class="folder">Shared/</span>
+│       ├── <span class="file">_AdminLayout.cshtml</span>          <span class="comment">← Admin layout: sidebar + topbar</span>
+│       ├── <span class="file">_Layout.cshtml</span>               <span class="comment">← Genel layout</span>
+│       ├── <span class="file">_ValidationScriptsPartial.cshtml</span>
+│       └── <span class="file">Error.cshtml</span>                 <span class="comment">← Hata sayfası</span>
+│
+├── <span class="folder">wwwroot/</span>                             <span class="comment">← Statik dosyalar</span>
+│   ├── <span class="folder">css/</span>                             <span class="comment">← 4 CSS dosyası</span>
+│   │   ├── <span class="file">admin-layout.css</span>             <span class="comment">← Sidebar, topbar, content, responsive</span>
+│   │   ├── <span class="file">admin-masalar.css</span>            <span class="comment">← Masa kartları, QR alanı, footer butonları</span>
+│   │   ├── <span class="file">menu.css</span>                     <span class="comment">← Koyu tema, ürün kartları, kategori tabları</span>
+│   │   └── <span class="file">site.css</span>                     <span class="comment">← Genel stiller</span>
+│   ├── <span class="folder">js/</span>
+│   │   └── <span class="file">site.js</span>
+│   ├── <span class="folder">lib/</span>                             <span class="comment">← 3. parti kütüphaneler</span>
+│   │   ├── <span class="folder">bootstrap/</span>
+│   │   ├── <span class="folder">jquery/</span>
+│   │   ├── <span class="folder">jquery-validation/</span>
+│   │   └── <span class="folder">jquery-validation-unobtrusive/</span>
+│   └── <span class="file">favicon.ico</span>
+│
+└── <span class="folder">Properties/</span>
+    └── <span class="file">launchSettings.json</span>
+</pre>
+
+        <!-- ===== Tests ===== -->
+        <h2>5. QRMenu.Tests (Test Projesi)</h2>
+
+        <pre>
+<span class="folder">QRMenu.Tests/</span>
+├── <span class="file">QRMenu.Tests.csproj</span>
+├── <span class="file">UrunServiceTests.cs</span>                  <span class="comment">← 8 test: CRUD, filtreleme, popüler ürünler</span>
+└── <span class="file">TokenServiceTests.cs</span>                 <span class="comment">← 8 test: token üretimi, hash, oturum, süre aşımı</span>
+</pre>
+
+        <!-- ===== BAĞIMLILIK ===== -->
+        <h2>6. Proje Bağımlılıkları</h2>
+
+        <pre>
+<span class="highlight">QRMenu.Core</span>  ← Bağımsız (Entity + Enum + Interface)
+     ↓
+<span class="highlight">QRMenu.Data</span>  ← Core'a bağımlı (DbContext + Services)
+     ↓
+<span class="highlight">QRMenu.Web</span>   ← Core + Data'ya bağımlı (MVC Layer)
+
+<span class="highlight">QRMenu.Tests</span> ← Core + Data'ya bağımlı (xUnit)
+</pre>
+
+        <!-- ===== ROUTE TABLOSU ===== -->
+        <h2>7. URL Route Tablosu</h2>
+        <table>
+            <tr>
+                <th>URL</th>
+                <th>Controller</th>
+                <th>Açıklama</th>
+            </tr>
+            <tr>
+                <td><code>/</code></td>
+                <td>MenuController</td>
+                <td>Menü sayfasına yönlendirir</td>
+            </tr>
+            <tr>
+                <td><code>/menu</code></td>
+                <td>MenuController</td>
+                <td>Müşteri menü sayfası</td>
+            </tr>
+            <tr>
+                <td><code>/qr/{masaNo}</code></td>
+                <td>QRController</td>
+                <td>QR tarama → token üret → menüye yönlendir</td>
+            </tr>
+            <tr>
+                <td><code>/admin</code></td>
+                <td>AdminController</td>
+                <td>/admin/masalar'a yönlendirir</td>
+            </tr>
+            <tr>
+                <td><code>/admin/masalar</code></td>
+                <td>AdminController</td>
+                <td>Masa yönetimi sayfası</td>
+            </tr>
+            <tr>
+                <td><code>/admin/masa-olustur/{no}</code></td>
+                <td>AdminController</td>
+                <td>AJAX: Yeni masa ekle</td>
+            </tr>
+            <tr>
+                <td><code>/admin/masa-sil/{no}</code></td>
+                <td>AdminController</td>
+                <td>AJAX: Masa sil</td>
+            </tr>
+            <tr>
+                <td><code>/admin/qr-olustur/{no}</code></td>
+                <td>AdminController</td>
+                <td>AJAX: QR oluştur + DB kayıt</td>
+            </tr>
+            <tr>
+                <td><code>/admin/qr-sil/{no}</code></td>
+                <td>AdminController</td>
+                <td>AJAX: QR sil</td>
+            </tr>
+        </table>
+
+    </div>
+</body>
+
+</html>

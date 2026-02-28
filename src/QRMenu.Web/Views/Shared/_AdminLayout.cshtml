@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — Admin Paneli</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="~/css/admin-layout.css" rel="stylesheet" />
+    @RenderSection("Styles", required: false)
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="admin-sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <i class="bi bi-qr-code brand-icon"></i>
+        <span>QR Menü</span>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-label">Ana Menü</div>
+        <a class="nav-item disabled" href="#">
+            <i class="bi bi-speedometer2"></i> Dashboard
+            <span class="badge-soon">Yakında</span>
+        </a>
+        <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Masalar" ? "active" : "")" href="/admin/masalar">
+            <i class="bi bi-grid-3x3-gap"></i> Masalar
+        </a>
+
+        <div class="nav-label">Yönetim</div>
+        <a class="nav-item disabled" href="#">
+            <i class="bi bi-cup-hot"></i> Ürünler
+            <span class="badge-soon">Yakında</span>
+        </a>
+        <a class="nav-item disabled" href="#">
+            <i class="bi bi-receipt"></i> Siparişler
+            <span class="badge-soon">Yakında</span>
+        </a>
+        <a class="nav-item disabled" href="#">
+            <i class="bi bi-people"></i> Personel
+            <span class="badge-soon">Yakında</span>
+        </a>
+
+        <div class="nav-label">Ayarlar</div>
+        <a class="nav-item disabled" href="#">
+            <i class="bi bi-gear"></i> Genel Ayarlar
+            <span class="badge-soon">Yakında</span>
+        </a>
+    </nav>
+</aside>
+
+<!-- Overlay (mobil) -->
+<div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+<!-- Topbar -->
+<header class="admin-topbar" id="topbar">
+    <button class="topbar-toggle" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
+    <span class="topbar-title">@ViewData["PageTitle"]</span>
+</header>
+
+<!-- Content -->
+<main class="admin-content">
+    @RenderBody()
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+        document.getElementById('overlay').classList.toggle('open');
+    }
+</script>
+@RenderSection("Scripts", required: false)
+</body>
+</html>

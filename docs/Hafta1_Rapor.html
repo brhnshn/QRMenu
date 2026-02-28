@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="utf-8">
+    <title>Hafta 1 — Proje Kurulumu & Veritabanı Altyapısı</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.7;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            color: #e67e22;
+            font-size: 1.6rem;
+            margin-bottom: 6px;
+        }
+
+        h2 {
+            color: #2c3e50;
+            font-size: 1.2rem;
+            margin: 30px 0 12px;
+            border-bottom: 2px solid #e67e22;
+            padding-bottom: 6px;
+        }
+
+        h3 {
+            color: #555;
+            font-size: 1rem;
+            margin: 16px 0 8px;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 0.85rem;
+            margin-bottom: 24px;
+        }
+
+        pre {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            margin: 10px 0 16px;
+        }
+
+        .cmd {
+            color: #89b4fa;
+        }
+
+        .ok {
+            color: #a6e3a1;
+        }
+
+        .file {
+            color: #f9e2af;
+        }
+
+        .folder {
+            color: #fab387;
+        }
+
+        .comment {
+            color: #6c7086;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 16px;
+            font-size: 0.85rem;
+        }
+
+        th {
+            background: #2c3e50;
+            color: #fff;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:nth-child(even) td {
+            background: #fafafa;
+        }
+
+        ul {
+            margin: 6px 0 12px 20px;
+            font-size: 0.9rem;
+        }
+
+        li {
+            margin: 3px 0;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-ok {
+            background: #d5f5e3;
+            color: #1e8449;
+        }
+
+        .badge-info {
+            background: #d6eaf8;
+            color: #2471a3;
+        }
+
+        .info-box {
+            background: #eaf2f8;
+            border-left: 4px solid #3498db;
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin: 12px 0;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <h1>📋 Hafta 1 — Proje Kurulumu & Veritabanı Altyapısı</h1>
+        <div class="subtitle">Proje: QR Menü Otomasyonu | Tarih: 27 Şubat 2026 | Süre: ~8 Saat</div>
+
+        <!-- ===== 1. DOSYA YAPISI ===== -->
+        <h2>1. Proje Dosya Yapısı</h2>
+        <pre>
+<span class="folder">QRMenu/</span>
+├── <span class="file">QRMenu.sln</span>
+├── <span class="folder">src/</span>
+│   ├── <span class="folder">QRMenu.Core/</span>                 <span class="comment">← Entity + Enum + Interface (projenin kalbi)</span>
+│   │   ├── <span class="folder">Entities/</span>               <span class="comment">← 13 veritabanı tablosu modeli</span>
+│   │   │   ├── <span class="file">AuditLog.cs</span>
+│   │   │   ├── <span class="file">Kategori.cs</span>
+│   │   │   ├── <span class="file">Kullanici.cs</span>
+│   │   │   ├── <span class="file">Masa.cs</span>
+│   │   │   ├── <span class="file">Odeme.cs</span>
+│   │   │   ├── <span class="file">Opsiyon.cs</span>
+│   │   │   ├── <span class="file">Oturum.cs</span>
+│   │   │   ├── <span class="file">Sepet.cs</span>
+│   │   │   ├── <span class="file">SepetDetay.cs</span>
+│   │   │   ├── <span class="file">Siparis.cs</span>
+│   │   │   ├── <span class="file">SiparisDetay.cs</span>
+│   │   │   ├── <span class="file">Urun.cs</span>
+│   │   │   └── <span class="file">UrunOpsiyon.cs</span>
+│   │   ├── <span class="folder">Enums/</span>                  <span class="comment">← 3 enum (SiparisDurum, OdemeTipi, KullaniciRol)</span>
+│   │   │   ├── <span class="file">SiparisDurum.cs</span>
+│   │   │   ├── <span class="file">OdemeTipi.cs</span>
+│   │   │   └── <span class="file">KullaniciRol.cs</span>
+│   │   ├── <span class="folder">Interfaces/</span>             <span class="comment">← Servis arayüzleri</span>
+│   │   │   ├── <span class="file">ITokenService.cs</span>
+│   │   │   └── <span class="file">IUrunService.cs</span>
+│   │   └── <span class="file">QRMenu.Core.csproj</span>
+│   │
+│   ├── <span class="folder">QRMenu.Data/</span>                 <span class="comment">← Veritabanı + Servisler</span>
+│   │   ├── <span class="folder">Data/</span>
+│   │   │   ├── <span class="file">QRMenuDbContext.cs</span>  <span class="comment">← Fluent API + DbSet tanımları</span>
+│   │   │   └── <span class="file">SeedData.cs</span>         <span class="comment">← Başlangıç verileri</span>
+│   │   ├── <span class="folder">Services/</span>
+│   │   │   ├── <span class="file">TokenService.cs</span>
+│   │   │   └── <span class="file">UrunService.cs</span>
+│   │   ├── <span class="folder">Migrations/</span>             <span class="comment">← EF Core migration dosyaları</span>
+│   │   └── <span class="file">QRMenu.Data.csproj</span>
+│   │
+│   └── <span class="folder">QRMenu.Web/</span>                  <span class="comment">← MVC (Controller + View + Middleware)</span>
+│       ├── <span class="folder">Controllers/</span>
+│       │   ├── <span class="file">AdminController.cs</span>
+│       │   ├── <span class="file">MenuController.cs</span>
+│       │   └── <span class="file">QRController.cs</span>
+│       ├── <span class="folder">Middleware/</span>
+│       │   └── <span class="file">TokenValidationMiddleware.cs</span>
+│       ├── <span class="folder">ViewModels/</span>
+│       │   └── <span class="file">QrKodViewModel.cs</span>
+│       ├── <span class="folder">Views/</span>
+│       │   ├── <span class="folder">Admin/</span>
+│       │   │   └── <span class="file">Masalar.cshtml</span>
+│       │   ├── <span class="folder">Menu/</span>
+│       │   │   └── <span class="file">Index.cshtml</span>
+│       │   └── <span class="folder">Shared/</span>
+│       │       ├── <span class="file">_AdminLayout.cshtml</span>
+│       │       ├── <span class="file">_Layout.cshtml</span>
+│       │       └── <span class="file">Error.cshtml</span>
+│       ├── <span class="folder">wwwroot/css/</span>
+│       │   ├── <span class="file">admin-layout.css</span>
+│       │   ├── <span class="file">admin-masalar.css</span>
+│       │   ├── <span class="file">menu.css</span>
+│       │   └── <span class="file">site.css</span>
+│       ├── <span class="file">Program.cs</span>
+│       └── <span class="file">appsettings.json</span>
+│
+├── <span class="folder">tests/</span>
+│   └── <span class="folder">QRMenu.Tests/</span>                <span class="comment">← 16 xUnit test</span>
+│       ├── <span class="file">UrunServiceTests.cs</span>     <span class="comment">← 8 ürün CRUD testi</span>
+│       └── <span class="file">TokenServiceTests.cs</span>    <span class="comment">← 8 token/oturum testi</span>
+│
+└── <span class="folder">docs/</span>
+    ├── <span class="file">Hafta1_Rapor.html</span>
+    ├── <span class="file">Hafta2_Rapor.html</span>
+    └── <span class="file">DosyaYapisi_Rapor.html</span>
+</pre>
+
+        <div class="info-box">
+            <strong>Bağımlılık zinciri:</strong> Core → Data → Web | Tests → Core + Data
+        </div>
+
+        <!-- ===== 2. SOLUTION OLUŞTURMA ===== -->
+        <h2>2. Solution ve Proje Oluşturma</h2>
+        <pre>
+<span class="cmd">&gt; dotnet new sln -n QRMenu</span>
+<span class="ok">"Çözüm Dosyası" şablonu başarıyla oluşturuldu.</span>
+
+<span class="cmd">&gt; dotnet new classlib -n QRMenu.Core -o src\QRMenu.Core --framework net8.0</span>
+<span class="cmd">&gt; dotnet new classlib -n QRMenu.Data -o src\QRMenu.Data --framework net8.0</span>
+<span class="cmd">&gt; dotnet new mvc -n QRMenu.Web -o src\QRMenu.Web --framework net8.0</span>
+<span class="cmd">&gt; dotnet new xunit -n QRMenu.Tests -o tests\QRMenu.Tests</span>
+<span class="ok">Tüm projeler başarıyla oluşturuldu. ✅</span>
+</pre>
+
+        <!-- ===== 3. NUGET PAKETLERİ ===== -->
+        <h2>3. NuGet Paketleri</h2>
+        <table>
+            <tr>
+                <th>Paket</th>
+                <th>Versiyon</th>
+                <th>Katman</th>
+                <th>Açıklama</th>
+            </tr>
+            <tr>
+                <td>Microsoft.EntityFrameworkCore</td>
+                <td>8.0.0</td>
+                <td>Data</td>
+                <td>ORM framework</td>
+            </tr>
+            <tr>
+                <td>Npgsql.EntityFrameworkCore.PostgreSQL</td>
+                <td>8.0.0</td>
+                <td>Data</td>
+                <td>PostgreSQL provider</td>
+            </tr>
+            <tr>
+                <td>Microsoft.EntityFrameworkCore.Design</td>
+                <td>8.0.0</td>
+                <td>Web</td>
+                <td>Migration araçları</td>
+            </tr>
+            <tr>
+                <td>Serilog.AspNetCore</td>
+                <td>8.0.0</td>
+                <td>Web</td>
+                <td>Yapılandırılmış loglama</td>
+            </tr>
+            <tr>
+                <td>Serilog.Sinks.File</td>
+                <td>5.0.0</td>
+                <td>Web</td>
+                <td>Dosyaya log yazma</td>
+            </tr>
+            <tr>
+                <td>QRCoder</td>
+                <td>1.6.0</td>
+                <td>Web</td>
+                <td>QR kod üretimi</td>
+            </tr>
+            <tr>
+                <td>Moq</td>
+                <td>4.20.70</td>
+                <td>Tests</td>
+                <td>Mock framework</td>
+            </tr>
+            <tr>
+                <td>Microsoft.EntityFrameworkCore.InMemory</td>
+                <td>8.0.0</td>
+                <td>Tests</td>
+                <td>Test DB</td>
+            </tr>
+        </table>
+
+        <!-- ===== 4. ENTITY'LER ===== -->
+        <h2>4. Veritabanı Entity'leri (13 Tablo)</h2>
+        <table>
+            <tr>
+                <th>Entity</th>
+                <th>Açıklama</th>
+                <th>Önemli Alanlar</th>
+            </tr>
+            <tr>
+                <td>Masa</td>
+                <td>Restoran masaları</td>
+                <td>MasaNo, AktifMi, QrKodUrl</td>
+            </tr>
+            <tr>
+                <td>Kategori</td>
+                <td>Ürün kategorileri</td>
+                <td>Ad, AdEN, SiraNo, AktifMi</td>
+            </tr>
+            <tr>
+                <td>Urun</td>
+                <td>Menü ürünleri</td>
+                <td>Ad, Fiyat, GorselUrl, PopulerMi, SatisSayisi</td>
+            </tr>
+            <tr>
+                <td>Opsiyon</td>
+                <td>Ürün seçenekleri</td>
+                <td>Ad, Grup (Boyut/Süt), EkFiyat</td>
+            </tr>
+            <tr>
+                <td>UrunOpsiyon</td>
+                <td>M2M ilişki tablosu</td>
+                <td>Composite Key: UrunId + OpsiyonId</td>
+            </tr>
+            <tr>
+                <td>Oturum</td>
+                <td>Token bazlı oturum</td>
+                <td>TokenHash, Kullanildi, SonIslemTarihi</td>
+            </tr>
+            <tr>
+                <td>Sepet</td>
+                <td>Müşteri sepeti</td>
+                <td>OturumId, ToplamTutar</td>
+            </tr>
+            <tr>
+                <td>SepetDetay</td>
+                <td>Sepetteki ürünler</td>
+                <td>UrunId, Adet, SeciliOpsiyonlar</td>
+            </tr>
+            <tr>
+                <td>Siparis</td>
+                <td>Siparişler</td>
+                <td>Durum (9 enum), ToplamTutar, RowVersion</td>
+            </tr>
+            <tr>
+                <td>SiparisDetay</td>
+                <td>Sipariş kalemleri</td>
+                <td>UrunId, Adet, BirimFiyat</td>
+            </tr>
+            <tr>
+                <td>Odeme</td>
+                <td>Ödeme kayıtları</td>
+                <td>Tutar, OdemeTipi (Nakit/Kredi)</td>
+            </tr>
+            <tr>
+                <td>Kullanici</td>
+                <td>Personel</td>
+                <td>KullaniciAdi, Rol (4 rol enum)</td>
+            </tr>
+            <tr>
+                <td>AuditLog</td>
+                <td>Değişiklik logları</td>
+                <td>TabloAdi, Islem, EskiDeger, YeniDeger</td>
+            </tr>
+        </table>
+
+        <!-- ===== 5. INDEX PLANI ===== -->
+        <h2>5. Index Planı</h2>
+        <table>
+            <tr>
+                <th>Index Adı</th>
+                <th>Tablo</th>
+                <th>Kolon</th>
+                <th>Unique</th>
+            </tr>
+            <tr>
+                <td>IX_Masalar_MasaNo</td>
+                <td>Masalar</td>
+                <td>MasaNo</td>
+                <td>✅ Evet</td>
+            </tr>
+            <tr>
+                <td>IX_Kullanicilar_KullaniciAdi</td>
+                <td>Kullanicilar</td>
+                <td>KullaniciAdi</td>
+                <td>✅ Evet</td>
+            </tr>
+            <tr>
+                <td>IX_Siparisler_Durum</td>
+                <td>Siparisler</td>
+                <td>Durum</td>
+                <td>Hayır</td>
+            </tr>
+            <tr>
+                <td>IX_Siparisler_MasaId</td>
+                <td>Siparisler</td>
+                <td>MasaId</td>
+                <td>Hayır</td>
+            </tr>
+            <tr>
+                <td>IX_Urunler_AktifMi</td>
+                <td>Urunler</td>
+                <td>AktifMi</td>
+                <td>Hayır</td>
+            </tr>
+            <tr>
+                <td>IX_Oturumlar_TokenHash</td>
+                <td>Oturumlar</td>
+                <td>TokenHash</td>
+                <td>Hayır</td>
+            </tr>
+            <tr>
+                <td>IX_Oturumlar_AktifMi</td>
+                <td>Oturumlar</td>
+                <td>AktifMi</td>
+                <td>Hayır</td>
+            </tr>
+        </table>
+
+        <!-- ===== 6. SEED DATA ===== -->
+        <h2>6. Seed Data</h2>
+        <ul>
+            <li><strong>5 Masa</strong> — Masa 1-5 (AktifMi = true)</li>
+            <li><strong>3 Kategori</strong> — Sıcak İçecekler, Soğuk İçecekler, Atıştırmalıklar</li>
+            <li><strong>10 Ürün</strong> — Filtre Kahve, Latte, Americano, Türk Kahvesi, Buzlu Latte, Limonata,
+                Smoothie, Cheesecake, Brownie, Sandviç</li>
+            <li><strong>5 Opsiyon</strong> — Küçük, Orta, Büyük, Tam Yağlı Süt, Yağsız Süt</li>
+            <li><strong>16 UrunOpsiyon</strong> — Filtre Kahve, Latte, Americano, Buzlu Latte için boyut + süt
+                seçenekleri</li>
+        </ul>
+
+        <!-- ===== 7. MIGRATION ===== -->
+        <h2>7. Migration & Supabase</h2>
+        <pre>
+<span class="cmd">&gt; dotnet ef migrations add InitialCreate --project src\QRMenu.Data --startup-project src\QRMenu.Web</span>
+<span class="ok">Migration 'InitialCreate' oluşturuldu.</span>
+
+<span class="cmd">&gt; dotnet ef database update --project src\QRMenu.Data --startup-project src\QRMenu.Web</span>
+<span class="ok">Veritabanı güncellendi. Tüm tablolar Supabase PostgreSQL'de oluşturuldu. ✅</span>
+</pre>
+
+        <!-- ===== 8. TESTLER ===== -->
+        <h2>8. Unit Testler (8 test — Hafta 1)</h2>
+        <table>
+            <tr>
+                <th>#</th>
+                <th>Test</th>
+                <th>Sonuç</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td>Ürün ekleme (AddAsync)</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>Tüm ürünleri listeleme (GetAllAsync)</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>ID ile ürün getirme (GetByIdAsync)</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>Ürün güncelleme (UpdateAsync)</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>Ürün silme (DeleteAsync)</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td>Aktif ürünleri filtreleme (GetActiveAsync)</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td>Kategoriye göre filtreleme (GetByCategoryAsync)</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td>Popüler ürünler (GetPopularAsync)</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+        </table>
+
+        <pre>
+<span class="cmd">&gt; dotnet test tests\QRMenu.Tests</span>
+<span class="ok">Toplam test sayısı: 8 | Geçti: 8 ✅</span>
+</pre>
+
+    </div>
+</body>
+
+</html>

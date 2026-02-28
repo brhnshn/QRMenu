@@ -1,0 +1,165 @@
+/* ===========================
+   Admin — Masalar Yönetimi
+   =========================== */
+
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.content-header h5 {
+    margin: 0;
+    font-weight: 600;
+    color: #333;
+}
+
+.btn-yeni-masa {
+    background: #1bc5bd;
+    border: none;
+    color: #fff;
+    font-weight: 500;
+    padding: 8px 18px;
+    border-radius: 6px;
+}
+
+.btn-yeni-masa:hover {
+    background: #159e98;
+    color: #fff;
+}
+
+/* ===== MASA KARTI ===== */
+.masa-card {
+    background: #fff;
+    border: 1px solid #ebedf3;
+    border-radius: 10px;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+}
+
+.masa-card:hover {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.masa-card-body {
+    padding: 18px 16px 12px;
+    text-align: center;
+}
+
+.masa-no {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 6px;
+}
+
+.masa-bolge {
+    font-size: 0.78rem;
+    color: #999;
+    margin-bottom: 8px;
+}
+
+.masa-durum {
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 4px;
+}
+
+.durum-bos {
+    background: #e8fff3;
+    color: #1bc5bd;
+}
+
+.durum-dolu {
+    background: #eee5ff;
+    color: #7337ee;
+}
+
+/* ===== QR ALANI ===== */
+.qr-area {
+    margin: 12px auto;
+    width: 120px;
+    height: 120px;
+}
+
+.qr-placeholder-sm {
+    width: 120px;
+    height: 120px;
+    background: #f8f9fa;
+    border: 2px dashed #ddd;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #bbb;
+    font-size: 0.75rem;
+}
+
+.qr-img-sm {
+    max-width: 120px;
+    display: block;
+    margin: 0 auto;
+}
+
+/* ===== KART FOOTER ===== */
+.masa-card-footer {
+    border-top: 1px solid #ebedf3;
+    display: flex;
+    padding: 0;
+}
+
+.masa-card-footer .footer-btn {
+    flex: 1;
+    padding: 9px 0;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    text-decoration: none;
+}
+
+.masa-card-footer .footer-btn:hover {
+    background: #f5f5f5;
+}
+
+.masa-card-footer .footer-btn+.footer-btn {
+    border-left: 1px solid #ebedf3;
+}
+
+.footer-btn.btn-qr {
+    color: #555;
+}
+
+.footer-btn.btn-edit {
+    color: #3699ff;
+}
+
+.footer-btn.btn-delete {
+    color: #f64e60;
+}
+
+.footer-btn.btn-qr:hover {
+    background: #f0f0f0;
+}
+
+.footer-btn.btn-edit:hover {
+    background: #eef3ff;
+}
+
+.footer-btn.btn-delete:hover {
+    background: #fff5f5;
+}
+
+/* ===== MODAL ===== */
+.modal-content {
+    border-radius: 10px;
+}

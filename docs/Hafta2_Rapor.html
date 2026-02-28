@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="utf-8">
+    <title>Hafta 2 — Güvenli Oturum Sistemi + Ekstra Geliştirmeler</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.7;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            color: #e67e22;
+            font-size: 1.6rem;
+            margin-bottom: 6px;
+        }
+
+        h2 {
+            color: #2c3e50;
+            font-size: 1.2rem;
+            margin: 30px 0 12px;
+            border-bottom: 2px solid #e67e22;
+            padding-bottom: 6px;
+        }
+
+        h3 {
+            color: #555;
+            font-size: 1rem;
+            margin: 16px 0 8px;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 0.85rem;
+            margin-bottom: 24px;
+        }
+
+        pre {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            margin: 10px 0 16px;
+        }
+
+        .cmd {
+            color: #89b4fa;
+        }
+
+        .ok {
+            color: #a6e3a1;
+        }
+
+        .file {
+            color: #f9e2af;
+        }
+
+        .folder {
+            color: #fab387;
+        }
+
+        .comment {
+            color: #6c7086;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 16px;
+            font-size: 0.85rem;
+        }
+
+        th {
+            background: #2c3e50;
+            color: #fff;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:nth-child(even) td {
+            background: #fafafa;
+        }
+
+        ul {
+            margin: 6px 0 12px 20px;
+            font-size: 0.9rem;
+        }
+
+        li {
+            margin: 3px 0;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-ok {
+            background: #d5f5e3;
+            color: #1e8449;
+        }
+
+        .badge-extra {
+            background: #fcf3cf;
+            color: #b7950b;
+        }
+
+        .badge-info {
+            background: #d6eaf8;
+            color: #2471a3;
+        }
+
+        .info-box {
+            background: #eaf2f8;
+            border-left: 4px solid #3498db;
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin: 12px 0;
+            font-size: 0.85rem;
+        }
+
+        .extra-box {
+            background: #fef9e7;
+            border-left: 4px solid #f39c12;
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin: 12px 0;
+            font-size: 0.85rem;
+        }
+
+        code {
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.82rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <h1>📋 Hafta 2 — Güvenli Oturum (Token) Sistemi + Ekstra Geliştirmeler</h1>
+        <div class="subtitle">Proje: QR Menü Otomasyonu | Tarih: 27-28 Şubat 2026 | Süre: ~16+ Saat</div>
+
+        <!-- ===== PLANDAKI MADDELER ===== -->
+        <h2>1. Plandaki Maddeler (Tümü Tamamlandı ✅)</h2>
+
+        <h3>1.1 Token Üretimi & Oturum Yönetimi</h3>
+        <table>
+            <tr>
+                <th>Madde</th>
+                <th>Durum</th>
+                <th>Detay</th>
+            </tr>
+            <tr>
+                <td>QR URL formatı</td>
+                <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                <td>Planda <code>?tableId=X&token=...</code> — biz daha güvenli <code>/qr/{masaId}</code> formatı
+                    kullandık (token URL'de değil, sunucuda üretilip cookie'ye yazılıyor)</td>
+            </tr>
+            <tr>
+                <td>Token üretimi (CSPRNG) + SHA256 hash</td>
+                <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                <td><code>TokenService.GenerateToken()</code> — RandomNumberGenerator + SHA256</td>
+            </tr>
+            <tr>
+                <td>HttpOnly + Secure + SameSite=Strict cookie</td>
+                <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                <td>Development'ta Secure=false, Production'da Secure=true</td>
+            </tr>
+            <tr>
+                <td>Sliding Expiration (90 dk)</td>
+                <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                <td><code>RefreshSessionAsync()</code> + <code>ValidateTokenAsync()</code> süre kontrolü</td>
+            </tr>
+            <tr>
+                <td>Tek kullanımlık token (Replay Attack)</td>
+                <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                <td><code>Kullanildi</code> bayrağı ile replay attack önlemi</td>
+            </tr>
+            <tr>
+                <td>Token doğrulama middleware</td>
+                <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                <td><code>TokenValidationMiddleware</code> — excluded paths, personel yolları</td>
+            </tr>
+            <tr>
+                <td>Rate Limiting</td>
+                <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                <td><code>TokenBasedPolicy</code> (10 istek/dk) + <code>GarsonCagirPolicy</code> (3 istek/5dk)</td>
+            </tr>
+        </table>
+
+        <!-- ===== DOSYA DETAYLARI ===== -->
+        <h2>2. Oluşturulan/Güncellenen Dosyalar</h2>
+
+        <h3>Hafta 2 — Plan Kapsamındaki Dosyalar</h3>
+        <pre>
+<span class="folder">src/QRMenu.Core/Interfaces/</span>
+└── <span class="file">ITokenService.cs</span>           <span class="comment">← Token servis arayüzü</span>
+
+<span class="folder">src/QRMenu.Data/Services/</span>
+└── <span class="file">TokenService.cs</span>            <span class="comment">← Token üretimi, hash, oturum CRUD</span>
+
+<span class="folder">src/QRMenu.Web/Middleware/</span>
+└── <span class="file">TokenValidationMiddleware.cs</span> <span class="comment">← Her istekte cookie → DB oturum kontrolü</span>
+
+<span class="folder">src/QRMenu.Web/Controllers/</span>
+└── <span class="file">QRController.cs</span>            <span class="comment">← QR tarama endpoint'i (/qr/{masaNo})</span>
+
+<span class="folder">src/QRMenu.Web/</span>
+└── <span class="file">Program.cs</span>                 <span class="comment">← Rate Limiting + Middleware pipeline</span>
+
+<span class="folder">tests/QRMenu.Tests/</span>
+└── <span class="file">TokenServiceTests.cs</span>       <span class="comment">← 8 token/oturum testi</span>
+</pre>
+
+        <h3>Token Akışı</h3>
+        <pre>
+<span class="comment">1. Müşteri QR kodu okur → /qr/{masaNo}</span>
+<span class="comment">2. QRController: Token = CSPRNG ile 256-bit rastgele üretir</span>
+<span class="comment">3. TokenHash = SHA256(Token) → Oturum tablosuna kaydedilir</span>
+<span class="comment">4. Token → HttpOnly + Secure cookie ile tarayıcıya yazılır</span>
+<span class="comment">5. Middleware — her istekte cookie okur → DB'den oturum doğrular</span>
+<span class="comment">6. SonIslemTarihi güncellenir (Sliding Expiration)</span>
+<span class="comment">7. 90 dk süre aşımında oturum kapanır</span>
+</pre>
+
+        <!-- ===== EKSTRA MADDELER ===== -->
+        <h2>3. Ekstra Geliştirmeler (Plan Dışı) 🚀</h2>
+
+        <div class="extra-box">
+            <strong>⚠️ Not:</strong> Aşağıdaki özellikler plandaki Hafta 6 ve 7'ye ait olarak belirlenmişti.
+            Temel altyapıyı oluşturmak amacıyla Hafta 2'de iskelet olarak gerçekleştirildi.
+        </div>
+
+        <h3>3.1 Admin Paneli Temeli <span class="badge badge-extra">Hafta 6'dan</span></h3>
+        <p>Tam sayfa admin paneli oluşturuldu:</p>
+        <ul>
+            <li><strong>Sidebar (sol menü)</strong> — Koyu tema, sabit konumlu. Dashboard (pasif), Masalar (aktif),
+                Ürünler/Siparişler/Personel/Ayarlar "Yakında" etiketli</li>
+            <li><strong>Topbar</strong> — Sayfa başlığı + mobilde hamburger menü butonu</li>
+            <li><strong>Responsive</strong> — 768px altında sidebar otomatik kapanır, overlay ile açılır</li>
+        </ul>
+        <pre>
+<span class="folder">src/QRMenu.Web/Views/Shared/</span>
+└── <span class="file">_AdminLayout.cshtml</span>        <span class="comment">← Admin layout (sidebar + topbar)</span>
+
+<span class="folder">src/QRMenu.Web/wwwroot/css/</span>
+└── <span class="file">admin-layout.css</span>           <span class="comment">← Sidebar + topbar stilleri</span>
+</pre>
+
+        <h3>3.2 Masa Yönetimi (CRUD) <span class="badge badge-extra">Hafta 6'dan</span></h3>
+        <p>Admin panelinde masa ekleme, silme ve QR kod üretimi:</p>
+        <ul>
+            <li><strong>Masa Oluştur</strong> — Modal ile masa numarası girip ekleme
+                (<code>/admin/masa-olustur/{no}</code>)</li>
+            <li><strong>Masa Sil</strong> — Bağlı oturum/sipariş varsa soft-delete (pasife çek), yoksa hard-delete</li>
+            <li><strong>Kart görünümü</strong> — Masa No, Bölge, Durum badge'i, QR alanı, footer butonları</li>
+        </ul>
+        <pre>
+<span class="folder">src/QRMenu.Web/Controllers/</span>
+└── <span class="file">AdminController.cs</span>         <span class="comment">← Masa CRUD + QR oluşturma endpoint'leri</span>
+
+<span class="folder">src/QRMenu.Web/Views/Admin/</span>
+└── <span class="file">Masalar.cshtml</span>             <span class="comment">← Masa kartları sayfası</span>
+
+<span class="folder">src/QRMenu.Web/ViewModels/</span>
+└── <span class="file">QrKodViewModel.cs</span>          <span class="comment">← QR kod verisi için ViewModel</span>
+
+<span class="folder">src/QRMenu.Web/wwwroot/css/</span>
+└── <span class="file">admin-masalar.css</span>          <span class="comment">← Masa kartları stilleri</span>
+</pre>
+
+        <h3>3.3 QR Kod Oluşturma & Yönetimi <span class="badge badge-extra">Hafta 6'dan</span></h3>
+        <ul>
+            <li><strong>On-Demand QR</strong> — "QR Oluştur" butonuna basınca AJAX ile QR üretilir</li>
+            <li><strong>DB Kayıt</strong> — QR oluşturulunca <code>Masa.QrKodUrl</code> alanına URL kaydedilir</li>
+            <li><strong>PNG İndirme</strong> — JavaScript data URL ile <code>Masa_X_QR.png</code> olarak indirilir</li>
+            <li><strong>QR Silme</strong> — DB'den <code>QrKodUrl</code> null yapılır</li>
+            <li><strong>QRCoder</strong> — ECCLevel.H (yüksek hata düzeltme)</li>
+        </ul>
+
+        <h3>3.4 Müşteri Menü Sayfası <span class="badge badge-extra">Hafta 7'den</span></h3>
+        <ul>
+            <li><strong>Koyu tema</strong> — Modern, mobil öncelikli tasarım</li>
+            <li><strong>Kategori filtreleme</strong> — Tab bazlı (Tümü, Sıcak İçecekler, Soğuk İçecekler...)</li>
+            <li><strong>Ürün kartları</strong> — Ad, açıklama, fiyat, Popüler/Tükendi/Seçenekli badge'leri</li>
+            <li><strong>Garson çağır butonu</strong> — Floating action button (sağ alt köşe)</li>
+            <li><strong>Masa bilgisi</strong> — Header'da QR'dan gelen masa numarası gösterilir</li>
+        </ul>
+        <pre>
+<span class="folder">src/QRMenu.Web/Controllers/</span>
+└── <span class="file">MenuController.cs</span>          <span class="comment">← Menü sayfası controller'ı</span>
+
+<span class="folder">src/QRMenu.Web/Views/Menu/</span>
+└── <span class="file">Index.cshtml</span>               <span class="comment">← Müşteri menü sayfası</span>
+
+<span class="folder">src/QRMenu.Web/wwwroot/css/</span>
+└── <span class="file">menu.css</span>                   <span class="comment">← Menü sayfası stilleri</span>
+</pre>
+
+        <h3>3.5 CSS Organizasyonu</h3>
+        <p>Tüm inline CSS kodları ayrıştırılarak external dosyalara taşındı:</p>
+        <table>
+            <tr>
+                <th>Dosya</th>
+                <th>İçerik</th>
+            </tr>
+            <tr>
+                <td><code>wwwroot/css/admin-layout.css</code></td>
+                <td>Sidebar, topbar, content area, mobil responsive</td>
+            </tr>
+            <tr>
+                <td><code>wwwroot/css/admin-masalar.css</code></td>
+                <td>Masa kartları, QR alanı, footer butonları, durum badgeleri</td>
+            </tr>
+            <tr>
+                <td><code>wwwroot/css/menu.css</code></td>
+                <td>Koyu tema, ürün kartları, kategori tabları, garson butonu</td>
+            </tr>
+            <tr>
+                <td><code>wwwroot/css/site.css</code></td>
+                <td>Genel stiller (mevcut)</td>
+            </tr>
+        </table>
+
+        <h3>3.6 Diğer Değişiklikler</h3>
+        <ul>
+            <li><strong>HomeController kaldırıldı</strong> — Varsayılan route <code>Menu/Index</code> yapıldı</li>
+            <li><strong>ViewModel katmanı</strong> — <code>ViewModels/QrKodViewModel.cs</code> eklendi (düzgün MVC
+                yapısı)</li>
+            <li><strong>Program.cs güncellendi</strong> — Default route Menu, ExceptionHandler düzeltildi</li>
+        </ul>
+
+        <!-- ===== TESTLER ===== -->
+        <h2>4. Unit Testler (Hafta 2 — 8 test)</h2>
+        <table>
+            <tr>
+                <th>#</th>
+                <th>Test</th>
+                <th>Sonuç</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td>Token üretimi (GenerateToken) — 256-bit</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>Token hash'leme (HashToken) — SHA256</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>Oturum oluşturma (CreateSessionAsync)</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>Token doğrulama (ValidateTokenAsync)</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>Süresi dolmuş token reddi</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td>Oturum yenileme (RefreshSessionAsync)</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td>Aktif oturumları getirme</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td>Oturum sonlandırma</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+        </table>
+
+        <pre>
+<span class="cmd">&gt; dotnet test tests\QRMenu.Tests</span>
+<span class="ok">Toplam test sayısı: 16 | Geçti: 16 ✅ (Hafta 1: 8 + Hafta 2: 8)</span>
+</pre>
+
+        <!-- ===== HATA DÜZELTMELERİ ===== -->
+        <h2>5. Düzeltilen Hatalar</h2>
+        <table>
+            <tr>
+                <th>Hata</th>
+                <th>Çözüm</th>
+            </tr>
+            <tr>
+                <td>Cookie <code>Secure</code> flag'i localhost'ta çalışmıyor</td>
+                <td>Development ortamında <code>Secure = false</code> yapıldı</td>
+            </tr>
+            <tr>
+                <td><code>CreateSessionAsync</code> mevcut <code>TokenHash</code>'i sıfırlıyordu</td>
+                <td>Yeni oturum oluştururken eski oturumun hash'i korunacak şekilde düzeltildi</td>
+            </tr>
+            <tr>
+                <td>Masa değiştirmede oturum karışıyordu</td>
+                <td>Cookie silinip yeni token oluşturularak düzeltildi</td>
+            </tr>
+            <tr>
+                <td>QrKodViewModel namespace çakışması</td>
+                <td>Controllers'dan ViewModels klasörüne taşındı</td>
+            </tr>
+        </table>
+
+    </div>
+</body>
+
+</html>
