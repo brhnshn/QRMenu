@@ -1,0 +1,463 @@
+@model List<QRMenu.Core.Entities.Siparis>
+@{
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = "Siparişler";
+    
+    var bekleyen = Model.Count(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.Onaylandi);
+    var hazirlaniyor = Model.Count(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor);
+    var hazir = Model.Count(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir);
+    var teslim = Model.Count(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi);
+    var masalar = Model.Select(s => s.Masa).Where(m => m != null).DistinctBy(m => m.Id).OrderBy(m => m.MasaNo).ToList();
+}
+
+@section Styles {
+    <link href="~/css/admin-siparisler.css" rel="stylesheet" />
+}
+
+<!-- PROGRESS STEPPER BAR -->
+<div class="stepper-wrapper" id="stepperBar">
+    <div class="stepper-item" data-step="1">
+        <div class="step-counter">1</div>
+        <div class="step-name">Onaylandı</div>
+    </div>
+    <div class="stepper-item" data-step="2">
+        <div class="step-counter">2</div>
+        <div class="step-name">Hazırlanıyor</div>
+    </div>
+    <div class="stepper-item" data-step="3">
+        <div class="step-counter">3</div>
+        <div class="step-name">Hazır</div>
+    </div>
+    <div class="stepper-item" data-step="4">
+        <div class="step-counter">4</div>
+        <div class="step-name">Teslim Edildi</div>
+    </div>
+    <div class="stepper-item" data-step="5">
+        <div class="step-counter">5</div>
+        <div class="step-name">Ödendi</div>
+    </div>
+</div>
+
+<!-- ÖZET SAYAÇLAR -->
+<div class="stats-mini">
+    <span class="stat-pill pill-bekleyen"><i class="bi bi-hourglass-split"></i> Bekleyen: <strong id="statBekleyen">@bekleyen</strong></span>
+    <span class="stat-pill pill-hazirlaniyor"><i class="bi bi-fire"></i> Hazırlanıyor: <strong id="statHazirlaniyor">@hazirlaniyor</strong></span>
+    <span class="stat-pill pill-hazir"><i class="bi bi-check-circle"></i> Hazır: <strong id="statHazir">@hazir</strong></span>
+    <span class="stat-pill pill-teslim"><i class="bi bi-bag-check"></i> Teslim: <strong id="statTeslim">@teslim</strong></span>
+    <span class="stat-pill pill-toplam"><i class="bi bi-list-ol"></i> Toplam: <strong id="statToplam">@Model.Count</strong></span>
+</div>
+
+<!-- FİLTRE BAR -->
+<div class="siparis-filter-bar">
+    <select id="filterDurum">
+        <option value="">Tüm Durumlar</option>
+        <option value="Onaylandi">Onaylandı</option>
+        <option value="Hazirlaniyor">Hazırlanıyor</option>
+        <option value="Hazir">Hazır</option>
+        <option value="TeslimEdildi">Teslim Edildi</option>
+        <option value="KismiOdendi">Kısmi Ödendi</option>
+        <option value="TamOdendi">Tam Ödendi</option>
+        <option value="Iptal">İptal</option>
+        <option value="Iade">İade</option>
+    </select>
+    <select id="filterMasa">
+        <option value="">Tüm Masalar</option>
+        @foreach(var m in masalar)
+        {
+            <option value="@m.Id">Masa @m.MasaNo</option>
+        }
+    </select>
+    <button class="filter-btn" onclick="filtrele()">
+        <i class="bi bi-funnel"></i> Filtrele
+    </button>
+    <button class="filter-btn" style="background:#6c757d" onclick="filtreTemizle()">
+        <i class="bi bi-x-circle"></i> Temizle
+    </button>
+</div>
+
+<!-- SİPARİŞ TABLOSU -->
+<table class="siparis-table">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Masa</th>
+            <th>Ürünler</th>
+            <th>Tutar</th>
+            <th>Durum</th>
+            <th>Tarih</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+    <tbody id="siparisBody">
+        @if(!Model.Any())
+        {
+            <tr>
+                <td colspan="7">
+                    <div class="siparis-empty">
+                        <div class="icon">📋</div>
+                        <h5>Henüz sipariş yok</h5>
+                        <p>Müşteriler sipariş verdikçe burada görünecek.</p>
+                    </div>
+                </td>
+            </tr>
+        }
+        else
+        {
+            @foreach(var s in Model)
+            {
+                var detayOzet = string.Join(", ", s.SiparisDetaylar.Select(sd => $"{sd.Adet}× {sd.Urun.Ad}"));
+                <tr id="row-@s.Id" data-durum="@s.Durum" onclick="highlightProgress(this)" style="cursor:pointer;">
+                    <td><strong>#@s.Id</strong></td>
+                    <td><span class="badge bg-dark rounded-pill">Masa @s.Masa?.MasaNo</span></td>
+                    <td class="text-truncate" style="max-width:220px;" title="@detayOzet">@detayOzet</td>
+                    <td><strong>@s.ToplamTutar.ToString("N2") ₺</strong></td>
+                    <td><span class="durum-badge durum-@s.Durum">@DurumText(s.Durum)</span></td>
+                    <td>@s.OlusturmaTarihi.ToLocalTime().ToString("dd.MM HH:mm")</td>
+                    <td>
+                        <div class="siparis-actions">
+                            <button class="btn btn-outline-primary btn-sm" onclick="siparisDetay(@s.Id)">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            @{var gecisler = GetGecerliGecisler(s.Durum);}
+                            @if(gecisler.Any())
+                            {
+                                @foreach(var g in gecisler)
+                                {
+                                    <button class="btn btn-sm @GecisClass(g)" onclick="durumGuncelle(@s.Id, '@g')">
+                                        @GecisText(g)
+                                    </button>
+                                }
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<!-- DETAY MODALI -->
+<div class="modal fade" id="detayModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border-radius:16px; border:0">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="detayModalTitle">Sipariş Detayı</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detayModalBody">
+                <div class="text-center text-muted py-4">Yükleniyor...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    string DurumText(QRMenu.Core.Enums.SiparisDurum d) => d switch
+    {
+        QRMenu.Core.Enums.SiparisDurum.Sepette => "Sepette",
+        QRMenu.Core.Enums.SiparisDurum.Onaylandi => "Onaylandı",
+        QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor => "Hazırlanıyor",
+        QRMenu.Core.Enums.SiparisDurum.Hazir => "Hazır",
+        QRMenu.Core.Enums.SiparisDurum.TeslimEdildi => "Teslim Edildi",
+        QRMenu.Core.Enums.SiparisDurum.KismiOdendi => "Kısmi Ödendi",
+        QRMenu.Core.Enums.SiparisDurum.TamOdendi => "Tam Ödendi",
+        QRMenu.Core.Enums.SiparisDurum.Iptal => "İptal",
+        QRMenu.Core.Enums.SiparisDurum.Iade => "İade",
+        _ => d.ToString()
+    };
+
+    List<QRMenu.Core.Enums.SiparisDurum> GetGecerliGecisler(QRMenu.Core.Enums.SiparisDurum d) => d switch
+    {
+        QRMenu.Core.Enums.SiparisDurum.Onaylandi => new() { QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor, QRMenu.Core.Enums.SiparisDurum.Iptal },
+        QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor => new() { QRMenu.Core.Enums.SiparisDurum.Hazir, QRMenu.Core.Enums.SiparisDurum.Iptal },
+        QRMenu.Core.Enums.SiparisDurum.Hazir => new() { QRMenu.Core.Enums.SiparisDurum.TeslimEdildi },
+        QRMenu.Core.Enums.SiparisDurum.TeslimEdildi => new() { QRMenu.Core.Enums.SiparisDurum.KismiOdendi, QRMenu.Core.Enums.SiparisDurum.TamOdendi, QRMenu.Core.Enums.SiparisDurum.Iade },
+        QRMenu.Core.Enums.SiparisDurum.KismiOdendi => new() { QRMenu.Core.Enums.SiparisDurum.TamOdendi },
+        QRMenu.Core.Enums.SiparisDurum.TamOdendi => new() { QRMenu.Core.Enums.SiparisDurum.Iade },
+        _ => new()
+    };
+
+    string GecisClass(QRMenu.Core.Enums.SiparisDurum d) => d switch
+    {
+        QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor => "btn-primary",
+        QRMenu.Core.Enums.SiparisDurum.Hazir => "btn-success",
+        QRMenu.Core.Enums.SiparisDurum.TeslimEdildi => "btn-info text-white",
+        QRMenu.Core.Enums.SiparisDurum.KismiOdendi => "btn-warning",
+        QRMenu.Core.Enums.SiparisDurum.TamOdendi => "btn-success",
+        QRMenu.Core.Enums.SiparisDurum.Iptal => "btn-danger",
+        QRMenu.Core.Enums.SiparisDurum.Iade => "btn-outline-danger",
+        _ => "btn-secondary"
+    };
+
+    string GecisText(QRMenu.Core.Enums.SiparisDurum d) => d switch
+    {
+        QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor => "Hazırla",
+        QRMenu.Core.Enums.SiparisDurum.Hazir => "Hazır ✓",
+        QRMenu.Core.Enums.SiparisDurum.TeslimEdildi => "Teslim Et",
+        QRMenu.Core.Enums.SiparisDurum.KismiOdendi => "Kısmi Öde",
+        QRMenu.Core.Enums.SiparisDurum.TamOdendi => "Ödendi ✓",
+        QRMenu.Core.Enums.SiparisDurum.Iptal => "İptal",
+        QRMenu.Core.Enums.SiparisDurum.Iade => "İade",
+        _ => d.ToString()
+    };
+}
+
+@section Scripts {
+<script>
+    // Durum güncelle
+    async function durumGuncelle(siparisId, yeniDurum) {
+        const durumLabels = {
+            'Hazirlaniyor': 'Hazırlanıyor',
+            'Hazir': 'Hazır',
+            'TeslimEdildi': 'Teslim Edildi',
+            'KismiOdendi': 'Kısmi Ödendi',
+            'TamOdendi': 'Tam Ödendi',
+            'Iptal': 'İptal',
+            'Iade': 'İade'
+        };
+        if (!confirm(`Sipariş #${siparisId} durumunu "${durumLabels[yeniDurum] || yeniDurum}" olarak güncellemek istiyor musunuz?`)) return;
+
+        try {
+            const res = await fetch(`/admin/siparis-durum/${siparisId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ YeniDurum: yeniDurum })
+            });
+            const data = await res.json();
+            if (data.success) {
+                // SignalR tabloyu otomatik güncelleyecek, reload gerekmez
+            } else {
+                alert('Hata: ' + data.message);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Bir hata oluştu.');
+        }
+    }
+
+    // Detay modal
+    async function siparisDetay(id) {
+        const modal = new bootstrap.Modal(document.getElementById('detayModal'));
+        document.getElementById('detayModalTitle').textContent = `Sipariş #${id}`;
+        document.getElementById('detayModalBody').innerHTML = '<div class="text-center text-muted py-4">Yükleniyor...</div>';
+        modal.show();
+
+        try {
+            const res = await fetch(`/admin/siparis-detay/${id}`);
+            const data = await res.json();
+            if (!data.success) {
+                document.getElementById('detayModalBody').innerHTML = `<div class="text-center text-danger py-4">${data.message}</div>`;
+                return;
+            }
+
+            let urunlerHtml = '';
+            data.detaylar.forEach(d => {
+                let opsHtml = '';
+                if (d.opsiyonlar) {
+                    try {
+                        const parsed = JSON.parse(d.opsiyonlar);
+                        if (parsed.length > 0) {
+                            opsHtml = `<div class="detay-urun-ops">${parsed.map(p => p.Ad).join(', ')}</div>`;
+                        }
+                    } catch(e) {}
+                }
+                urunlerHtml += `
+                    <li>
+                        <div>
+                            <span class="detay-urun-name">${d.adet}× ${d.urunAd}</span>
+                            ${opsHtml}
+                        </div>
+                        <strong>${(d.adet * d.birimFiyat).toFixed(2)} ₺</strong>
+                    </li>`;
+            });
+
+            document.getElementById('detayModalBody').innerHTML = `
+                <div class="detay-info-grid">
+                    <div class="detay-info-item">
+                        <div class="label">Masa</div>
+                        <div class="value">Masa ${data.masaNo || '-'}</div>
+                    </div>
+                    <div class="detay-info-item">
+                        <div class="label">Durum</div>
+                        <div class="value"><span class="durum-badge durum-${data.durum}">${durumLabel(data.durum)}</span></div>
+                    </div>
+                    <div class="detay-info-item">
+                        <div class="label">Toplam Tutar</div>
+                        <div class="value">${data.toplamTutar.toFixed(2)} ₺</div>
+                    </div>
+                    <div class="detay-info-item">
+                        <div class="label">Tarih</div>
+                        <div class="value">${data.olusturmaTarihi}</div>
+                    </div>
+                </div>
+                ${data.notlar ? `<div class="alert alert-info py-2 px-3 small mb-3"><strong>Not:</strong> ${escapeHtml(data.notlar)}</div>` : ''}
+                <h6 class="fw-bold mb-2">Ürünler</h6>
+                <ul class="detay-urun-list">${urunlerHtml}</ul>
+            `;
+        } catch (e) {
+            console.error(e);
+            document.getElementById('detayModalBody').innerHTML = '<div class="text-center text-danger py-4">Detay yüklenemedi.</div>';
+        }
+    }
+
+    function durumLabel(d) {
+        const map = {
+            'Sepette': 'Sepette', 'Onaylandi': 'Onaylandı', 'Hazirlaniyor': 'Hazırlanıyor',
+            'Hazir': 'Hazır', 'TeslimEdildi': 'Teslim Edildi', 'KismiOdendi': 'Kısmi Ödendi',
+            'TamOdendi': 'Tam Ödendi', 'Iptal': 'İptal', 'Iade': 'İade'
+        };
+        return map[d] || d;
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // Filtreleme (AJAX ile)
+    async function filtrele() {
+        const durum = document.getElementById('filterDurum').value;
+        const masaId = document.getElementById('filterMasa').value;
+
+        let url = '/admin/siparisler-json?';
+        if (durum) url += `durum=${durum}&`;
+        if (masaId) url += `masaId=${masaId}&`;
+
+        try {
+            const res = await fetch(url);
+            const list = await res.json();
+            renderTable(list);
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    function filtreTemizle() {
+        document.getElementById('filterDurum').value = '';
+        document.getElementById('filterMasa').value = '';
+        location.reload();
+    }
+
+    function renderTable(list) {
+        const body = document.getElementById('siparisBody');
+        if (!list.length) {
+            body.innerHTML = `<tr><td colspan="7"><div class="siparis-empty"><div class="icon">📋</div><h5>Sonuç bulunamadı</h5></div></td></tr>`;
+            return;
+        }
+
+        body.innerHTML = list.map(s => {
+            let actionsHtml = `<button class="btn btn-outline-primary btn-sm" onclick="siparisDetay(${s.id})"><i class="bi bi-eye"></i></button>`;
+            const transitions = getTransitions(s.durum);
+            transitions.forEach(t => {
+                actionsHtml += ` <button class="btn btn-sm ${t.cls}" onclick="durumGuncelle(${s.id}, '${t.durum}')">${t.text}</button>`;
+            });
+
+            return `<tr id="row-${s.id}" data-durum="${s.durum}" onclick="highlightProgress(this)" style="cursor:pointer;">
+                <td><strong>#${s.id}</strong></td>
+                <td><span class="badge bg-dark rounded-pill">Masa ${s.masaNo || '-'}</span></td>
+                <td class="text-truncate" style="max-width:220px;" title="${escapeHtml(s.detayOzet)}">${escapeHtml(s.detayOzet)}</td>
+                <td><strong>${s.toplamTutar.toFixed(2)} ₺</strong></td>
+                <td><span class="durum-badge durum-${s.durum}">${durumLabel(s.durum)}</span></td>
+                <td>${s.olusturmaTarihi}</td>
+                <td><div class="siparis-actions">${actionsHtml}</div></td>
+            </tr>`;
+        }).join('');
+    }
+
+    function getTransitions(durum) {
+        const map = {
+            'Onaylandi': [{durum:'Hazirlaniyor', text:'Hazırla', cls:'btn-primary'}, {durum:'Iptal', text:'İptal', cls:'btn-danger'}],
+            'Hazirlaniyor': [{durum:'Hazir', text:'Hazır ✓', cls:'btn-success'}, {durum:'Iptal', text:'İptal', cls:'btn-danger'}],
+            'Hazir': [{durum:'TeslimEdildi', text:'Teslim Et', cls:'btn-info text-white'}],
+            'TeslimEdildi': [{durum:'KismiOdendi', text:'Kısmi Öde', cls:'btn-warning'}, {durum:'TamOdendi', text:'Ödendi ✓', cls:'btn-success'}, {durum:'Iade', text:'İade', cls:'btn-outline-danger'}],
+            'KismiOdendi': [{durum:'TamOdendi', text:'Ödendi ✓', cls:'btn-success'}],
+            'TamOdendi': [{durum:'Iade', text:'İade', cls:'btn-outline-danger'}]
+        };
+        return map[durum] || [];
+    }
+
+    // ===== PROGRESS STEPPER =====
+    function highlightProgress(row) {
+        document.querySelectorAll('#siparisBody tr').forEach(r => r.classList.remove('row-selected'));
+        row.classList.add('row-selected');
+
+        const durum = row.getAttribute('data-durum');
+        const stepMap = { 'Onaylandi': 1, 'Hazirlaniyor': 2, 'Hazir': 3, 'TeslimEdildi': 4, 'KismiOdendi': 5, 'TamOdendi': 5 };
+        const activeStep = stepMap[durum] || 0;
+        const isCancel = (durum === 'Iptal' || durum === 'Iade');
+
+        document.querySelectorAll('#stepperBar .stepper-item').forEach(item => {
+            const step = parseInt(item.getAttribute('data-step'));
+            item.classList.remove('completed', 'active', 'cancelled');
+
+            if (isCancel) {
+                item.classList.add('cancelled');
+            } else if (step < activeStep) {
+                item.classList.add('completed');
+            } else if (step === activeStep) {
+                item.classList.add('active');
+            }
+        });
+    }
+
+    function resetProgress() {
+        document.querySelectorAll('#stepperBar .stepper-item').forEach(i => i.classList.remove('completed', 'active', 'cancelled'));
+        document.querySelectorAll('#siparisBody tr').forEach(r => r.classList.remove('row-selected'));
+    }
+
+    // ===== STATS GÜNCELLEME =====
+    function updateStats(list) {
+        const counts = { Onaylandi: 0, Hazirlaniyor: 0, Hazir: 0, TeslimEdildi: 0 };
+        list.forEach(s => { if (counts[s.durum] !== undefined) counts[s.durum]++; });
+        document.getElementById('statBekleyen').textContent = counts.Onaylandi;
+        document.getElementById('statHazirlaniyor').textContent = counts.Hazirlaniyor;
+        document.getElementById('statHazir').textContent = counts.Hazir;
+        document.getElementById('statTeslim').textContent = counts.TeslimEdildi;
+        document.getElementById('statToplam').textContent = list.length;
+    }
+</script>
+
+<!-- SignalR: Gerçek zamanlı sipariş bildirimi -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+<script>
+    // Bildirim sesi: Web Audio API ile "ding" üretir
+    function bildirimSesiCal() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(830, ctx.currentTime);
+            osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.5);
+        } catch(e) {}
+    }
+
+    const siparisConnection = new signalR.HubConnectionBuilder()
+        .withUrl('/hubs/menu')
+        .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+        .build();
+
+    siparisConnection.on('SiparisGuncellendi', async function() {
+        try {
+            const res = await fetch('/admin/siparisler-json');
+            const list = await res.json();
+            renderTable(list);
+            updateStats(list);
+            bildirimSesiCal();
+        } catch(e) {
+            console.error('Sipariş güncelleme hatası:', e);
+        }
+    });
+
+    siparisConnection.start().catch(function(err) {
+        console.error('SignalR bağlantı hatası:', err);
+    });
+</script>
+}

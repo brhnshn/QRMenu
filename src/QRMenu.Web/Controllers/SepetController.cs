@@ -38,19 +38,10 @@ namespace QRMenu.Web.Controllers
         }
 
         /// <summary>
-        /// Sepet sayfası: GET /sepet
+        /// Sepet sayfası kaldırıldı — menüye yönlendir
         /// </summary>
         [HttpGet("/sepet")]
-        public async Task<IActionResult> Index()
-        {
-            var oturumId = await GetOturumIdAsync();
-            if (oturumId == null) return Unauthorized();
-
-            var sepet = await _sepetService.GetOrCreateSepetAsync(oturumId.Value);
-            var sepetWithDetails = await _sepetService.GetSepetWithDetailsAsync(sepet.Id);
-
-            return View(sepetWithDetails);
-        }
+        public IActionResult Index() => Redirect("/Menu/Index");
 
         /// <summary>
         /// Sepete ürün ekle: POST /sepet/ekle (AJAX)

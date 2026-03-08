@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using QRMenu.Core.Entities;
 using QRMenu.Core.Interfaces;
@@ -11,11 +12,24 @@ namespace QRMenu.Data.Services
     {
         private readonly QRMenuDbContext _context;
         private readonly ILogger<SepetService> _logger;
+        private readonly IMemoryCache _cache;
+        private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
 
-        public SepetService(QRMenuDbContext context, ILogger<SepetService> logger)
+        private static string SepetCacheKey(int sepetId) => $"sepet:{sepetId}";
+        private static string OturumSepetCacheKey(int oturumId) => $"sepet:oturum:{oturumId}";
+
+        public SepetService(QRMenuDbContext context, ILogger<SepetService> logger, IMemoryCache cache)
         {
             _context = context;
             _logger = logger;
+            _cache = cache;
+        }
+
+        private void InvalidateCache(int sepetId, int? oturumId = null)
+        {
+            _cache.Remove(SepetCacheKey(sepetId));
+            if (oturumId.HasValue)
+                _cache.Remove(OturumSepetCacheKey(oturumId.Value));
         }
 
         /// <summary>
@@ -23,6 +37,16 @@ namespace QRMenu.Data.Services
         /// </summary>
         public async Task<Sepet> GetOrCreateSepetAsync(int oturumId)
         {
+            var cacheKey = OturumSepetCacheKey(oturumId);
+            if (_cache.TryGetValue(cacheKey, out int cachedSepetId))
+            {
+                var cached = await _context.Sepetler
+                    .Include(s => s.SepetDetaylar)
+                        .ThenInclude(sd => sd.Urun)
+                    .FirstOrDefaultAsync(s => s.Id == cachedSepetId);
+                if (cached != null) return cached;
+            }
+
             var sepet = await _context.Sepetler
                 .Include(s => s.SepetDetaylar)
                     .ThenInclude(sd => sd.Urun)
@@ -40,6 +64,7 @@ namespace QRMenu.Data.Services
                 _logger.LogInformation("Yeni sepet oluşturuldu. OturumId={OturumId}, SepetId={SepetId}", oturumId, sepet.Id);
             }
 
+            _cache.Set(cacheKey, sepet.Id, CacheDuration);
             return sepet;
         }
 
@@ -107,6 +132,8 @@ namespace QRMenu.Data.Services
             }
 
             await _context.SaveChangesAsync();
+
+            InvalidateCache(sepetId, sepet?.OturumId);
             return mevcutDetay;
         }
 
@@ -132,6 +159,7 @@ namespace QRMenu.Data.Services
             _context.SepetDetaylar.Remove(detay);
             await _context.SaveChangesAsync();
 
+            InvalidateCache(sepetId, sepet?.OturumId);
             _logger.LogInformation("Sepetten ürün çıkarıldı. DetayId={DetayId}", sepetDetayId);
             return true;
         }
@@ -160,6 +188,7 @@ namespace QRMenu.Data.Services
 
             await _context.SaveChangesAsync();
 
+            InvalidateCache(sepet?.Id ?? 0, sepet?.OturumId);
             _logger.LogInformation("Sepet ürün adedi güncellendi. DetayId={DetayId}, YeniAdet={Adet}", sepetDetayId, yeniAdet);
             return true;
         }
@@ -180,6 +209,8 @@ namespace QRMenu.Data.Services
                 sepet.ToplamTutar = 0;
 
             await _context.SaveChangesAsync();
+
+            InvalidateCache(sepetId, sepet?.OturumId);
             _logger.LogInformation("Sepet temizlendi. SepetId={SepetId}, SilinenUrun={Count}", sepetId, detaylar.Count);
         }
 

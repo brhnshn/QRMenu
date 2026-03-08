@@ -87,8 +87,7 @@
                 
                 <div class="summary-actions mt-4">
                     <button class="btn btn-outline-danger w-100 mb-3 radius-30 py-2 fw-semibold" onclick="clearCart()">Sepeti Temizle</button>
-                    <!-- Hafta 4'te aktif edilecek -->
-                    <button class="btn btn-success w-100 radius-30 py-3 fw-bold fs-5" id="completeOrderBtn" disabled>Siparişi Gönder (Yakında)</button>
+                    <button class="btn btn-success w-100 radius-30 py-3 fw-bold fs-5" id="completeOrderBtn" onclick="siparisGonder()">Siparişi Gönder</button>
                 </div>
             </div>
         }
@@ -144,6 +143,42 @@
                     alert(data.message);
                 }
             } catch(e) { console.error(e); }
+        }
+
+        async function siparisGonder() {
+            if(!confirm('Siparişiniz mutfağa gönderilecek. Onaylıyor musunuz?')) return;
+
+            const btn = document.getElementById('completeOrderBtn');
+            btn.disabled = true;
+            btn.textContent = 'Gönderiliyor...';
+
+            try {
+                const res = await fetch('/siparis/olustur', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if(data.success) {
+                    // Başarılı — onay ekranı göster
+                    document.querySelector('.sepet-container').innerHTML = `
+                        <div class="empty-cart">
+                            <div class="empty-icon">✅</div>
+                            <h3>Siparişiniz Alındı!</h3>
+                            <p class="text-muted">Sipariş #${data.siparisId} — ${data.toplamTutar.toFixed(2)} TL</p>
+                            <p class="text-muted small">Durumunuz: <strong>${data.durum}</strong></p>
+                            <a href="/Menu/Index" class="btn btn-primary mt-3 radius-30 px-4 py-2">Menüye Dön</a>
+                        </div>`;
+                } else {
+                    alert('Hata: ' + data.message);
+                    btn.disabled = false;
+                    btn.textContent = 'Siparişi Gönder';
+                }
+            } catch(e) {
+                console.error(e);
+                btn.disabled = false;
+                btn.textContent = 'Siparişi Gönder';
+            }
         }
     </script>
 </body>

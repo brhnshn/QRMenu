@@ -1,9 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using QRCoder;
 using QRMenu.Web.ViewModels;
+using QRMenu.Web.Hubs;
 using QRMenu.Data.Data;
 using QRMenu.Core.Entities;
+using QRMenu.Core.Enums;
+using QRMenu.Core.Interfaces;
 
 namespace QRMenu.Web.Controllers
 {
@@ -11,11 +15,17 @@ namespace QRMenu.Web.Controllers
     {
         private readonly QRMenuDbContext _context;
         private readonly ILogger<AdminController> _logger;
+        private readonly IWebHostEnvironment _env;
+        private readonly ISiparisService _siparisService;
+        private readonly IHubContext<MenuHub> _menuHub;
 
-        public AdminController(QRMenuDbContext context, ILogger<AdminController> logger)
+        public AdminController(QRMenuDbContext context, ILogger<AdminController> logger, IWebHostEnvironment env, ISiparisService siparisService, IHubContext<MenuHub> menuHub)
         {
             _context = context;
             _logger = logger;
+            _env = env;
+            _siparisService = siparisService;
+            _menuHub = menuHub;
         }
 
         // Admin ana sayfa → masalara yönlendir
@@ -120,5 +130,486 @@ namespace QRMenu.Web.Controllers
             _logger.LogInformation("QR silindi. Masa={MasaNo}", masaNo);
             return Json(new { success = true });
         }
+
+        // ============================================================
+        // SİPARİŞ YÖNETİMİ
+        // ============================================================
+
+        [HttpGet("/admin/siparisler")]
+        public async Task<IActionResult> Siparisler()
+        {
+            ViewData["ActivePage"] = "Siparisler";
+            ViewData["PageTitle"] = "Sipariş Yönetimi";
+
+            var siparisler = await _context.Siparisler
+                .Include(s => s.Masa)
+                .Include(s => s.SiparisDetaylar)
+                    .ThenInclude(sd => sd.Urun)
+                .OrderByDescending(s => s.OlusturmaTarihi)
+                .ToListAsync();
+
+            return View(siparisler);
+        }
+
+        [HttpGet("/admin/siparis-detay/{id:int}")]
+        public async Task<IActionResult> SiparisDetayJson(int id)
+        {
+            var siparis = await _siparisService.GetSiparisAsync(id);
+            if (siparis == null)
+                return Json(new { success = false, message = "Sipariş bulunamadı." });
+
+            return Json(new
+            {
+                success = true,
+                id = siparis.Id,
+                masaNo = siparis.Masa?.MasaNo,
+                durum = siparis.Durum.ToString(),
+                durumInt = (int)siparis.Durum,
+                toplamTutar = siparis.ToplamTutar,
+                notlar = siparis.Notlar,
+                olusturmaTarihi = siparis.OlusturmaTarihi.ToString("dd.MM.yyyy HH:mm"),
+                guncellemeTarihi = siparis.GuncellemeTarihi?.ToString("dd.MM.yyyy HH:mm"),
+                detaylar = siparis.SiparisDetaylar.Select(sd => new
+                {
+                    urunAd = sd.Urun.Ad,
+                    adet = sd.Adet,
+                    birimFiyat = sd.BirimFiyat,
+                    opsiyonlar = sd.SeciliOpsiyonlar,
+                    durum = sd.Durum.ToString()
+                })
+            });
+        }
+
+        [HttpPost("/admin/siparis-durum/{id:int}")]
+        public async Task<IActionResult> AdminDurumGuncelle(int id, [FromBody] AdminDurumRequest request)
+        {
+            try
+            {
+                if (!Enum.TryParse<SiparisDurum>(request.YeniDurum, out var yeniDurum))
+                    return Json(new { success = false, message = "Geçersiz durum." });
+
+                var siparis = await _siparisService.DurumGuncelleAsync(id, yeniDurum);
+                _logger.LogInformation("Admin sipariş durumu güncelledi. SiparisId={Id}, YeniDurum={Durum}", id, yeniDurum);
+
+                await _menuHub.Clients.All.SendAsync("SiparisGuncellendi");
+
+                return Json(new { success = true, durum = siparis.Durum.ToString(), durumInt = (int)siparis.Durum });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet("/admin/siparisler-json")]
+        public async Task<IActionResult> SiparislerJson([FromQuery] string? durum, [FromQuery] int? masaId)
+        {
+            var query = _context.Siparisler
+                .Include(s => s.Masa)
+                .Include(s => s.SiparisDetaylar)
+                    .ThenInclude(sd => sd.Urun)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(durum) && Enum.TryParse<SiparisDurum>(durum, out var durumEnum))
+                query = query.Where(s => s.Durum == durumEnum);
+
+            if (masaId.HasValue)
+                query = query.Where(s => s.MasaId == masaId.Value);
+
+            var siparisler = await query
+                .OrderByDescending(s => s.OlusturmaTarihi)
+                .ToListAsync();
+
+            return Json(siparisler.Select(s => new
+            {
+                id = s.Id,
+                masaNo = s.Masa?.MasaNo,
+                durum = s.Durum.ToString(),
+                durumInt = (int)s.Durum,
+                toplamTutar = s.ToplamTutar,
+                olusturmaTarihi = s.OlusturmaTarihi.ToString("dd.MM.yyyy HH:mm"),
+                urunSayisi = s.SiparisDetaylar.Sum(sd => sd.Adet),
+                detayOzet = string.Join(", ", s.SiparisDetaylar.Select(sd => $"{sd.Adet}× {sd.Urun.Ad}"))
+            }));
+        }
+
+        // ============================================================
+        // ÜRÜN YÖNETİMİ SAYFASI
+        // ============================================================
+
+        [HttpGet("/admin/urunler")]
+        public async Task<IActionResult> Urunler()
+        {
+            ViewData["ActivePage"] = "Urunler";
+            ViewData["PageTitle"] = "Ürün & Kategori Yönetimi";
+
+            var kategoriler = await _context.Kategoriler
+                .OrderBy(k => k.SiraNo)
+                .ToListAsync();
+
+            var urunler = await _context.Urunler
+                .Include(u => u.Kategori)
+                .Include(u => u.UrunOpsiyonlar)
+                    .ThenInclude(uo => uo.Opsiyon)
+                .OrderBy(u => u.Kategori.SiraNo)
+                .ThenBy(u => u.Ad)
+                .ToListAsync();
+
+            ViewBag.Kategoriler = kategoriler;
+            return View(urunler);
+        }
+
+        // ============================================================
+        // KATEGORİ CRUD
+        // ============================================================
+
+        [HttpGet("/admin/kategoriler")]
+        public async Task<IActionResult> KategoriListesi()
+        {
+            var kategoriler = await _context.Kategoriler
+                .OrderBy(k => k.SiraNo)
+                .Select(k => new { k.Id, k.Ad, k.AdEN, k.SiraNo, k.AktifMi, UrunSayisi = k.Urunler.Count })
+                .ToListAsync();
+            return Json(kategoriler);
+        }
+
+        [HttpPost("/admin/kategori-ekle")]
+        public async Task<IActionResult> KategoriEkle([FromBody] KategoriFormViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return Json(new { success = false, message = "Geçersiz veri." });
+
+            var kategori = new Kategori
+            {
+                Ad = model.Ad,
+                AdEN = model.AdEN,
+                SiraNo = model.SiraNo,
+                AktifMi = true
+            };
+
+            _context.Kategoriler.Add(kategori);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Kategori eklendi. Id={Id}, Ad={Ad}", kategori.Id, kategori.Ad);
+            await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
+            return Json(new { success = true, id = kategori.Id });
+        }
+
+        [HttpPost("/admin/kategori-guncelle/{id:int}")]
+        public async Task<IActionResult> KategoriGuncelle(int id, [FromBody] KategoriFormViewModel model)
+        {
+            var kategori = await _context.Kategoriler.FindAsync(id);
+            if (kategori == null)
+                return Json(new { success = false, message = "Kategori bulunamadı." });
+
+            kategori.Ad = model.Ad;
+            kategori.AdEN = model.AdEN;
+            kategori.SiraNo = model.SiraNo;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Kategori güncellendi. Id={Id}", id);
+            await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
+            return Json(new { success = true });
+        }
+
+        [HttpPost("/admin/kategori-sil/{id:int}")]
+        public async Task<IActionResult> KategoriSil(int id)
+        {
+            var kategori = await _context.Kategoriler
+                .Include(k => k.Urunler)
+                .FirstOrDefaultAsync(k => k.Id == id);
+
+            if (kategori == null)
+                return Json(new { success = false, message = "Kategori bulunamadı." });
+
+            if (kategori.Urunler.Any())
+                return Json(new { success = false, message = $"Bu kategoride {kategori.Urunler.Count} ürün var. Önce ürünleri taşıyın veya silin." });
+
+            _context.Kategoriler.Remove(kategori);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Kategori silindi. Id={Id}, Ad={Ad}", id, kategori.Ad);
+            await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
+            return Json(new { success = true });
+        }
+
+        // ============================================================
+        // ÜRÜN CRUD
+        // ============================================================
+
+        [HttpGet("/admin/urun-detay/{id:int}")]
+        public async Task<IActionResult> UrunDetay(int id)
+        {
+            var urun = await _context.Urunler
+                .Include(u => u.Kategori)
+                .Include(u => u.UrunOpsiyonlar)
+                    .ThenInclude(uo => uo.Opsiyon)
+                .FirstOrDefaultAsync(u => u.Id == id);
+
+            if (urun == null)
+                return Json(new { success = false, message = "Ürün bulunamadı." });
+
+            return Json(new
+            {
+                success = true,
+                urun = new
+                {
+                    urun.Id,
+                    urun.Ad,
+                    urun.AdEN,
+                    urun.Aciklama,
+                    urun.AciklamaEN,
+                    urun.Fiyat,
+                    urun.KategoriId,
+                    urun.GorselUrl,
+                    urun.PopulerMi,
+                    urun.AktifMi,
+                    Opsiyonlar = urun.UrunOpsiyonlar.Select(uo => new
+                    {
+                        uo.Opsiyon.Id,
+                        uo.Opsiyon.Ad,
+                        uo.Opsiyon.Grup,
+                        uo.Opsiyon.EkFiyat
+                    })
+                }
+            });
+        }
+
+        [HttpPost("/admin/urun-ekle")]
+        public async Task<IActionResult> UrunEkle([FromForm] UrunFormViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return Json(new { success = false, message = "Geçersiz veri. Zorunlu alanları doldurunuz." });
+
+            var urun = new Urun
+            {
+                Ad = model.Ad,
+                AdEN = model.AdEN,
+                Aciklama = model.Aciklama,
+                AciklamaEN = model.AciklamaEN,
+                Fiyat = model.Fiyat,
+                KategoriId = model.KategoriId,
+                PopulerMi = model.PopulerMi,
+                AktifMi = model.AktifMi
+            };
+
+            // Fotoğraf upload
+            if (model.Gorsel != null)
+            {
+                var gorselUrl = await SaveImageAsync(model.Gorsel);
+                if (gorselUrl == null)
+                    return Json(new { success = false, message = "Görsel yüklenemedi. Max 2MB, sadece jpg/png/webp." });
+                urun.GorselUrl = gorselUrl;
+            }
+
+            _context.Urunler.Add(urun);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Ürün eklendi. Id={Id}, Ad={Ad}", urun.Id, urun.Ad);
+            await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
+            return Json(new { success = true, id = urun.Id });
+        }
+
+        [HttpPost("/admin/urun-guncelle/{id:int}")]
+        public async Task<IActionResult> UrunGuncelle(int id, [FromForm] UrunFormViewModel model)
+        {
+            var urun = await _context.Urunler.FindAsync(id);
+            if (urun == null)
+                return Json(new { success = false, message = "Ürün bulunamadı." });
+
+            urun.Ad = model.Ad;
+            urun.AdEN = model.AdEN;
+            urun.Aciklama = model.Aciklama;
+            urun.AciklamaEN = model.AciklamaEN;
+            urun.Fiyat = model.Fiyat;
+            urun.KategoriId = model.KategoriId;
+            urun.PopulerMi = model.PopulerMi;
+            urun.AktifMi = model.AktifMi;
+
+            // Fotoğraf güncelleme
+            if (model.Gorsel != null)
+            {
+                // Eski görseli sil
+                if (!string.IsNullOrEmpty(urun.GorselUrl))
+                    DeleteImage(urun.GorselUrl);
+
+                var gorselUrl = await SaveImageAsync(model.Gorsel);
+                if (gorselUrl == null)
+                    return Json(new { success = false, message = "Görsel yüklenemedi. Max 2MB, sadece jpg/png/webp." });
+                urun.GorselUrl = gorselUrl;
+            }
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Ürün güncellendi. Id={Id}", id);
+            await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
+            return Json(new { success = true });
+        }
+
+        [HttpPost("/admin/urun-sil/{id:int}")]
+        public async Task<IActionResult> UrunSil(int id)
+        {
+            var urun = await _context.Urunler.FindAsync(id);
+            if (urun == null)
+                return Json(new { success = false, message = "Ürün bulunamadı." });
+
+            // Bağlı sipariş detayı varsa pasife çek
+            var siparisVar = await _context.SiparisDetaylar.AnyAsync(sd => sd.UrunId == id);
+            if (siparisVar)
+            {
+                urun.AktifMi = false;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Ürün pasife alındı (bağlı sipariş var). Id={Id}", id);
+                await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
+                return Json(new { success = true, message = "Ürün pasife alındı (bağlı sipariş kayıtları var)." });
+            }
+
+            // Görseli sil
+            if (!string.IsNullOrEmpty(urun.GorselUrl))
+                DeleteImage(urun.GorselUrl);
+
+            // UrunOpsiyonları cascade ile silinir
+            _context.Urunler.Remove(urun);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Ürün silindi. Id={Id}, Ad={Ad}", id, urun.Ad);
+            await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
+            return Json(new { success = true });
+        }
+
+        [HttpPost("/admin/urun-toggle/{id:int}")]
+        public async Task<IActionResult> UrunToggle(int id)
+        {
+            var urun = await _context.Urunler.FindAsync(id);
+            if (urun == null)
+                return Json(new { success = false, message = "Ürün bulunamadı." });
+
+            urun.AktifMi = !urun.AktifMi;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Ürün durumu değiştirildi. Id={Id}, AktifMi={Aktif}", id, urun.AktifMi);
+            await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
+            return Json(new { success = true, aktifMi = urun.AktifMi });
+        }
+
+        // ============================================================
+        // OPSİYON CRUD
+        // ============================================================
+
+        [HttpPost("/admin/opsiyon-ekle")]
+        public async Task<IActionResult> OpsiyonEkle([FromBody] OpsiyonFormViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return Json(new { success = false, message = "Geçersiz veri." });
+
+            var urun = await _context.Urunler.FindAsync(model.UrunId);
+            if (urun == null)
+                return Json(new { success = false, message = "Ürün bulunamadı." });
+
+            // Aynı ad+grup ile opsiyon var mı kontrol et
+            var mevcutOpsiyon = await _context.Opsiyonlar
+                .FirstOrDefaultAsync(o => o.Ad == model.Ad && o.Grup == model.Grup);
+
+            Opsiyon opsiyon;
+            if (mevcutOpsiyon != null)
+            {
+                opsiyon = mevcutOpsiyon;
+            }
+            else
+            {
+                opsiyon = new Opsiyon
+                {
+                    Ad = model.Ad,
+                    Grup = model.Grup,
+                    EkFiyat = model.EkFiyat
+                };
+                _context.Opsiyonlar.Add(opsiyon);
+                await _context.SaveChangesAsync();
+            }
+
+            // Ürün-Opsiyon bağlantısı zaten var mı?
+            var baglanti = await _context.UrunOpsiyonlar
+                .AnyAsync(uo => uo.UrunId == model.UrunId && uo.OpsiyonId == opsiyon.Id);
+
+            if (baglanti)
+                return Json(new { success = false, message = "Bu opsiyon zaten bu ürüne ekli." });
+
+            _context.UrunOpsiyonlar.Add(new UrunOpsiyon
+            {
+                UrunId = model.UrunId,
+                OpsiyonId = opsiyon.Id
+            });
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Opsiyon eklendi. UrunId={UrunId}, OpsiyonId={OpsiyonId}", model.UrunId, opsiyon.Id);
+            await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
+            return Json(new { success = true, opsiyonId = opsiyon.Id });
+        }
+
+        [HttpPost("/admin/opsiyon-sil/{opsiyonId:int}")]
+        public async Task<IActionResult> OpsiyonSil(int opsiyonId, [FromBody] OpsiyonSilRequest? request)
+        {
+            var urunId = request?.UrunId ?? 0;
+            if (urunId == 0)
+                return Json(new { success = false, message = "Ürün ID gerekli." });
+
+            var baglanti = await _context.UrunOpsiyonlar
+                .FirstOrDefaultAsync(uo => uo.UrunId == urunId && uo.OpsiyonId == opsiyonId);
+
+            if (baglanti == null)
+                return Json(new { success = false, message = "Opsiyon bağlantısı bulunamadı." });
+
+            _context.UrunOpsiyonlar.Remove(baglanti);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Opsiyon kaldırıldı. UrunId={UrunId}, OpsiyonId={OpsiyonId}", urunId, opsiyonId);
+            await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
+            return Json(new { success = true });
+        }
+
+        // ============================================================
+        // YARDIMCI METODLAR — Fotoğraf Upload
+        // ============================================================
+
+        private static readonly HashSet<string> _allowedExtensions = new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
+        private const long MaxFileSize = 2 * 1024 * 1024; // 2MB
+
+        private async Task<string?> SaveImageAsync(IFormFile file)
+        {
+            if (file.Length == 0 || file.Length > MaxFileSize)
+                return null;
+
+            var ext = Path.GetExtension(file.FileName);
+            if (!_allowedExtensions.Contains(ext))
+                return null;
+
+            var uploadsDir = Path.Combine(_env.WebRootPath, "uploads", "urunler");
+            Directory.CreateDirectory(uploadsDir);
+
+            var fileName = $"{Guid.NewGuid()}{ext}";
+            var filePath = Path.Combine(uploadsDir, fileName);
+
+            using var stream = new FileStream(filePath, FileMode.Create);
+            await file.CopyToAsync(stream);
+
+            return $"/uploads/urunler/{fileName}";
+        }
+
+        private void DeleteImage(string gorselUrl)
+        {
+            var filePath = Path.Combine(_env.WebRootPath, gorselUrl.TrimStart('/'));
+            if (System.IO.File.Exists(filePath))
+                System.IO.File.Delete(filePath);
+        }
+    }
+
+    public class OpsiyonSilRequest
+    {
+        public int UrunId { get; set; }
+    }
+
+    public class AdminDurumRequest
+    {
+        public string YeniDurum { get; set; } = "";
     }
 }

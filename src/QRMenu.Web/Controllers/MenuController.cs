@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using QRMenu.Core.Entities;
 using QRMenu.Core.Interfaces;
 
 namespace QRMenu.Web.Controllers
@@ -22,6 +23,44 @@ namespace QRMenu.Web.Controllers
         {
             var urunler = await _urunService.GetAllAsync();
             return View(urunler);
+        }
+
+        /// <summary>
+        /// Menü verisi JSON — SignalR güncellemesi sonrası frontend bu endpoint'i çağırır
+        /// </summary>
+        [HttpGet("/menu/json")]
+        public async Task<IActionResult> MenuJson()
+        {
+            var urunler = await _urunService.GetAllAsync();
+
+            var kategoriler = urunler
+                .Select(u => u.Kategori)
+                .DistinctBy(k => k.Id)
+                .OrderBy(k => k.SiraNo)
+                .Select(k => new
+                {
+                    k.Id,
+                    k.Ad,
+                    Urunler = urunler.Where(u => u.KategoriId == k.Id).Select(u => new
+                    {
+                        u.Id,
+                        u.Ad,
+                        u.Aciklama,
+                        u.Fiyat,
+                        u.GorselUrl,
+                        u.PopulerMi,
+                        u.AktifMi,
+                        Opsiyonlar = (u.UrunOpsiyonlar ?? new List<UrunOpsiyon>()).Select(uo => new
+                        {
+                            id = uo.Opsiyon.Id,
+                            ad = uo.Opsiyon.Ad,
+                            grup = uo.Opsiyon.Grup,
+                            ekFiyat = uo.Opsiyon.EkFiyat
+                        })
+                    })
+                });
+
+            return Json(kategoriler);
         }
     }
 }

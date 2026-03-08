@@ -28,13 +28,11 @@
         </a>
 
         <div class="nav-label">Yönetim</div>
-        <a class="nav-item disabled" href="#">
+        <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Urunler" ? "active" : "")" href="/admin/urunler">
             <i class="bi bi-cup-hot"></i> Ürünler
-            <span class="badge-soon">Yakında</span>
         </a>
-        <a class="nav-item disabled" href="#">
+        <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Siparisler" ? "active" : "")" href="/admin/siparisler">
             <i class="bi bi-receipt"></i> Siparişler
-            <span class="badge-soon">Yakında</span>
         </a>
         <a class="nav-item disabled" href="#">
             <i class="bi bi-people"></i> Personel

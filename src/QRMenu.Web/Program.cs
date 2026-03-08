@@ -5,6 +5,7 @@ using QRMenu.Data.Data;
 using QRMenu.Core.Interfaces;
 using QRMenu.Data.Services;
 using QRMenu.Web.Middleware;
+using QRMenu.Web.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,13 +27,20 @@ builder.Host.UseSerilog();
 builder.Services.AddDbContext<QRMenuDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Memory Cache — Sepet okumalarını hızlandırmak için (Supabase Stockholm latency çözümü)
+builder.Services.AddMemoryCache();
+
 // DI — Uygulama Servisleri
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IUrunService, UrunService>();
 builder.Services.AddScoped<ISepetService, SepetService>();
+builder.Services.AddScoped<ISiparisService, SiparisService>();
 
 // MVC
 builder.Services.AddControllersWithViews();
+
+// SignalR — Gerçek zamanlı menü güncellemeleri
+builder.Services.AddSignalR();
 
 // ===== RATE LIMITING =====
 builder.Services.AddRateLimiter(options =>
@@ -93,6 +101,9 @@ app.UseAuthorization();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Menu}/{action=Index}/{id?}");
+
+// SignalR Hub endpoint
+app.MapHub<MenuHub>("/hubs/menu");
 
 // ===== VERİTABANI MIGRATION (Development) =====
 using (var scope = app.Services.CreateScope())

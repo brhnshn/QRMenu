@@ -34,33 +34,16 @@
         </div>
     </header>
 
-    <!-- 2. KATEGORİ BUTONU (Sticky) -->
-    <div class="category-trigger-area">
-        <button class="btn-categories" type="button" data-bs-toggle="offcanvas" data-bs-target="#categoriesOffcanvas">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-            <span class="ms-2 fw-semibold">Kategoriler</span>
-        </button>
-    </div>
-
-    <!-- KATEGORİ OFFCANVAS -->
-    <div class="offcanvas offcanvas-start" tabindex="-1" id="categoriesOffcanvas">
-        <div class="offcanvas-header border-bottom">
-            <h5 class="offcanvas-title fw-bold">Menü İçeriği</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
-        </div>
-        <div class="offcanvas-body p-0">
-            <div class="list-group list-group-flush">
-                @foreach (var cat in kategoriler)
-                {
-                    <a href="#cat-@cat.Id" class="list-group-item list-group-item-action py-3 fw-medium" onclick="closeCategories()">
-                        @cat.Ad
-                    </a>
-                }
-            </div>
+    <!-- 2. KATEGORİ BUTONLARI (Yatay Kaydırma) -->
+    <div class="category-tabs-area">
+        <div class="category-tabs-scroll">
+            @for (var i = 0; i < kategoriler.Count; i++)
+            {
+                var cat = kategoriler[i];
+                <button class="category-tab @(i == 0 ? "active" : "")" data-cat-id="@cat.Id">
+                    @cat.Ad
+                </button>
+            }
         </div>
     </div>
 
@@ -83,8 +66,14 @@
                                 {
                                     <span class="badge-populer"> Popüler</span>
                                 }
-                                <!-- Placeholder görsel (gri tonlar) -->
-                                <div class="img-placeholder"></div>
+                                @if (!string.IsNullOrEmpty(urun.GorselUrl))
+                                {
+                                    <img src="@urun.GorselUrl" alt="@urun.Ad" class="product-img" loading="lazy" />
+                                }
+                                else
+                                {
+                                    <div class="img-placeholder"></div>
+                                }
                             </div>
                             <div class="product-details">
                                 <h3 class="p-title">@urun.Ad</h3>
@@ -95,8 +84,13 @@
                                     {
                                         var opsiyonList = urun.UrunOpsiyonlar?.Select(uo => new { id = uo.Opsiyon.Id, ad = uo.Opsiyon.Ad, grup = uo.Opsiyon.Grup, ekFiyat = uo.Opsiyon.EkFiyat }).ToList() ?? new();
                                         var opsiyonJson = System.Text.Json.JsonSerializer.Serialize(opsiyonList);
-                                        <button class="btn-add-circle" onclick="addToCartClick(@urun.Id, '@urun.Ad.Replace("'", "\\'")', @urun.Fiyat.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture), @opsiyonJson)">
-                                            +
+                                        <button class="btn-add"
+                                                data-urun-id="@urun.Id"
+                                                data-urun-ad="@urun.Ad"
+                                                data-fiyat="@urun.Fiyat.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-opsiyonlar='@Html.Raw(opsiyonJson)'>
+                                            <span class="btn-add-icon">+</span>
+                                            <span class="btn-add-text">Ekle</span>
                                         </button>
                                     }
                                     else
@@ -141,7 +135,7 @@
                 <span class="text-muted fw-semibold">Genel Toplam</span>
                 <span class="fs-4 fw-bold text-dark" id="cartOffcanvasTotal">0.00 TL</span>
             </div>
-            <button class="btn btn-dark w-100 py-3 rounded-4 fs-5 fw-bold" disabled>Siparişi Gönder (Yakında)</button>
+            <button class="btn btn-success w-100 py-3 rounded-4 fs-5 fw-bold" id="btnSiparisGonder" onclick="siparisGonder()">Siparişi Gönder</button>
         </div>
     </div>
 
@@ -157,7 +151,8 @@
                     <!-- Dinamik -->
                 </div>
                 <div class="modal-footer border-top-0 d-block px-3 pb-3">
-                    <button type="button" class="btn btn-dark w-100 py-3 rounded-4 fs-5 fw-bold d-flex justify-content-between align-items-center" onclick="submitOptionsForm()">
+                    <div id="optionWarning" class="text-danger small fw-semibold text-center mb-2" style="display:none;">Lütfen tüm zorunlu seçenekleri belirleyin.</div>
+                    <button type="button" id="btnAddToCartModal" class="btn btn-dark w-100 py-3 rounded-4 fs-5 fw-bold d-flex justify-content-between align-items-center" onclick="submitOptionsForm()" disabled>
                         <span>Sepete Ekle</span>
                         <span id="modalTotalPrice" class="opacity-75">0.00 TL</span>
                     </button>
@@ -166,14 +161,82 @@
         </div>
     </div>
 
+    <!-- SİPARİŞ ONAY MODALI -->
+    <div class="modal fade" id="siparisOnayModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-body text-center p-4">
+                    <div class="fs-1 mb-2">🍽️</div>
+                    <h5 class="fw-bold mb-2">Siparişi Onayla</h5>
+                    <p class="text-muted small mb-4">Siparişiniz mutfağa gönderilecek.</p>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-light flex-fill py-2 rounded-3 fw-semibold" data-bs-dismiss="modal">Vazgeç</button>
+                        <button class="btn btn-success flex-fill py-2 rounded-3 fw-semibold" id="btnOnaylaGonder" onclick="siparisGonderConfirmed()">Gönder</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST BİLDİRİM -->
+    <div class="position-fixed bottom-0 start-50 translate-middle-x mb-4" style="z-index:9999">
+        <div id="toastBildirim" class="toast align-items-center border-0 rounded-4 shadow-lg" role="alert" data-bs-delay="3000">
+            <div class="d-flex">
+                <div class="toast-body fw-semibold" id="toastMesaj"></div>
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script>
-        // Kategori offcanvas kapatma hilesi
-        function closeCategories() {
-            var myOffcanvas = document.getElementById('categoriesOffcanvas');
-            var bsOffcanvas = bootstrap.Offcanvas.getInstance(myOffcanvas);
-            if(bsOffcanvas) bsOffcanvas.hide();
+        // Kategori butonları — tıklama ve scroll takibi
+        let scrollObserver = null;
+
+        function setupScrollObserver() {
+            if (scrollObserver) scrollObserver.disconnect();
+            const tabs = document.querySelectorAll('.category-tab');
+            const sections = document.querySelectorAll('.category-section');
+
+            scrollObserver = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        var catId = entry.target.id.replace('cat-', '');
+                        tabs.forEach(function(t) { t.classList.remove('active'); });
+                        var matchingTab = document.querySelector('.category-tab[data-cat-id="' + catId + '"]');
+                        if (matchingTab) {
+                            matchingTab.classList.add('active');
+                            matchingTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                        }
+                    }
+                });
+            }, { rootMargin: '-140px 0px -60% 0px', threshold: 0 });
+
+            sections.forEach(function(s) { scrollObserver.observe(s); });
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('.category-tab');
+
+            // Tıklama: butona basınca o kategoriye kaydır
+            tabs.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var catId = this.getAttribute('data-cat-id');
+                    var section = document.getElementById('cat-' + catId);
+                    if (!section) return;
+
+                    tabs.forEach(function(t) { t.classList.remove('active'); });
+                    this.classList.add('active');
+
+                    var offset = 130;
+                    var y = section.getBoundingClientRect().top + window.pageYOffset - offset;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                });
+            });
+
+            setupScrollObserver();
+        });
 
         function callWaiter() {
             alert(' Garson çağrısı yapıldı.');
@@ -181,6 +244,19 @@
 
         let currentUrunId = 0;
         let baseFiyat = 0;
+        let requiredGroups = [];
+
+        // data-* attribute'larından opsiyonları okuyarak addToCartClick çağır
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-add');
+            if (!btn) return;
+            const urunId = parseInt(btn.dataset.urunId);
+            const urunAd = btn.dataset.urunAd;
+            const fiyat = parseFloat(btn.dataset.fiyat);
+            let opsiyonlar = [];
+            try { opsiyonlar = JSON.parse(btn.dataset.opsiyonlar || '[]'); } catch(_) {}
+            addToCartClick(urunId, urunAd, fiyat, opsiyonlar);
+        });
 
         function addToCartClick(urunId, urunAd, fiyat, opsiyonlar) {
             if (!opsiyonlar || opsiyonlar.length === 0) {
@@ -200,16 +276,22 @@
                 gruplar[o.grup].push(o);
             });
 
+            requiredGroups = []; // Zorunlu radio gruplarının isimleri (reset)
+
             for (const [grupAdi, opsList] of Object.entries(gruplar)) {
                 const groupDiv = document.createElement('div');
                 groupDiv.className = 'mb-4';
-                groupDiv.innerHTML = `<h6 class="mb-3 fw-bold text-dark">${grupAdi}</h6>`;
+                const isMulti = grupAdi.toLowerCase().includes('ekstra') || grupAdi.toLowerCase().includes('çoklu');
+                const requiredTag = !isMulti ? ' <span class="text-danger small">(Zorunlu)</span>' : '';
+                groupDiv.innerHTML = `<h6 class="mb-3 fw-bold text-dark">${grupAdi}${requiredTag}</h6>`;
+
+                const nameAttr = isMulti ? '' : 'grup_' + grupAdi.replace(/\s+/g, '');
+                if (!isMulti) requiredGroups.push(nameAttr);
 
                 opsList.forEach(ops => {
                     const id = 'ops_' + ops.id;
-                    const isMulti = grupAdi.toLowerCase().includes('ekstra') || grupAdi.toLowerCase().includes('çoklu');
                     const inputType = isMulti ? 'checkbox' : 'radio';
-                    const nameAttr = isMulti ? id : 'grup_' + grupAdi.replace(/\s+/g, '');
+                    const inputName = isMulti ? id : nameAttr;
                     const ekFiyatStr = ops.ekFiyat > 0 ? `<span class="text-muted small">+${ops.ekFiyat.toFixed(2)} TL</span>` : '';
 
                     groupDiv.innerHTML += `
@@ -219,7 +301,7 @@
                                 ${ekFiyatStr}
                             </div>
                             <div class="form-check-radio-wrap ms-2">
-                                <input class="form-check-input option-input m-0" type="${inputType}" name="${nameAttr}" id="${id}" value="${ops.id}" data-price="${ops.ekFiyat}" onchange="updateModalPrice()">
+                                <input class="form-check-input option-input m-0" type="${inputType}" name="${inputName}" id="${id}" value="${ops.id}" data-price="${ops.ekFiyat}" onchange="updateModalPrice()">
                             </div>
                         </label>
                     `;
@@ -236,6 +318,19 @@
                 toplam += parseFloat(input.dataset.price);
             });
             document.getElementById('modalTotalPrice').textContent = toplam.toFixed(2) + ' TL';
+
+            // Zorunlu grup kontrolü
+            const btn = document.getElementById('btnAddToCartModal');
+            const warning = document.getElementById('optionWarning');
+            let allSelected = true;
+            requiredGroups.forEach(function(grpName) {
+                if (!document.querySelector('input[name="' + grpName + '"]:checked')) {
+                    allSelected = false;
+                }
+            });
+            btn.disabled = !allSelected;
+            btn.style.opacity = allSelected ? '1' : '0.5';
+            warning.style.display = allSelected ? 'none' : 'block';
         }
 
         function submitOptionsForm() {
@@ -372,6 +467,167 @@
             } catch (err) { console.error(err); }
         }
         document.addEventListener('DOMContentLoaded', fetchInitialBadge);
+
+        // ============================================================
+        // SIGNALR — Gerçek zamanlı menü güncellemesi
+        // ============================================================
+        const menuConnection = new signalR.HubConnectionBuilder()
+            .withUrl('/hubs/menu')
+            .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+            .build();
+
+        menuConnection.on('MenuGuncellendi', async function() {
+            try {
+                const res = await fetch('/menu/json');
+                const kategoriler = await res.json();
+                yenidenCiz(kategoriler);
+            } catch (e) {
+                console.error('Menü güncellenirken hata:', e);
+            }
+        });
+
+        function yenidenCiz(kategoriler) {
+            // Kategori tablarını güncelle
+            const tabScroll = document.querySelector('.category-tabs-scroll');
+            tabScroll.innerHTML = '';
+            kategoriler.forEach(function(kat, i) {
+                const btn = document.createElement('button');
+                btn.className = 'category-tab' + (i === 0 ? ' active' : '');
+                btn.setAttribute('data-cat-id', kat.id);
+                btn.textContent = kat.ad;
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+                    btn.classList.add('active');
+                    const section = document.getElementById('cat-' + kat.id);
+                    if (section) {
+                        const y = section.getBoundingClientRect().top + window.pageYOffset - 130;
+                        window.scrollTo({ top: y, behavior: 'smooth' });
+                    }
+                });
+                tabScroll.appendChild(btn);
+            });
+
+            // Ürün kartlarını güncelle
+            const menuContent = document.querySelector('.menu-content');
+            menuContent.innerHTML = '';
+            kategoriler.forEach(function(kat) {
+                if (!kat.urunler || kat.urunler.length === 0) return;
+
+                const section = document.createElement('div');
+                section.className = 'category-section';
+                section.id = 'cat-' + kat.id;
+
+                let html = '<h2 class="category-title">' + escapeHtml(kat.ad) + '</h2><div class="products-grid">';
+                kat.urunler.forEach(function(urun) {
+                    const isSoldOut = !urun.aktifMi;
+
+                    const fiyatStr = urun.fiyat.toFixed(2);
+
+                    html += '<div class="product-card-horizontal ' + (isSoldOut ? 'soldout' : '') + '">';
+                    html += '<div class="product-img-wrapper">';
+                    if (urun.populerMi) {
+                        html += '<span class="badge-populer"> Popüler</span>';
+                    }
+                    if (urun.gorselUrl) {
+                        html += '<img src="' + escapeHtml(urun.gorselUrl) + '" alt="' + escapeHtml(urun.ad) + '" class="product-img" loading="lazy" />';
+                    } else {
+                        html += '<div class="img-placeholder"></div>';
+                    }
+                    html += '</div>';
+                    html += '<div class="product-details">';
+                    html += '<h3 class="p-title">' + escapeHtml(urun.ad) + '</h3>';
+                    html += '<p class="p-desc">' + escapeHtml(urun.aciklama || '') + '</p>';
+                    html += '<div class="p-bottom">';
+                    html += '<span class="p-price">' + fiyatStr + ' TL</span>';
+                    if (!isSoldOut) {
+                        const opsAttr = JSON.stringify(urun.opsiyonlar || []);
+                        html += '<button class="btn-add" data-urun-id="' + urun.id + '" data-urun-ad="' + escapeHtml(urun.ad) + '" data-fiyat="' + fiyatStr + '" data-opsiyonlar=\'' + opsAttr.replace(/'/g, '&#39;') + '\'>';
+                        html += '<span class="btn-add-icon">+</span><span class="btn-add-text">Ekle</span></button>';
+                    } else {
+                        html += '<span class="text-danger small fw-bold">Tükendi</span>';
+                    }
+                    html += '</div></div></div>';
+                });
+                html += '</div>';
+                section.innerHTML = html;
+                menuContent.appendChild(section);
+            });
+
+            // IntersectionObserver'ı yeniden bağla
+            setupScrollObserver();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        // SignalR bağlantısını başlat
+        menuConnection.start().catch(function(err) {
+            console.error('SignalR bağlantı hatası:', err);
+        });
+
+        function siparisGonder() {
+            new bootstrap.Modal(document.getElementById('siparisOnayModal')).show();
+        }
+
+        function showToast(msg, isError) {
+            const el = document.getElementById('toastBildirim');
+            el.className = 'toast align-items-center border-0 rounded-4 shadow-lg text-white ' + (isError ? 'bg-danger' : 'bg-success');
+            document.getElementById('toastMesaj').textContent = msg;
+            bootstrap.Toast.getOrCreateInstance(el).show();
+        }
+
+        async function siparisGonderConfirmed() {
+            bootstrap.Modal.getInstance(document.getElementById('siparisOnayModal')).hide();
+
+            const btn = document.getElementById('btnSiparisGonder');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Gönderiliyor...';
+
+            try {
+                const res = await fetch('/siparis/olustur', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                if (!res.ok && res.status === 401) {
+                    showToast('Oturum süresi dolmuş. QR kodu tekrar okutun.', true);
+                    btn.disabled = false;
+                    btn.textContent = 'Siparişi Gönder';
+                    return;
+                }
+                const data = await res.json();
+                if(data.success) {
+                    document.getElementById('cartContent').innerHTML = `
+                        <div class="text-center mt-5">
+                            <div style="width:64px;height:64px;background:#d4edda;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#155724" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                            <h5 class="fw-bold">Siparişiniz Alındı!</h5>
+                            <p class="text-muted mb-1">Sipariş #${data.siparisId}</p>
+                            <p class="fs-5 fw-bold text-success">${data.toplamTutar.toFixed(2)} TL</p>
+                            <span class="badge bg-warning text-dark rounded-pill px-3 py-2">${data.durum}</span>
+                        </div>`;
+                    document.getElementById('cartOffcanvasTotal').textContent = '0.00 TL';
+                    btn.textContent = 'Sipariş Gönderildi ✓';
+                    btn.classList.replace('btn-success', 'btn-secondary');
+                    updateBottomBar(0, 0);
+                    showToast('Siparişiniz mutfağa iletildi!', false);
+                } else {
+                    showToast(data.message, true);
+                    btn.disabled = false;
+                    btn.textContent = 'Siparişi Gönder';
+                }
+            } catch(e) {
+                console.error(e);
+                showToast('Bağlantı hatası, tekrar deneyin.', true);
+                btn.disabled = false;
+                btn.textContent = 'Siparişi Gönder';
+            }
+        }
     </script>
 </body>
 </html>

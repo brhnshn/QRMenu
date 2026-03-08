@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Moq;
 using QRMenu.Core.Entities;
@@ -17,6 +18,13 @@ namespace QRMenu.Tests
             var context = new QRMenuDbContext(options);
             context.Database.EnsureCreated();
             return context;
+        }
+
+        private SepetService CreateService(QRMenuDbContext context)
+        {
+            var loggerMock = new Mock<ILogger<SepetService>>();
+            var cache = new MemoryCache(new MemoryCacheOptions());
+            return new SepetService(context, loggerMock.Object, cache);
         }
 
         private async Task SeedDataAsync(QRMenuDbContext context)
@@ -45,8 +53,7 @@ namespace QRMenu.Tests
             // Arrange
             var context = CreateInMemoryContext();
             await SeedDataAsync(context);
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             // Act
             var sepet = await service.GetOrCreateSepetAsync(100);
@@ -64,8 +71,7 @@ namespace QRMenu.Tests
             // Arrange
             var context = CreateInMemoryContext();
             await SeedDataAsync(context);
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             var sepet = await service.GetOrCreateSepetAsync(100);
 
@@ -86,8 +92,7 @@ namespace QRMenu.Tests
             // Arrange
             var context = CreateInMemoryContext();
             await SeedDataAsync(context);
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             var sepet = await service.GetOrCreateSepetAsync(100);
 
@@ -108,8 +113,7 @@ namespace QRMenu.Tests
             // Arrange
             var context = CreateInMemoryContext();
             await SeedDataAsync(context);
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             var sepet = await service.GetOrCreateSepetAsync(100);
 
@@ -132,8 +136,7 @@ namespace QRMenu.Tests
             // Arrange
             var context = CreateInMemoryContext();
             await SeedDataAsync(context);
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             var sepet = await service.GetOrCreateSepetAsync(100);
             var detay = await service.AddItemAsync(sepet.Id, 100, 2); // 40₺
@@ -154,8 +157,7 @@ namespace QRMenu.Tests
             // Arrange
             var context = CreateInMemoryContext();
             await SeedDataAsync(context);
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             var sepet = await service.GetOrCreateSepetAsync(100);
             var detay = await service.AddItemAsync(sepet.Id, 100, 2); // 40₺
@@ -176,8 +178,7 @@ namespace QRMenu.Tests
             // Arrange
             var context = CreateInMemoryContext();
             await SeedDataAsync(context);
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             var sepet = await service.GetOrCreateSepetAsync(100);
             await service.AddItemAsync(sepet.Id, 100, 2); // 40₺
@@ -199,8 +200,7 @@ namespace QRMenu.Tests
             // Arrange
             var context = CreateInMemoryContext();
             await SeedDataAsync(context);
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             var ilkSepet = await service.GetOrCreateSepetAsync(100);
 
@@ -218,8 +218,7 @@ namespace QRMenu.Tests
             // Arrange
             var context = CreateInMemoryContext();
             await SeedDataAsync(context);
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             var sepet = await service.GetOrCreateSepetAsync(100);
             var detay = await service.AddItemAsync(sepet.Id, 100, 3); // 3 adet Çay (60₺)
@@ -240,8 +239,7 @@ namespace QRMenu.Tests
             // Arrange
             var context = CreateInMemoryContext();
             await SeedDataAsync(context);
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             var sepet = await service.GetOrCreateSepetAsync(100);
             var detay = await service.AddItemAsync(sepet.Id, 100, 2); // 2 adet Çay (40₺)
@@ -264,8 +262,7 @@ namespace QRMenu.Tests
             // Arrange
             var context = CreateInMemoryContext();
             await SeedDataAsync(context);
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             var sepet = await service.GetOrCreateSepetAsync(100);
 
@@ -280,8 +277,7 @@ namespace QRMenu.Tests
             // Arrange
             var context = CreateInMemoryContext();
             await SeedDataAsync(context);
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             // Pasif ürün ekle
             context.Urunler.Add(new Urun { Id = 200, KategoriId = 100, Ad = "Pasif Ürün", Fiyat = 30m, AktifMi = false });
@@ -299,8 +295,7 @@ namespace QRMenu.Tests
         {
             // Arrange
             var context = CreateInMemoryContext();
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             // Act — olmayan bir detayId ile silme
             var result = await service.RemoveItemAsync(99999);
@@ -314,8 +309,7 @@ namespace QRMenu.Tests
         {
             // Arrange
             var context = CreateInMemoryContext();
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             // Act — olmayan bir detayId ile güncelleme
             var result = await service.UpdateQuantityAsync(99999, 5);
@@ -330,8 +324,7 @@ namespace QRMenu.Tests
             // Arrange
             var context = CreateInMemoryContext();
             await SeedDataAsync(context);
-            var loggerMock = new Mock<ILogger<SepetService>>();
-            var service = new SepetService(context, loggerMock.Object);
+            var service = CreateService(context);
 
             var sepet = await service.GetOrCreateSepetAsync(100);
 

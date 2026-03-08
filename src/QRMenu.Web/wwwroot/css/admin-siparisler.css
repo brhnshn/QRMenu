@@ -1,0 +1,374 @@
+/* =============================================
+   Admin — Sipariş Yönetimi Stilleri
+   ============================================= */
+
+/* ===== PROGRESS STEPPER BAR ===== */
+.stepper-wrapper {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 20px 10px;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    position: relative;
+}
+
+.stepper-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    z-index: 1;
+}
+
+/* Yatay çizgi (her item'in sağında, sonuncusu hariç) */
+.stepper-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 17px;
+    left: calc(50% + 18px);
+    width: calc(100% - 36px);
+    height: 3px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    transition: background 0.4s;
+}
+
+/* Tamamlanan adımın çizgisi yeşil */
+.stepper-item.completed:not(:last-child)::after {
+    background: #27ae60;
+}
+
+/* Daire */
+.step-counter {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    color: #999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+    transition: all 0.35s;
+    border: 3px solid transparent;
+}
+
+/* İsim */
+.step-name {
+    font-size: 0.75rem;
+    color: #aaa;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    transition: color 0.35s;
+}
+
+/* Tamamlanan adım */
+.stepper-item.completed .step-counter {
+    background: #27ae60;
+    color: #fff;
+    border-color: #27ae60;
+}
+.stepper-item.completed .step-name {
+    color: #27ae60;
+    font-weight: 600;
+}
+
+/* Aktif adım */
+.stepper-item.active .step-counter {
+    background: #fff;
+    color: #27ae60;
+    border-color: #27ae60;
+    box-shadow: 0 0 0 4px rgba(39,174,96,0.18);
+    transform: scale(1.15);
+}
+.stepper-item.active .step-name {
+    color: #27ae60;
+    font-weight: 700;
+}
+
+/* İptal / İade */
+.stepper-item.cancelled .step-counter {
+    background: #ffeaea;
+    color: #e74c3c;
+    border-color: #e74c3c;
+}
+.stepper-item.cancelled .step-name {
+    color: #e74c3c;
+}
+.stepper-item.cancelled:not(:last-child)::after {
+    background: #f5c6cb;
+}
+
+/* Özet Sayaç Pills */
+.stats-mini {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+.stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    background: #f8f9fa;
+    color: #555;
+    border: 1px solid #eee;
+}
+.stat-pill strong { font-weight: 700; }
+.stat-pill.pill-bekleyen { border-color: #f39c12; color: #e67e22; }
+.stat-pill.pill-hazirlaniyor { border-color: #3498db; color: #2980b9; }
+.stat-pill.pill-hazir { border-color: #2ecc71; color: #27ae60; }
+.stat-pill.pill-teslim { border-color: #9b59b6; color: #8e44ad; }
+.stat-pill.pill-toplam { border-color: #95a5a6; color: #7f8c8d; }
+
+/* Seçili satır */
+#siparisBody tr.row-selected {
+    background: #eafaf1 !important;
+    box-shadow: inset 3px 0 0 #27ae60;
+}
+
+/* Mobil responsive stepper */
+@media (max-width: 576px) {
+    .step-name { font-size: 0.6rem; }
+    .step-counter { width: 28px; height: 28px; font-size: 0.7rem; }
+    .stepper-item:not(:last-child)::after { top: 13px; left: calc(50% + 14px); width: calc(100% - 28px); }
+    .stats-mini { gap: 6px; }
+    .stat-pill { font-size: 0.7rem; padding: 3px 10px; }
+}
+
+/* Filtre bar */
+.siparis-filter-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.siparis-filter-bar select,
+.siparis-filter-bar input {
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    background: #fff;
+}
+
+.siparis-filter-bar select:focus,
+.siparis-filter-bar input:focus {
+    border-color: #e67e22;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(230, 126, 34, 0.15);
+}
+
+.filter-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: none;
+    background: #e67e22;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.filter-btn:hover {
+    background: #d35400;
+}
+
+/* Sipariş tablosu */
+.siparis-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.siparis-table thead th {
+    background: #2c3e50;
+    color: #fff;
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.siparis-table tbody td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+}
+
+.siparis-table tbody tr:hover {
+    background: #fef9f0;
+}
+
+.siparis-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Durum badge'leri */
+.durum-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.durum-Onaylandi     { background: #fef3cd; color: #856404; }
+.durum-Hazirlaniyor  { background: #cce5ff; color: #004085; }
+.durum-Hazir         { background: #d4edda; color: #155724; }
+.durum-TeslimEdildi  { background: #e2d5f1; color: #5b2c8e; }
+.durum-KismiOdendi   { background: #fff3cd; color: #856404; }
+.durum-TamOdendi     { background: #c3e6cb; color: #155724; }
+.durum-Iptal         { background: #f8d7da; color: #721c24; }
+.durum-Iade          { background: #f5c6cb; color: #721c24; }
+.durum-Sepette       { background: #e2e3e5; color: #383d41; }
+
+/* Aksiyon butonları */
+.siparis-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.siparis-actions .btn {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+/* Detay modal */
+.siparis-detay-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.siparis-detay-header h5 {
+    margin: 0;
+    font-weight: 700;
+}
+
+.detay-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.detay-info-item {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.detay-info-item .label {
+    font-size: 0.75rem;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.detay-info-item .value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-top: 2px;
+}
+
+.detay-urun-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.detay-urun-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.85rem;
+}
+
+.detay-urun-list li:last-child {
+    border-bottom: none;
+}
+
+.detay-urun-name {
+    font-weight: 600;
+}
+
+.detay-urun-ops {
+    font-size: 0.75rem;
+    color: #999;
+    margin-top: 2px;
+}
+
+.durum-select {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* Boş durum */
+.siparis-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #aaa;
+}
+
+.siparis-empty .icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .stats-row {
+        gap: 8px;
+    }
+    .stat-card {
+        min-width: 100px;
+        padding: 14px;
+    }
+    .stat-card .stat-value {
+        font-size: 1.4rem;
+    }
+    .siparis-filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .siparis-table {
+        font-size: 0.78rem;
+    }
+    .siparis-table thead th,
+    .siparis-table tbody td {
+        padding: 8px 10px;
+    }
+    .detay-info-grid {
+        grid-template-columns: 1fr;
+    }
+}

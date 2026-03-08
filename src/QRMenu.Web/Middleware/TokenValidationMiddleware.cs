@@ -16,7 +16,8 @@ namespace QRMenu.Web.Middleware
             "/lib",
             "/images",
             "/favicon.ico",
-            "/health"
+            "/health",
+            "/hubs"          // SignalR hub bağlantıları
         };
 
         public TokenValidationMiddleware(RequestDelegate next, ILogger<TokenValidationMiddleware> logger)
@@ -49,8 +50,7 @@ namespace QRMenu.Web.Middleware
             if (string.IsNullOrEmpty(rawToken))
             {
                 _logger.LogWarning("Token cookie bulunamadı. Path: {Path}", path);
-                context.Response.StatusCode = 401;
-                await context.Response.WriteAsync("Geçersiz oturum. Lütfen QR kodu tekrar okutun.");
+                await WriteUnauthorized(context, "Geçersiz oturum. Lütfen QR kodu tekrar okutun.");
                 return;
             }
 
@@ -61,8 +61,7 @@ namespace QRMenu.Web.Middleware
             if (oturum == null)
             {
                 _logger.LogWarning("Geçersiz veya süresi dolmuş token. Path: {Path}", path);
-                context.Response.StatusCode = 401;
-                await context.Response.WriteAsync("Oturum süresi dolmuş. Lütfen QR kodu tekrar okutun.");
+                await WriteUnauthorized(context, "Oturum süresi dolmuş. Lütfen QR kodu tekrar okutun.");
                 return;
             }
 
@@ -75,6 +74,25 @@ namespace QRMenu.Web.Middleware
             await tokenService.RefreshSessionAsync(oturum.Id);
 
             await _next(context);
+        }
+
+        private static async Task WriteUnauthorized(HttpContext context, string message)
+        {
+            context.Response.StatusCode = 401;
+            var isAjax = context.Request.Headers["Content-Type"].ToString().Contains("application/json")
+                      || context.Request.Headers["Accept"].ToString().Contains("application/json")
+                      || context.Request.Headers["X-Requested-With"] == "XMLHttpRequest";
+
+            if (isAjax)
+            {
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(
+                    System.Text.Json.JsonSerializer.Serialize(new { success = false, message }));
+            }
+            else
+            {
+                await context.Response.WriteAsync(message);
+            }
         }
     }
 

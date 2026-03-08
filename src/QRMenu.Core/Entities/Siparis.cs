@@ -14,7 +14,7 @@ namespace QRMenu.Core.Entities
         public string? Notlar { get; set; }
 
         // Concurrency kontrolü
-        public byte[] RowVersion { get; set; } = null!;
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
         // Navigation Properties
         public Masa Masa { get; set; } = null!;

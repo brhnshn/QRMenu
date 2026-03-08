@@ -153,8 +153,10 @@ namespace QRMenu.Data.Data
                 entity.Property(e => e.ToplamTutar).HasPrecision(18, 2);
                 entity.Property(e => e.Notlar).HasMaxLength(500);
 
-                // Concurrency: RowVersion
-                entity.Property(e => e.RowVersion).IsRowVersion();
+                // Concurrency: PostgreSQL'de IsRowVersion() çalışmaz, IsConcurrencyToken kullan
+                entity.Property(e => e.RowVersion)
+                    .IsConcurrencyToken()
+                    .HasColumnType("bytea");
 
                 // Indexes
                 entity.HasIndex(e => e.Durum).HasDatabaseName("IX_Siparisler_Durum");

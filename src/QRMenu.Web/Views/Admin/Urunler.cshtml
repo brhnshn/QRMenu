@@ -1,0 +1,514 @@
+@model List<QRMenu.Core.Entities.Urun>
+@{
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = "Ürünler";
+    ViewData["ActivePage"] = "Urunler";
+    ViewData["PageTitle"] = "Ürün & Kategori Yönetimi";
+    var kategoriler = ViewBag.Kategoriler as List<QRMenu.Core.Entities.Kategori> ?? new();
+}
+
+@section Styles {
+    <link href="~/css/admin-urunler.css" rel="stylesheet" />
+}
+
+<!-- ===== KATEGORİ YÖNETİMİ ===== -->
+<div class="kategori-section">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="mb-0"><i class="bi bi-tags"></i> Kategori Yönetimi</h6>
+        <button class="btn-kategori-ekle" onclick="kategoriModal()">
+            <i class="bi bi-plus-lg"></i> Kategori Ekle
+        </button>
+    </div>
+    <div class="kategori-list" id="kategoriList">
+        @foreach (var kat in kategoriler)
+        {
+            var urunSayisi = Model.Count(u => u.KategoriId == kat.Id);
+            <div class="kategori-chip" id="kat-@kat.Id">
+                <span>@kat.Ad</span>
+                <span class="chip-count">@urunSayisi</span>
+                <div class="chip-actions">
+                    <button title="Düzenle" onclick="kategoriModal(@kat.Id, '@kat.Ad.Replace("'","\\'")', '@(kat.AdEN?.Replace("'","\\'") ?? "")', @kat.SiraNo)"><i class="bi bi-pencil"></i></button>
+                    <button class="btn-chip-delete" title="Sil" onclick="kategoriSil(@kat.Id, '@kat.Ad.Replace("'","\\'")')"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
+        }
+        @if (!kategoriler.Any())
+        {
+            <span class="text-muted small">Henüz kategori yok. İlk kategorinizi ekleyin.</span>
+        }
+    </div>
+</div>
+
+<!-- ===== FİLTRE BAR ===== -->
+<div class="filter-bar">
+    <select class="form-select" id="filterKategori" onchange="filterTable()">
+        <option value="">Tüm Kategoriler</option>
+        @foreach (var kat in kategoriler)
+        {
+            <option value="@kat.Id">@kat.Ad</option>
+        }
+    </select>
+    <input type="text" class="form-control" id="filterSearch" placeholder="Ürün ara..." oninput="filterTable()" />
+    <button class="btn-yeni-urun" onclick="urunModal()">
+        <i class="bi bi-plus-lg"></i> Yeni Ürün Ekle
+    </button>
+</div>
+
+<!-- ===== ÜRÜN TABLOSU ===== -->
+<div class="urun-table-wrap">
+    @if (Model.Any())
+    {
+        <table class="urun-table">
+            <thead>
+                <tr>
+                    <th>Görsel</th>
+                    <th>Ürün Adı</th>
+                    <th>Kategori</th>
+                    <th>Açıklama</th>
+                    <th>Fiyat</th>
+                    <th>Durum</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+            <tbody id="urunTbody">
+                @foreach (var urun in Model)
+                {
+                    <tr data-id="@urun.Id" data-kategori="@urun.KategoriId" data-ad="@urun.Ad.ToLower()">
+                        <td>
+                            @if (!string.IsNullOrEmpty(urun.GorselUrl))
+                            {
+                                <img src="@urun.GorselUrl" alt="@urun.Ad" class="urun-img" />
+                            }
+                            else
+                            {
+                                <div class="urun-img-placeholder"><i class="bi bi-image"></i></div>
+                            }
+                        </td>
+                        <td>
+                            <strong>@urun.Ad</strong>
+                            @if (urun.PopulerMi) { <span class="badge-populer">⭐ Popüler</span> }
+                        </td>
+                        <td>@urun.Kategori.Ad</td>
+                        <td class="text-muted small">@(urun.Aciklama?.Length > 40 ? urun.Aciklama.Substring(0, 40) + "..." : urun.Aciklama)</td>
+                        <td><strong>@urun.Fiyat.ToString("N2") TL</strong></td>
+                        <td>
+                            <span class="@(urun.AktifMi ? "badge-aktif" : "badge-pasif")" style="cursor:pointer;" onclick="toggleUrun(@urun.Id)" title="Tıkla: Aktif/Pasif">
+                                @(urun.AktifMi ? "Aktif" : "Pasif")
+                            </span>
+                        </td>
+                        <td>
+                            <button class="aksiyon-btn" onclick="urunDuzenle(@urun.Id)" title="Düzenle"><i class="bi bi-pencil"></i></button>
+                            <button class="aksiyon-btn" onclick="opsiyonModal(@urun.Id, '@urun.Ad.Replace("'","\\'")')" title="Opsiyonlar"><i class="bi bi-list-check"></i></button>
+                            <button class="aksiyon-btn btn-danger" onclick="urunSil(@urun.Id, '@urun.Ad.Replace("'","\\'")')" title="Sil"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <div class="empty-state">
+            <i class="bi bi-cup-hot"></i>
+            <h5>Henüz Ürün Yok</h5>
+            <p>İlk ürününüzü ekleyerek başlayın.</p>
+        </div>
+    }
+</div>
+
+<!-- ===== KATEGORİ MODAL ===== -->
+<div class="modal fade" id="kategoriModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="kategoriModalTitle">Kategori Ekle</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="kategoriEditId" value="0" />
+                <div class="mb-3">
+                    <label class="form-label">Kategori Adı *</label>
+                    <input type="text" class="form-control" id="kategoriAd" maxlength="100" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">İngilizce Adı</label>
+                    <input type="text" class="form-control" id="kategoriAdEN" maxlength="100" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Sıra No</label>
+                    <input type="number" class="form-control" id="kategoriSiraNo" value="0" min="0" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-success btn-sm" onclick="kategoriKaydet()">Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== ÜRÜN EKLE/DÜZENLE MODAL ===== -->
+<div class="modal fade" id="urunModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="urunModalTitle">Yeni Ürün Ekle</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="urunForm" enctype="multipart/form-data">
+                    <input type="hidden" id="urunEditId" value="0" />
+
+                    <img id="gorselPreview" class="gorsel-preview" alt="Önizleme" />
+
+                    <div class="row mb-3">
+                        <div class="col-8">
+                            <label class="form-label">Ürün Adı *</label>
+                            <input type="text" class="form-control" id="urunAd" name="Ad" maxlength="200" required />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">Fiyat (TL) *</label>
+                            <input type="number" class="form-control" id="urunFiyat" name="Fiyat" step="0.01" min="0.01" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Açıklama</label>
+                        <textarea class="form-control" id="urunAciklama" name="Aciklama" rows="2" maxlength="500"></textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Kategori *</label>
+                            <select class="form-select" id="urunKategori" name="KategoriId" required>
+                                <option value="">Seçiniz</option>
+                                @foreach (var kat in kategoriler)
+                                {
+                                    <option value="@kat.Id">@kat.Ad</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Görsel (max 2MB)</label>
+                            <input type="file" class="form-control" id="urunGorsel" name="Gorsel" accept=".jpg,.jpeg,.png,.webp" onchange="previewImage(this)" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label">İngilizce Ad</label>
+                            <input type="text" class="form-control" id="urunAdEN" name="AdEN" maxlength="200" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">İngilizce Açıklama</label>
+                            <input type="text" class="form-control" id="urunAciklamaEN" name="AciklamaEN" maxlength="500" />
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="urunPopuler" name="PopulerMi" value="true" />
+                            <label class="form-check-label" for="urunPopuler">⭐ Popüler</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="urunAktif" name="AktifMi" value="true" checked />
+                            <label class="form-check-label" for="urunAktif">Aktif</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-success btn-sm" onclick="urunKaydet()">Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== OPSİYON YÖNETİM MODAL ===== -->
+<div class="modal fade" id="opsiyonModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="opsiyonModalTitle">Opsiyonlar</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="opsiyonUrunId" value="0" />
+
+                <!-- Mevcut opsiyonlar -->
+                <div id="opsiyonList" class="mb-3"></div>
+
+                <!-- Yeni opsiyon ekle -->
+                <hr />
+                <h6 class="small fw-bold mb-2">Yeni Opsiyon Ekle</h6>
+                <div class="row g-2 mb-2">
+                    <div class="col-4">
+                        <input type="text" class="form-control form-control-sm" id="yeniOpsiyonGrup" placeholder="Grup (ör: Boyut)" maxlength="50" />
+                    </div>
+                    <div class="col-4">
+                        <input type="text" class="form-control form-control-sm" id="yeniOpsiyonAd" placeholder="Ad (ör: Büyük)" maxlength="100" />
+                    </div>
+                    <div class="col-2">
+                        <input type="number" class="form-control form-control-sm" id="yeniOpsiyonFiyat" placeholder="Ek TL" step="0.01" min="0" value="0" />
+                    </div>
+                    <div class="col-2">
+                        <button class="btn btn-success btn-sm w-100" onclick="opsiyonEkle()"><i class="bi bi-plus"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="mesaj"></div>
+
+@section Scripts {
+<script>
+    // ===== YARDIMCI =====
+    function mesaj(text, tip) {
+        document.getElementById('mesaj').innerHTML = '<div class="alert alert-' + tip + ' py-2 mb-3 position-fixed bottom-0 end-0 m-3 shadow" style="font-size:0.85rem;z-index:9999;max-width:350px;">' + text + '</div>';
+        setTimeout(function() { document.getElementById('mesaj').innerHTML = ''; }, 3000);
+    }
+
+    // ===== FİLTRE =====
+    function filterTable() {
+        var katId = document.getElementById('filterKategori').value;
+        var search = document.getElementById('filterSearch').value.toLowerCase();
+        document.querySelectorAll('#urunTbody tr').forEach(function(tr) {
+            var matchKat = !katId || tr.dataset.kategori === katId;
+            var matchSearch = !search || tr.dataset.ad.includes(search);
+            tr.style.display = (matchKat && matchSearch) ? '' : 'none';
+        });
+    }
+
+    // ===== KATEGORİ =====
+    function kategoriModal(id, ad, adEN, siraNo) {
+        document.getElementById('kategoriEditId').value = id || 0;
+        document.getElementById('kategoriAd').value = ad || '';
+        document.getElementById('kategoriAdEN').value = adEN || '';
+        document.getElementById('kategoriSiraNo').value = siraNo || 0;
+        document.getElementById('kategoriModalTitle').textContent = id ? 'Kategori Düzenle' : 'Kategori Ekle';
+        new bootstrap.Modal(document.getElementById('kategoriModal')).show();
+    }
+
+    async function kategoriKaydet() {
+        var id = parseInt(document.getElementById('kategoriEditId').value);
+        var ad = document.getElementById('kategoriAd').value.trim();
+        if (!ad) { mesaj('Kategori adı boş olamaz.', 'danger'); return; }
+
+        var payload = {
+            ad: ad,
+            adEN: document.getElementById('kategoriAdEN').value.trim() || null,
+            siraNo: parseInt(document.getElementById('kategoriSiraNo').value) || 0
+        };
+
+        var url = id > 0 ? '/admin/kategori-guncelle/' + id : '/admin/kategori-ekle';
+        var res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        var data = await res.json();
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('kategoriModal')).hide();
+            mesaj(id > 0 ? 'Kategori güncellendi.' : 'Kategori eklendi.', 'success');
+            setTimeout(function() { location.reload(); }, 500);
+        } else {
+            mesaj(data.message, 'danger');
+        }
+    }
+
+    async function kategoriSil(id, ad) {
+        if (!confirm('"' + ad + '" kategorisi silinsin mi?')) return;
+        var res = await fetch('/admin/kategori-sil/' + id, { method: 'POST' });
+        var data = await res.json();
+        if (data.success) {
+            mesaj('Kategori silindi.', 'success');
+            setTimeout(function() { location.reload(); }, 500);
+        } else {
+            mesaj(data.message, 'warning');
+        }
+    }
+
+    // ===== ÜRÜN =====
+    function urunModal() {
+        document.getElementById('urunEditId').value = 0;
+        document.getElementById('urunForm').reset();
+        document.getElementById('urunAktif').checked = true;
+        document.getElementById('gorselPreview').classList.remove('active');
+        document.getElementById('urunModalTitle').textContent = 'Yeni Ürün Ekle';
+        new bootstrap.Modal(document.getElementById('urunModal')).show();
+    }
+
+    async function urunDuzenle(id) {
+        var res = await fetch('/admin/urun-detay/' + id);
+        var data = await res.json();
+        if (!data.success) { mesaj(data.message, 'danger'); return; }
+        var u = data.urun;
+
+        document.getElementById('urunEditId').value = u.id;
+        document.getElementById('urunAd').value = u.ad;
+        document.getElementById('urunAdEN').value = u.adEN || '';
+        document.getElementById('urunAciklama').value = u.aciklama || '';
+        document.getElementById('urunAciklamaEN').value = u.aciklamaEN || '';
+        document.getElementById('urunFiyat').value = u.fiyat;
+        document.getElementById('urunKategori').value = u.kategoriId;
+        document.getElementById('urunPopuler').checked = u.populerMi;
+        document.getElementById('urunAktif').checked = u.aktifMi;
+        document.getElementById('urunGorsel').value = '';
+
+        var preview = document.getElementById('gorselPreview');
+        if (u.gorselUrl) {
+            preview.src = u.gorselUrl;
+            preview.classList.add('active');
+        } else {
+            preview.classList.remove('active');
+        }
+
+        document.getElementById('urunModalTitle').textContent = 'Ürün Düzenle: ' + u.ad;
+        new bootstrap.Modal(document.getElementById('urunModal')).show();
+    }
+
+    async function urunKaydet() {
+        var id = parseInt(document.getElementById('urunEditId').value);
+        var form = new FormData();
+        form.append('Ad', document.getElementById('urunAd').value);
+        form.append('AdEN', document.getElementById('urunAdEN').value);
+        form.append('Aciklama', document.getElementById('urunAciklama').value);
+        form.append('AciklamaEN', document.getElementById('urunAciklamaEN').value);
+        form.append('Fiyat', document.getElementById('urunFiyat').value);
+        form.append('KategoriId', document.getElementById('urunKategori').value);
+        form.append('PopulerMi', document.getElementById('urunPopuler').checked);
+        form.append('AktifMi', document.getElementById('urunAktif').checked);
+
+        var gorselInput = document.getElementById('urunGorsel');
+        if (gorselInput.files.length > 0) {
+            form.append('Gorsel', gorselInput.files[0]);
+        }
+
+        var url = id > 0 ? '/admin/urun-guncelle/' + id : '/admin/urun-ekle';
+        var res = await fetch(url, { method: 'POST', body: form });
+        var data = await res.json();
+
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('urunModal')).hide();
+            mesaj(id > 0 ? 'Ürün güncellendi.' : 'Ürün eklendi.', 'success');
+            setTimeout(function() { location.reload(); }, 500);
+        } else {
+            mesaj(data.message, 'danger');
+        }
+    }
+
+    async function urunSil(id, ad) {
+        if (!confirm('"' + ad + '" ürünü silinsin mi?')) return;
+        var res = await fetch('/admin/urun-sil/' + id, { method: 'POST' });
+        var data = await res.json();
+        if (data.success) {
+            mesaj(data.message || 'Ürün silindi.', 'success');
+            setTimeout(function() { location.reload(); }, 500);
+        } else {
+            mesaj(data.message, 'danger');
+        }
+    }
+
+    async function toggleUrun(id) {
+        var res = await fetch('/admin/urun-toggle/' + id, { method: 'POST' });
+        var data = await res.json();
+        if (data.success) {
+            mesaj('Durum güncellendi.', 'success');
+            setTimeout(function() { location.reload(); }, 300);
+        }
+    }
+
+    function previewImage(input) {
+        var preview = document.getElementById('gorselPreview');
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.classList.add('active');
+            };
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            preview.classList.remove('active');
+        }
+    }
+
+    // ===== OPSİYON =====
+    async function opsiyonModal(urunId, urunAd) {
+        document.getElementById('opsiyonUrunId').value = urunId;
+        document.getElementById('opsiyonModalTitle').textContent = 'Opsiyonlar — ' + urunAd;
+        document.getElementById('yeniOpsiyonGrup').value = '';
+        document.getElementById('yeniOpsiyonAd').value = '';
+        document.getElementById('yeniOpsiyonFiyat').value = 0;
+
+        await opsiyonListeYenile(urunId);
+        new bootstrap.Modal(document.getElementById('opsiyonModal')).show();
+    }
+
+    async function opsiyonListeYenile(urunId) {
+        var res = await fetch('/admin/urun-detay/' + urunId);
+        var data = await res.json();
+        var listDiv = document.getElementById('opsiyonList');
+
+        if (!data.success || !data.urun.opsiyonlar || data.urun.opsiyonlar.length === 0) {
+            listDiv.innerHTML = '<p class="text-muted small">Bu ürüne henüz opsiyon eklenmemiş.</p>';
+            return;
+        }
+
+        var html = '';
+        data.urun.opsiyonlar.forEach(function(o) {
+            html += '<div class="opsiyon-list-item">' +
+                '<div class="opsiyon-info">' +
+                    '<span class="opsiyon-tag">' + o.grup + '</span>' +
+                    '<span>' + o.ad + '</span>' +
+                    (o.ekFiyat > 0 ? '<span class="text-muted small">+' + o.ekFiyat.toFixed(2) + ' TL</span>' : '') +
+                '</div>' +
+                '<button class="btn-opsiyon-sil" onclick="opsiyonSil(' + o.id + ')"><i class="bi bi-x-lg"></i></button>' +
+            '</div>';
+        });
+        listDiv.innerHTML = html;
+    }
+
+    async function opsiyonEkle() {
+        var urunId = parseInt(document.getElementById('opsiyonUrunId').value);
+        var grup = document.getElementById('yeniOpsiyonGrup').value.trim();
+        var ad = document.getElementById('yeniOpsiyonAd').value.trim();
+        var ekFiyat = parseFloat(document.getElementById('yeniOpsiyonFiyat').value) || 0;
+
+        if (!grup || !ad) { mesaj('Grup ve Ad alanları zorunlu.', 'danger'); return; }
+
+        var res = await fetch('/admin/opsiyon-ekle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ urunId: urunId, ad: ad, grup: grup, ekFiyat: ekFiyat })
+        });
+        var data = await res.json();
+        if (data.success) {
+            mesaj('Opsiyon eklendi.', 'success');
+            document.getElementById('yeniOpsiyonAd').value = '';
+            document.getElementById('yeniOpsiyonFiyat').value = 0;
+            await opsiyonListeYenile(urunId);
+        } else {
+            mesaj(data.message, 'warning');
+        }
+    }
+
+    async function opsiyonSil(opsiyonId) {
+        var urunId = parseInt(document.getElementById('opsiyonUrunId').value);
+        var res = await fetch('/admin/opsiyon-sil/' + opsiyonId, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ urunId: urunId })
+        });
+        var data = await res.json();
+        if (data.success) {
+            mesaj('Opsiyon kaldırıldı.', 'success');
+            await opsiyonListeYenile(urunId);
+        } else {
+            mesaj(data.message, 'danger');
+        }
+    }
+</script>
+}
