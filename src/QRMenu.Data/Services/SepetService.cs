@@ -95,9 +95,21 @@ namespace QRMenu.Data.Services
                 _logger.LogInformation("Sepete yeni ürün eklendi. SepetId={SepetId}, UrunId={UrunId}, Adet={Adet}", sepetId, urunId, adet);
             }
 
-            await _context.SaveChangesAsync();
-            await RecalculateTotalAsync(sepetId);
+            // Toplam tutarı bellek üzerinde güncelle (DB'ye ekstra gitmeden)
+            var sepet = await _context.Sepetler
+                .Include(s => s.SepetDetaylar)
+                .FirstOrDefaultAsync(s => s.Id == sepetId);
 
+            if (sepet != null)
+            {
+                if (mevcutDetay.Id == 0) // Eğer yeni eklendiyse (veritabanına henüz yansımamış olabilir)
+                    sepet.SepetDetaylar.Add(mevcutDetay);
+
+                sepet.ToplamTutar = sepet.SepetDetaylar.Sum(sd => sd.BirimFiyat * sd.Adet);
+            }
+
+            // TEK BİR DB Gidişi
+            await _context.SaveChangesAsync();
             return mevcutDetay;
         }
 
@@ -110,9 +122,18 @@ namespace QRMenu.Data.Services
             if (detay == null) return false;
 
             var sepetId = detay.SepetId;
+            var sepet = await _context.Sepetler
+                .Include(s => s.SepetDetaylar)
+                .FirstOrDefaultAsync(s => s.Id == sepetId);
+
+            if (sepet != null)
+            {
+                sepet.SepetDetaylar.Remove(detay);
+                sepet.ToplamTutar = sepet.SepetDetaylar.Sum(sd => sd.BirimFiyat * sd.Adet);
+            }
+
             _context.SepetDetaylar.Remove(detay);
             await _context.SaveChangesAsync();
-            await RecalculateTotalAsync(sepetId);
 
             _logger.LogInformation("Sepetten ürün çıkarıldı. DetayId={DetayId}", sepetDetayId);
             return true;
@@ -130,8 +151,17 @@ namespace QRMenu.Data.Services
                 return await RemoveItemAsync(sepetDetayId);
 
             detay.Adet = yeniAdet;
+
+            var sepet = await _context.Sepetler
+                .Include(s => s.SepetDetaylar)
+                .FirstOrDefaultAsync(s => s.Id == detay.SepetId);
+
+            if (sepet != null)
+            {
+                sepet.ToplamTutar = sepet.SepetDetaylar.Sum(sd => sd.BirimFiyat * sd.Adet);
+            }
+
             await _context.SaveChangesAsync();
-            await RecalculateTotalAsync(detay.SepetId);
 
             _logger.LogInformation("Sepet ürün adedi güncellendi. DetayId={DetayId}, YeniAdet={Adet}", sepetDetayId, yeniAdet);
             return true;
