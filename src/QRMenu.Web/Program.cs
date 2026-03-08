@@ -109,5 +109,16 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-Log.Information("QR Menü uygulaması başlatılıyor...");
-app.Run();
+try
+{
+    Log.Information("QR Menü uygulaması başlatılıyor...");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Uygulama başlatılırken kritik bir hata oluştu!");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
