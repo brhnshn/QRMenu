@@ -330,7 +330,7 @@
                         try {
                             const parsed = JSON.parse(item.opsiyonlar);
                             if(parsed.length > 0) {
-                                opsHtml = '<div class="small text-muted mt-1">' + parsed.map(p => p.ad).join(', ') + '</div>';
+                                opsHtml = '<div class="small text-muted mt-1">' + parsed.map(p => p.Ad).join(', ') + '</div>';
                             }
                         } catch(e) {}
                     }

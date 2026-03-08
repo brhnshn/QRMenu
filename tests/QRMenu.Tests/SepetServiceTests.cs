@@ -192,5 +192,68 @@ namespace QRMenu.Tests
             Assert.Empty(guncelSepet!.SepetDetaylar);
             Assert.Equal(0m, guncelSepet.ToplamTutar);
         }
+
+        [Fact]
+        public async Task GetOrCreateSepetAsync_Should_Return_Existing_Sepet_If_Already_Exists()
+        {
+            // Arrange
+            var context = CreateInMemoryContext();
+            await SeedDataAsync(context);
+            var loggerMock = new Mock<ILogger<SepetService>>();
+            var service = new SepetService(context, loggerMock.Object);
+
+            var ilkSepet = await service.GetOrCreateSepetAsync(100);
+
+            // Act
+            var ikinciSepet = await service.GetOrCreateSepetAsync(100);
+
+            // Assert — aynı sepet döndürülmeli, yeni oluşturulmamalı
+            Assert.Equal(ilkSepet.Id, ikinciSepet.Id);
+            Assert.Equal(1, context.Sepetler.Count(s => s.OturumId == 100));
+        }
+
+        [Fact]
+        public async Task UpdateQuantityAsync_Should_Remove_Item_When_Adet_Is_Zero_Or_Less()
+        {
+            // Arrange
+            var context = CreateInMemoryContext();
+            await SeedDataAsync(context);
+            var loggerMock = new Mock<ILogger<SepetService>>();
+            var service = new SepetService(context, loggerMock.Object);
+
+            var sepet = await service.GetOrCreateSepetAsync(100);
+            var detay = await service.AddItemAsync(sepet.Id, 100, 3); // 3 adet Çay (60₺)
+
+            // Act — adet 0 verildiğinde ürün silinmeli
+            var result = await service.UpdateQuantityAsync(detay.Id, 0);
+
+            // Assert
+            Assert.True(result);
+            var guncelSepet = await service.GetSepetWithDetailsAsync(sepet.Id);
+            Assert.Empty(guncelSepet!.SepetDetaylar);
+            Assert.Equal(0m, guncelSepet.ToplamTutar);
+        }
+
+        [Fact]
+        public async Task UpdateQuantityAsync_Should_Remove_Item_When_Adet_Is_Negative()
+        {
+            // Arrange
+            var context = CreateInMemoryContext();
+            await SeedDataAsync(context);
+            var loggerMock = new Mock<ILogger<SepetService>>();
+            var service = new SepetService(context, loggerMock.Object);
+
+            var sepet = await service.GetOrCreateSepetAsync(100);
+            var detay = await service.AddItemAsync(sepet.Id, 100, 2); // 2 adet Çay (40₺)
+
+            // Act — negatif adet verildiğinde ürün silinmeli
+            var result = await service.UpdateQuantityAsync(detay.Id, -1);
+
+            // Assert
+            Assert.True(result);
+            var guncelSepet = await service.GetSepetWithDetailsAsync(sepet.Id);
+            Assert.Empty(guncelSepet!.SepetDetaylar);
+            Assert.Equal(0m, guncelSepet.ToplamTutar);
+        }
     }
 }

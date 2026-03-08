@@ -52,8 +52,8 @@
                                             var opsJson = System.Text.Json.JsonDocument.Parse(detay.SeciliOpsiyonlar);
                                             var opsList = new List<string>();
                                             foreach(var ops in opsJson.RootElement.EnumerateArray()) {
-                                                var ad = ops.GetProperty("ad").GetString();
-                                                var ekFiyat = ops.GetProperty("ekFiyat").GetDecimal();
+                                                var ad = ops.GetProperty("Ad").GetString() ?? "";
+                                                var ekFiyat = ops.GetProperty("EkFiyat").GetDecimal();
                                                 opsList.Add(ekFiyat > 0 ? $"{ad} (+{ekFiyat:N2} TL)" : ad);
                                             }
                                             @string.Join(", ", opsList)
