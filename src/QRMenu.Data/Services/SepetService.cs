@@ -96,19 +96,16 @@ namespace QRMenu.Data.Services
             }
 
             // Toplam tutarı bellek üzerinde güncelle (DB'ye ekstra gitmeden)
+            // EF Core "Relationship Fix-up" sayesinde Include ile gelen listede yeni eklenen ürün zaten bulunur.
             var sepet = await _context.Sepetler
                 .Include(s => s.SepetDetaylar)
                 .FirstOrDefaultAsync(s => s.Id == sepetId);
 
             if (sepet != null)
             {
-                if (mevcutDetay.Id == 0) // Eğer yeni eklendiyse (veritabanına henüz yansımamış olabilir)
-                    sepet.SepetDetaylar.Add(mevcutDetay);
-
                 sepet.ToplamTutar = sepet.SepetDetaylar.Sum(sd => sd.BirimFiyat * sd.Adet);
             }
 
-            // TEK BİR DB Gidişi
             await _context.SaveChangesAsync();
             return mevcutDetay;
         }
