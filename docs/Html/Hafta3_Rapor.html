@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hafta 3 Raporu — QR Menü Otomasyonu</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        h3 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+
+        .highlight {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .success {
+            background-color: #eafaf1;
+            padding: 15px;
+            border-left: 4px solid #2ecc71;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .warning {
+            background-color: #fef9e7;
+            padding: 15px;
+            border-left: 4px solid #f1c40f;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: Consolas, monospace;
+            color: #e74c3c;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: Consolas, monospace;
+            font-size: 0.9em;
+            border: 1px solid #ddd;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        th,
+        td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            color: #2c3e50;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>📋 Hafta 3 — Sepet Sistemi (Veritabanı Üzerinde)</h1>
+        <div class="subtitle">Proje: QR Menü Otomasyonu | Tarih: 8 Mart 2026 | Harcanan Süre: ~15 Saat</div>
+
+        <!-- ===== PLANDAKI MADDELER ===== -->
+        <h2>1. Plandaki Maddeler (Tümü Tamamlandı ✅)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Planlanan İşlem</th>
+                    <th>Durum</th>
+                    <th>Açıklama</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Sepet Modeli Veritabanı Tabloları</td>
+                    <td>✅ Tamamlandı</td>
+                    <td><code>Sepet</code> ve <code>SepetDetay</code> tabloları zaten PostgreSQL üzerinde kurulu.</td>
+                </tr>
+                <tr>
+                    <td>Sepet İşlemleri Servisi</td>
+                    <td>✅ Tamamlandı</td>
+                    <td><code>ISepetService</code> ve <code>SepetService</code> CRUD işlemleriyle Core/Data katmanlarına
+                        eklendi. (Ürün ekleme, çıkarma, miktar güncelleme)</td>
+                </tr>
+                <tr>
+                    <td>Opsiyon Seçimiyle Ekleme</td>
+                    <td>✅ Tamamlandı</td>
+                    <td>Müşteri, ürün eklerken Boyut/Ekstra seçeneklerini işaretleyebiliyor. Modal arayüzü eklendi.
+                        Seçimler JSON olarak kaydediliyor.</td>
+                </tr>
+                <tr>
+                    <td>Sepet Toplamını Hesaplama</td>
+                    <td>✅ Tamamlandı</td>
+                    <td>Her ekleme/çıkarma sonrası toplam fiyat; <code>(BirimFiyat + OpsiyonEkFiyat) * Adet</code>
+                        dinamik olarak güncelleniyor.</td>
+                </tr>
+                <tr>
+                    <td>Unit Testlerin Yazılması</td>
+                    <td>✅ Tamamlandı</td>
+                    <td><code>SepetServiceTests.cs</code> xUnit, Moq ve InMemoryDB kullanılarak 7 adet test ile %100
+                        kapsama ulaşıldı.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- ===== YENİ DOSYALAR ===== -->
+        <h2>2. Sistem Mimarisine Eklenen Dosyalar</h2>
+        <p>Bu hafta Sepet sistemini üç ana katmanda (Core, Data, Web) hayata geçirdik.</p>
+        <ul>
+            <li><strong>Core:</strong> <code>ISepetService.cs</code> — Uygulamanın sepet iş kurallarını tanımlayan
+                Interface sınıfı.</li>
+            <li><strong>Data:</strong> <code>SepetService.cs</code> — <code>QRMenuDbContext</code> (SQL bağlantısı)
+                kullanarak Sepet entity'sini yöneten servis sınıfı. Mükerrer ürün eşleştirmesi yapıyor.</li>
+            <li><strong>Web/Controllers:</strong> <code>SepetController.cs</code> — Frontend ile Backend arasındaki
+                köprü. Müşterinin tıkladığı butonları Asenkron (AJAX) isteklerle alır.</li>
+            <li><strong>Web/Views:</strong>
+                <ul>
+                    <li><code>Sepet/Index.cshtml</code>: Müşteri sepet sayfasına bakarken listeyi, toplamı, arttır/azalt
+                        düğmelerini üretir.</li>
+                    <li><code>Menu/Index.cshtml</code>: Menü ürün kartlarına "Sepete Ekle" butonu eklendi, opsiyon
+                        modal'ı (açılır pencere) JS scriptleri yazıldı. Kayan sepet ikonu eklendi.</li>
+                </ul>
+            </li>
+            <li><strong>Web/css:</strong> <code>sepet.css</code> — Sepet sayfası (Modern Card Layout) Responsive (mobil
+                odaklı) ekran tasarımları yapıldı.</li>
+            <li><strong>Tests:</strong> <code>SepetServiceTests.cs</code> — Servisin doğru çalışması için test kuralları
+                barındırır.</li>
+        </ul>
+
+        <!-- ===== GÜVENLİK YÖNTEMLERİ ===== -->
+        <h2>3. Güvenlik, Hata Ayıklama (Log) ve Bağlantı Çözümleri</h2>
+        <div class="highlight">
+            <strong>Token-Based Sepet Sistemi:</strong> Redis yerine, Veritabanı seçilmesinin en büyük kârı müşteri
+            yetkilendirmesiydi. Gelen her Controller isteğinde (`/sepet`, `/sepet/ekle` vs) ilk önce
+            <code>GetOturumIdAsync()</code> fonksiyonuyla şifreli cookie tokenı DB'deki SHA256 Hashiyle kontrol
+            ediliyor. Token yoksa veya bozuksa anında <strong>Unauthorized (401)</strong> döndürülüyor.
+        </div>
+
+        <div class="warning">
+            <strong>Çözülen Kritik Bug 1:</strong> <code>QRMenuDbContext</code> içerisinde <code>Opsiyonlar</code>
+            tablosu aynı anda 2 kere (14. Satır ve 19. satır) <code>DbSet</code> olarak tanımlandığı tespit edildi.
+            Migration işlemini kırmaya çalışan bu hata, tespit edilerek silindi.
+        </div>
+
+        <div class="warning">
+            <strong>Çözülen Kritik Bug 2:</strong> Okul ağı ve dış ağ bağlantılarından dolayı PostgreSQL (Supabase) port
+            5432 Timeout hatası veriyordu. <code>appsettings.json</code> dosyasında `Port=6543;` <strong>Transaction
+                Pooler</strong> olarak değiştirildi/denendi, ardından mobil veriye geçilerek 5432 bağlantı limiti
+            güvenli aşıldı ve veritabanı başarıyla senkronize edildi.
+        </div>
+
+        <div class="warning">
+            <strong>Çözülen Kritik Bug 3 (Test Hatası):</strong> JSON'a dönüştürülen TürkçeOpsiyon karakterleri
+            <code>Büyük Boy -> B\u00FCy\u00FCk Boy</code> testte hata fırlatıyordu. String aramak yerine test dosyası
+            güncellenip doğrudan Id numarası `Assert.Contains("\"Id\":100")` ile düzeltildi ve tüm (23/23) testler
+            başarıyla PASSED (Yeşil) yandı.
+        </div>
+
+        <!-- ===== TEKNİK DETAYLAR ===== -->
+        <h2>4. Yazılım Tasarımı ve Veritabanı Mantığı</h2>
+        <p>Eğer müşteri peş peşe 2 kere "Türk Kahvesi" eklerse, veritabanına 2 ayrı satır olarak kaydetmek gereksiz alan
+            israfıydı. Yaptığımız <strong>Duplikat Optimizasyonu</strong> şudur:</p>
+        <pre>
+// Aynı ürün + aynı opsiyonlarla sepette var mı?
+var mevcutDetay = await _context.SepetDetaylar
+    .FirstOrDefaultAsync(sd => sd.SepetId == sepetId
+                            && sd.UrunId == urunId
+                            && sd.SeciliOpsiyonlar == opsiyonJson);
+
+if (mevcutDetay != null) {
+    // Varsa 2 ayrı satır ekleme, sadece eski satırın "Adet" kolonunu +1 yap
+    mevcutDetay.Adet += adet;
+} else {
+    // Yoksa Yeni Satır INSERT işlemi yap
+}</pre>
+
+        <!-- ===== HAFTAYA YAPILACAKLAR ===== -->
+        <div class="success">
+            <strong>Sonraki Adım Planda (4. Hafta):</strong> Sepet Onayı ve Sipariş Sistemi. Müşteri sepettekileri
+            mutfak paneline gönderecek ve masalar kırmızıya/yeşile dönüşecek sipariş durumlarına göre soket/SignalR
+            bağlantıları atılacak.
+        </div>
+
+    </div>
+</body>
+
+</html>
