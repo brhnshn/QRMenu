@@ -85,13 +85,39 @@ namespace QRMenu.Web.Middleware
 
             if (isAjax)
             {
-                context.Response.ContentType = "application/json";
+                context.Response.ContentType = "application/json; charset=utf-8";
                 await context.Response.WriteAsync(
                     System.Text.Json.JsonSerializer.Serialize(new { success = false, message }));
             }
             else
             {
-                await context.Response.WriteAsync(message);
+                context.Response.ContentType = "text/html; charset=utf-8";
+                var html = $@"<!DOCTYPE html>
+<html lang=""tr"">
+<head>
+    <meta charset=""utf-8"">
+    <meta name=""viewport"" content=""width=device-width,initial-scale=1"">
+    <title>QR Menü — Oturum Gerekli</title>
+    <style>
+        *{{margin:0;padding:0;box-sizing:border-box}}
+        body{{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center}}
+        .card{{background:rgba(255,255,255,.07);backdrop-filter:blur(12px);border-radius:20px;padding:48px 36px;text-align:center;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3)}}
+        .icon{{font-size:4rem;margin-bottom:16px}}
+        h1{{font-size:1.4rem;margin-bottom:12px;color:#f9e2af}}
+        p{{font-size:.95rem;color:#cdd6f4;line-height:1.6;margin-bottom:24px}}
+        .badge{{display:inline-block;background:#e67e22;color:#fff;padding:8px 24px;border-radius:8px;font-weight:600;font-size:.9rem;text-decoration:none}}
+    </style>
+</head>
+<body>
+    <div class=""card"">
+        <div class=""icon"">📱</div>
+        <h1>{System.Net.WebUtility.HtmlEncode(message)}</h1>
+        <p>Sipariş verebilmek için masanızdaki QR kodu telefonunuzla okutun.</p>
+        <span class=""badge"">QR Kodu Okutun</span>
+    </div>
+</body>
+</html>";
+                await context.Response.WriteAsync(html);
             }
         }
     }
