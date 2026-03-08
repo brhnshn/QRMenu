@@ -24,7 +24,7 @@
         <h1>☕ QR MENÜ</h1>
         @if (Context.Items.ContainsKey("MasaId"))
         {
-            <div class="masa-badge">📍 Masa @Context.Items["MasaId"]</div>
+                <div class="masa-badge">📍 Masa @Context.Items["MasaId"]</div>
         }
     </div>
 
@@ -33,7 +33,7 @@
         <a href="#all" class="category-tab active" onclick="filterCategory('all', this)">Tümü</a>
         @foreach (var kategori in kategoriler)
         {
-            <a href="#cat-@kategori.Id" class="category-tab" onclick="filterCategory('@kategori.Id', this)">@kategori.Ad</a>
+                <a href="#cat-@kategori.Id" class="category-tab" onclick="filterCategory('@kategori.Id', this)">@kategori.Ad</a>
         }
     </div>
 
@@ -42,36 +42,47 @@
         @foreach (var kategori in kategoriler)
         {
             var urunler = Model.Where(u => u.KategoriId == kategori.Id).ToList();
-            <div class="category-section" data-category="@kategori.Id">
-                <div class="category-title">@kategori.Ad</div>
+                <div class="category-section" data-category="@kategori.Id">
+                    <div class="category-title">@kategori.Ad</div>
                 @foreach (var urun in urunler)
                 {
-                    <div class="product-card @(urun.AktifMi ? "" : "soldout")">
-                        <div class="product-info">
-                            <div class="product-name">@urun.Ad</div>
-                            <div class="product-desc">@urun.Aciklama</div>
-                            <div class="product-badges">
+                            <div class="product-card @(urun.AktifMi ? "" : "soldout")">
+                                <div class="product-info">
+                                    <div class="product-name">@urun.Ad</div>
+                                    <div class="product-desc">@urun.Aciklama</div>
+                                    <div class="product-badges">
                                 @if (urun.PopulerMi)
                                 {
-                                    <span class="badge-popular">🔥 Popüler</span>
+                                                <span class="badge-popular">🔥 Popüler</span>
                                 }
                                 @if (!urun.AktifMi)
                                 {
-                                    <span class="badge-soldout">Tükendi</span>
+                                                <span class="badge-soldout">Tükendi</span>
                                 }
                                 @if (urun.UrunOpsiyonlar?.Any() == true)
                                 {
-                                    <span class="badge-option">⚙️ Seçenekli</span>
+                                                <span class="badge-option">⚙️ Seçenekli</span>
                                 }
+                                    </div>
+                                </div>
+                                <div class="product-bottom">
+                                    <div class="product-price">
+                                        <div class="price-value">@urun.Fiyat.ToString("N2")</div>
+                                        <div class="price-currency">TL</div>
+                                    </div>
+                            @if (urun.AktifMi)
+                            {
+                                var opsiyonList = urun.UrunOpsiyonlar?.Select(uo => new { id = uo.Opsiyon.Id, ad = uo.Opsiyon.Ad, grup = uo.Opsiyon.Grup, ekFiyat = uo.Opsiyon.EkFiyat }).ToList() ?? new();
+                                var opsiyonJson = System.Text.Json.JsonSerializer.Serialize(opsiyonList);
+                                            <button class="add-to-cart-btn" onclick="addToCartClick(@urun.Id, '@urun.Ad.Replace("'", "\\'")', @urun.Fiyat.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture), @opsiyonJson)">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                                                Ekle
+                                            </button>
+                            }
+                                </div>
                             </div>
-                        </div>
-                        <div class="product-price">
-                            <div class="price-value">@urun.Fiyat.ToString("N2")</div>
-                            <div class="price-currency">TL</div>
-                        </div>
-                    </div>
                 }
-            </div>
+                </div>
         }
     </div>
 
@@ -84,6 +95,39 @@
     <button class="call-waiter-btn" onclick="callWaiter()" title="Garson Çağır">
         🔔
     </button>
+
+    <!-- FLOATING CART BUTTON -->
+    <a href="/sepet" class="floating-cart-btn" id="floatingCartBtn" style="display: none;">
+        <div class="cart-icon-wrapper">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            <span class="cart-badge" id="cartBadge">0</span>
+        </div>
+        <div class="cart-total" id="cartTotal">0.00 TL</div>
+    </a>
+
+    <!-- OPSIYON MODAL -->
+    <div class="modal fade" id="optionsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-bg-dark">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title" id="optionsModalTitle">Ürün Seçenekleri</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+                <div class="modal-body" id="optionsModalBody">
+                    <!-- Dinamik opsiyonlar -->
+                </div>
+                <div class="modal-footer border-secondary justify-content-between">
+                    <div class="modal-price">
+                        Toplam: <span id="modalTotalPrice">0.00</span> TL
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="submitOptionsForm()">Sepete Ekle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOOTSTRAP JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
         function filterCategory(categoryId, element) {
@@ -102,6 +146,133 @@
         function callWaiter() {
             alert('🔔 Garson çağrıldı! Masa bilginiz iletildi.');
         }
+
+        // SEPET İŞLEMLERİ
+        let currentUrunId = 0;
+        let baseFiyat = 0;
+
+        function addToCartClick(urunId, urunAd, fiyat, opsiyonlar) {
+            if (!opsiyonlar || opsiyonlar.length === 0) {
+                postAddToCart(urunId, 1, []);
+                return;
+            }
+
+            currentUrunId = urunId;
+            baseFiyat = parseFloat(fiyat);
+            document.getElementById('optionsModalTitle').textContent = urunAd + ' Seçenekleri';
+
+            const body = document.getElementById('optionsModalBody');
+            body.innerHTML = '';
+
+            const gruplar = {};
+            opsiyonlar.forEach(o => {
+                if (!gruplar[o.grup]) gruplar[o.grup] = [];
+                gruplar[o.grup].push(o);
+            });
+
+            for (const [grupAdi, opsList] of Object.entries(gruplar)) {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'mb-3';
+                groupDiv.innerHTML = `<h6 class="mb-2 text-warning">${grupAdi}</h6>`;
+
+                opsList.forEach(ops => {
+                    const id = 'ops_' + ops.id;
+                    const ekFiyatStr = ops.ekFiyat > 0 ? ` (+${ops.ekFiyat.toFixed(2)} TL)` : '';
+                    // Grup adında "ekstra" veya "çoklu" geçiyorsa checkbox, yoksa radio
+                    const isMulti = grupAdi.toLowerCase().includes('ekstra') || grupAdi.toLowerCase().includes('çoklu');
+                    const inputType = isMulti ? 'checkbox' : 'radio';
+                    const nameAttr = isMulti ? id : 'grup_' + grupAdi.replace(/\\s+/g, '');
+
+                    groupDiv.innerHTML += \`
+                        <div class="form-check">
+                            <input class="form-check-input option-input" type="\${inputType}" name="\${nameAttr}" id="\${id}" value="\${ops.id}" data-price="\${ops.ekFiyat}" onchange="updateModalPrice()">
+                            <label class="form-check-label w-100 d-flex justify-content-between" for="\${id}">
+                                <span>\${ops.ad}</span>
+                                <span class="text-muted">\${ekFiyatStr}</span>
+                            </label>
+                        </div>
+                    \`;
+                });
+                body.appendChild(groupDiv);
+            }
+
+            updateModalPrice();
+            const modal = new bootstrap.Modal(document.getElementById('optionsModal'));
+            modal.show();
+        }
+
+        function updateModalPrice() {
+            let toplam = baseFiyat;
+            document.querySelectorAll('.option-input:checked').forEach(input => {
+                toplam += parseFloat(input.dataset.price);
+            });
+            document.getElementById('modalTotalPrice').textContent = toplam.toFixed(2);
+        }
+
+        function submitOptionsForm() {
+            const selectedOps = [];
+            // "Ekstra" olmayan gruplarda en az bir seçim var mı kontrol edilebilir, basitlik için atlıyoruz
+            document.querySelectorAll('.option-input:checked').forEach(input => {
+                selectedOps.push(parseInt(input.value));
+            });
+
+            postAddToCart(currentUrunId, 1, selectedOps);
+
+            const modalElement = document.getElementById('optionsModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if(modal) modal.hide();
+        }
+
+        async function postAddToCart(urunId, adet, opsiyonIds) {
+            try {
+                const btn = event && event.target.tagName === 'BUTTON' ? event.target : null;
+                if(btn) btn.disabled = true;
+
+                const response = await fetch('/sepet/ekle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ UrunId: urunId, Adet: adet, OpsiyonIds: opsiyonIds })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    updateCartBadge(data.urunSayisi, data.toplamTutar);
+
+                    // Küçük bir Toast eklenebilir
+                    alert('Ürün sepete eklendi!');
+                } else {
+                    alert('Hata: ' + data.message);
+                }
+
+                if(btn) btn.disabled = false;
+            } catch (err) {
+                console.error(err);
+                alert('Bir hata oluştu.');
+            }
+        }
+
+        async function fetchCartBadge() {
+            try {
+                const response = await fetch('/sepet/bilgi');
+                const data = await response.json();
+                updateCartBadge(data.urunSayisi, data.toplamTutar);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function updateCartBadge(count, total) {
+            const btn = document.getElementById('floatingCartBtn');
+            if (count > 0) {
+                btn.style.display = 'flex';
+                document.getElementById('cartBadge').textContent = count;
+                document.getElementById('cartTotal').textContent = parseFloat(total).toFixed(2) + ' TL';
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchCartBadge);
     </script>
 
 </body>

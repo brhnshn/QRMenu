@@ -1,0 +1,150 @@
+@model QRMenu.Core.Entities.Sepet
+@{
+    ViewData["Title"] = "Sepetim";
+    Layout = null; // Mobil görünüm odaklı
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sepetim - QR Menü</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="~/css/sepet.css" rel="stylesheet" />
+</head>
+<body>
+
+    <!-- HEADER -->
+    <div class="sepet-header">
+        <a href="/Menu/Index" class="back-btn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+        </a>
+        <h1>🛒 Sepetim</h1>
+        <div style="width: 36px;"></div> <!-- Ortalamak için boş div -->
+    </div>
+
+    <!-- SEPET İÇERİĞİ -->
+    <div class="sepet-container">
+        @if (Model == null || !Model.SepetDetaylar.Any())
+        {
+            <div class="empty-cart">
+                <div class="empty-icon">🛒</div>
+                <h3>Sepetiniz Boş</h3>
+                <p class="text-muted">Menüden lezzetli ürünler eklemeye başlayabilirsiniz.</p>
+                <a href="/Menu/Index" class="btn btn-primary mt-3 radius-30 px-4 py-2">Menüye Dön</a>
+            </div>
+        }
+        else
+        {
+            <div class="cart-items">
+                @foreach (var detay in Model.SepetDetaylar)
+                {
+                    <div class="cart-item" id="item-@detay.Id">
+                        <div class="item-info">
+                            <div class="item-name">@detay.Urun.Ad</div>
+                            @if (!string.IsNullOrEmpty(detay.SeciliOpsiyonlar) && detay.SeciliOpsiyonlar != "[]")
+                            {
+                                <div class="item-options text-muted small mt-1">
+                                    @{
+                                        try {
+                                            var opsJson = System.Text.Json.JsonDocument.Parse(detay.SeciliOpsiyonlar);
+                                            var opsList = new List<string>();
+                                            foreach(var ops in opsJson.RootElement.EnumerateArray()) {
+                                                var ad = ops.GetProperty("ad").GetString();
+                                                var ekFiyat = ops.GetProperty("ekFiyat").GetDecimal();
+                                                opsList.Add(ekFiyat > 0 ? $"{ad} (+{ekFiyat:N2} TL)" : ad);
+                                            }
+                                            @string.Join(", ", opsList)
+                                        } catch { }
+                                    }
+                                </div>
+                            }
+                            <div class="item-price mt-2">@detay.BirimFiyat.ToString("N2") TL</div>
+                        </div>
+
+                        <div class="item-actions">
+                            <div class="qty-control group">
+                                <button class="qty-btn minus" onclick="updateQuantity(@detay.Id, @(detay.Adet - 1))">-</button>
+                                <span class="qty-val">@detay.Adet</span>
+                                <button class="qty-btn plus" onclick="updateQuantity(@detay.Id, @(detay.Adet + 1))">+</button>
+                            </div>
+                            <button class="remove-btn group" onclick="removeItem(@detay.Id)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- SİPARİŞ ÖZETİ -->
+            <div class="cart-summary">
+                <div class="summary-row total">
+                    <span>Toplam Tutar:</span>
+                    <span id="cartTotalSum">@Model.ToplamTutar.ToString("N2") TL</span>
+                </div>
+                
+                <div class="summary-actions mt-4">
+                    <button class="btn btn-outline-danger w-100 mb-3 radius-30 py-2 fw-semibold" onclick="clearCart()">Sepeti Temizle</button>
+                    <!-- Hafta 4'te aktif edilecek -->
+                    <button class="btn btn-success w-100 radius-30 py-3 fw-bold fs-5" id="completeOrderBtn" disabled>Siparişi Gönder (Yakında)</button>
+                </div>
+            </div>
+        }
+    </div>
+
+    <script>
+        async function updateQuantity(detayId, newAdet) {
+            if (newAdet < 1) {
+                if(confirm("Ürünü sepetten çıkarmak istiyor musunuz?")) {
+                    removeItem(detayId);
+                }
+                return;
+            }
+
+            try {
+                const res = await fetch(`/sepet/guncelle/${detayId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Adet: newAdet })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    location.reload(); 
+                } else {
+                    alert(data.message);
+                }
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        async function removeItem(detayId) {
+            try {
+                const res = await fetch(`/sepet/cikar/${detayId}`, { method: 'POST' });
+                const data = await res.json();
+                if(data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function clearCart() {
+            if(!confirm("Sepetteki tüm ürünler silinecek. Emin misiniz?")) return;
+            
+            try {
+                const res = await fetch('/sepet/temizle', { method: 'POST' });
+                const data = await res.json();
+                if(data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            } catch(e) { console.error(e); }
+        }
+    </script>
+</body>
+</html>

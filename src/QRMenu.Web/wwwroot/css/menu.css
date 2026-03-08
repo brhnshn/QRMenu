@@ -227,3 +227,108 @@ body {
     transform: scale(1.1);
     box-shadow: 0 6px 25px rgba(230, 126, 34, 0.6);
 }
+
+/* ===== SEPETE EKLE BUTONU ===== */
+.product-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.add-to-cart-btn {
+    background: rgba(230, 126, 34, 0.1);
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.add-to-cart-btn:hover {
+    background: var(--primary);
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+.add-to-cart-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ===== FLOATING CART BUTONU ===== */
+.floating-cart-btn {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    color: #fff;
+    border: none;
+    border-radius: 30px;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+    transition: all 0.3s ease;
+    z-index: 200;
+}
+
+.floating-cart-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(39, 174, 96, 0.6);
+    color: #fff;
+}
+
+.cart-icon-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.cart-badge {
+    position: absolute;
+    top: -8px;
+    right: -10px;
+    background: var(--danger);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 10px;
+    border: 2px solid #27ae60;
+}
+
+.cart-total {
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+/* ===== MODAL ===== */
+.modal-content.text-bg-dark {
+    background-color: var(--card-bg) !important;
+    border: 1px solid var(--card-border);
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--card-border) !important;
+}
+
+.modal-price {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.form-check-label {
+    cursor: pointer;
+}
