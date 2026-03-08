@@ -194,7 +194,7 @@
 │
 └── <span class="folder">tests/</span>
     └── <span class="folder">QRMenu.Tests/</span>
-        └── <span class="file">SepetServiceTests.cs</span>   <span class="comment">← +7 yeni unit test (Toplam: 23)</span>
+        └── <span class="file">SepetServiceTests.cs</span>   <span class="comment">← +15 yeni unit test (Toplam: 31)</span>
 </pre>
 
         <!-- ===== 2. PLANLANAN VS GERÇEKLEŞEN ===== -->
@@ -305,10 +305,18 @@
                 <td>Log dosyalarına her yazıldığında projenin kendini resetlemesi <code>.csproj</code>'da Logs klasörü
                     exclude edilerek çözüldü.</td>
             </tr>
+            <tr>
+                <td>JSON PascalCase Uyumsuzluğu (Sepet Görünümleri)</td>
+                <td>Frontend / Backend</td>
+                <td>Veritabanında saklanan opsiyon JSON'ı PascalCase (<code>"Ad"</code>, <code>"EkFiyat"</code>) iken,
+                    <code>Menu/Index.cshtml</code> (offcanvas sepet) ve <code>Sepet/Index.cshtml</code> sayfalarında
+                    camelCase (<code>"ad"</code>, <code>"ekFiyat"</code>) okunuyordu. Her iki view PascalCase'e
+                    düzeltildi + null reference uyarısı giderildi.</td>
+            </tr>
         </table>
 
         <!-- ===== 6. TEST SONUÇLARI ===== -->
-        <h2>6. Test ve Doğrulama (23/23 PASSED)</h2>
+        <h2>6. Test ve Doğrulama (31/31 PASSED)</h2>
         <table>
             <tr>
                 <th>Test Grubu</th>
@@ -317,24 +325,44 @@
             </tr>
             <tr>
                 <td>Ürün Servisi Testleri (Hafta 1)</td>
-                <td>8</td>
+                <td>7</td>
                 <td><span class="badge badge-ok">✅ Geçti</span></td>
             </tr>
             <tr>
                 <td>Token/Oturum Testleri (Hafta 2)</td>
-                <td>8</td>
+                <td>9</td>
                 <td><span class="badge badge-ok">✅ Geçti</span></td>
             </tr>
             <tr>
                 <td><strong>Sepet ve Hesaplama Testleri (Hafta 3)</strong></td>
-                <td><strong>7</strong></td>
+                <td><strong>15</strong></td>
                 <td><span class="badge badge-ok">✅ Geçti</span></td>
             </tr>
         </table>
 
+        <h3>6.1 Sepet Testleri Detayı (15 Test)</h3>
+        <table>
+            <tr><th>#</th><th>Test</th><th>Sonuç</th></tr>
+            <tr><td>1</td><td>GetOrCreate — yeni sepet oluşturma</td><td><span class="badge badge-ok">✅</span></td></tr>
+            <tr><td>2</td><td>GetOrCreate — mevcut sepeti döndürme</td><td><span class="badge badge-ok">✅</span></td></tr>
+            <tr><td>3</td><td>AddItem — yeni ürün ekleme + toplam</td><td><span class="badge badge-ok">✅</span></td></tr>
+            <tr><td>4</td><td>AddItem — aynı ürünü tekrar ekleme (adet artışı)</td><td><span class="badge badge-ok">✅</span></td></tr>
+            <tr><td>5</td><td>AddItem — opsiyonlu ürün + fiyat hesaplama</td><td><span class="badge badge-ok">✅</span></td></tr>
+            <tr><td>6</td><td>AddItem — olmayan ürün ➜ hata fırlatma</td><td><span class="badge badge-ok">✅</span></td></tr>
+            <tr><td>7</td><td>AddItem — pasif ürün ➜ hata fırlatma</td><td><span class="badge badge-ok">✅</span></td></tr>
+            <tr><td>8</td><td>RemoveItem — ürün çıkarma + toplam güncelleme</td><td><span class="badge badge-ok">✅</span></td></tr>
+            <tr><td>9</td><td>RemoveItem — olmayan ID ➜ false döndürme</td><td><span class="badge badge-ok">✅</span></td></tr>
+            <tr><td>10</td><td>UpdateQuantity — adet güncelleme + toplam</td><td><span class="badge badge-ok">✅</span></td></tr>
+            <tr><td>11</td><td>UpdateQuantity — adet 0 ➜ ürünü silme</td><td><span class="badge badge-ok">✅</span></td></tr>
+            <tr><td>12</td><td>UpdateQuantity — negatif adet ➜ ürünü silme</td><td><span class="badge badge-ok">✅</span></td></tr>
+            <tr><td>13</td><td>UpdateQuantity — olmayan ID ➜ false döndürme</td><td><span class="badge badge-ok">✅</span></td></tr>
+            <tr><td>14</td><td>ClearSepet — tüm ürünleri temizleme</td><td><span class="badge badge-ok">✅</span></td></tr>
+            <tr><td>15</td><td>Çoklu ürün — toplam tutar doğrulama (3×Çay + 2×Kahve+Opsiyon)</td><td><span class="badge badge-ok">✅</span></td></tr>
+        </table>
+
         <pre>
 <span class="cmd">&gt; dotnet test tests\QRMenu.Tests\QRMenu.Tests.csproj</span>
-<span class="ok">Bașarılı! - Bașarısız: 0, Bașarılı: 23, Atlanan: 0, Toplam: 23 ✅</span>
+<span class="ok">Başarılı! - Başarısız: 0, Başarılı: 31, Atlanan: 0, Toplam: 31 ✅</span>
 </pre>
 
         <!-- ===== GELECEK HAFTA ===== -->

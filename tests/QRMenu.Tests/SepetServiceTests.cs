@@ -255,5 +255,94 @@ namespace QRMenu.Tests
             Assert.Empty(guncelSepet!.SepetDetaylar);
             Assert.Equal(0m, guncelSepet.ToplamTutar);
         }
+
+        // ===== EK EDGE-CASE TESTLERİ =====
+
+        [Fact]
+        public async Task AddItemAsync_Should_Throw_For_NonExistent_Product()
+        {
+            // Arrange
+            var context = CreateInMemoryContext();
+            await SeedDataAsync(context);
+            var loggerMock = new Mock<ILogger<SepetService>>();
+            var service = new SepetService(context, loggerMock.Object);
+
+            var sepet = await service.GetOrCreateSepetAsync(100);
+
+            // Act & Assert — olmayan ürün eklenmeye çalışılırsa hata fırlatmalı
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.AddItemAsync(sepet.Id, 99999, 1));
+        }
+
+        [Fact]
+        public async Task AddItemAsync_Should_Throw_For_Inactive_Product()
+        {
+            // Arrange
+            var context = CreateInMemoryContext();
+            await SeedDataAsync(context);
+            var loggerMock = new Mock<ILogger<SepetService>>();
+            var service = new SepetService(context, loggerMock.Object);
+
+            // Pasif ürün ekle
+            context.Urunler.Add(new Urun { Id = 200, KategoriId = 100, Ad = "Pasif Ürün", Fiyat = 30m, AktifMi = false });
+            await context.SaveChangesAsync();
+
+            var sepet = await service.GetOrCreateSepetAsync(100);
+
+            // Act & Assert — pasif ürün eklenmeye çalışılırsa hata fırlatmalı
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.AddItemAsync(sepet.Id, 200, 1));
+        }
+
+        [Fact]
+        public async Task RemoveItemAsync_Should_Return_False_For_NonExistent_Id()
+        {
+            // Arrange
+            var context = CreateInMemoryContext();
+            var loggerMock = new Mock<ILogger<SepetService>>();
+            var service = new SepetService(context, loggerMock.Object);
+
+            // Act — olmayan bir detayId ile silme
+            var result = await service.RemoveItemAsync(99999);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task UpdateQuantityAsync_Should_Return_False_For_NonExistent_Id()
+        {
+            // Arrange
+            var context = CreateInMemoryContext();
+            var loggerMock = new Mock<ILogger<SepetService>>();
+            var service = new SepetService(context, loggerMock.Object);
+
+            // Act — olmayan bir detayId ile güncelleme
+            var result = await service.UpdateQuantityAsync(99999, 5);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task AddMultipleProducts_Should_Calculate_Total_Correctly()
+        {
+            // Arrange
+            var context = CreateInMemoryContext();
+            await SeedDataAsync(context);
+            var loggerMock = new Mock<ILogger<SepetService>>();
+            var service = new SepetService(context, loggerMock.Object);
+
+            var sepet = await service.GetOrCreateSepetAsync(100);
+
+            // Act — 3 Çay (20₺) + 2 Kahve (50₺) + Büyük Boy (20₺) = 60 + 140 = 200₺
+            await service.AddItemAsync(sepet.Id, 100, 3);              // 3 × 20 = 60₺
+            await service.AddItemAsync(sepet.Id, 101, 2, new List<int> { 100 }); // 2 × (50+20) = 140₺
+
+            // Assert
+            var guncelSepet = await service.GetSepetWithDetailsAsync(sepet.Id);
+            Assert.Equal(2, guncelSepet!.SepetDetaylar.Count);
+            Assert.Equal(200m, guncelSepet.ToplamTutar);
+        }
     }
 }
