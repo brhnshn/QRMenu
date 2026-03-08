@@ -156,6 +156,38 @@ namespace QRMenu.Web.Controllers
                 urunSayisi = sepet?.SepetDetaylar.Sum(sd => sd.Adet) ?? 0
             });
         }
+
+        /// <summary>
+        /// Offcanvas sepet içeriğini yüklemek için JSON datası döndürür.
+        /// </summary>
+        [HttpGet("/sepet/detay-json")]
+        public async Task<IActionResult> DetayJson()
+        {
+            var oturumId = await GetOturumIdAsync();
+            if (oturumId == null) return Json(new { success = false });
+
+            var sepet = await _sepetService.GetSepetByOturumAsync(oturumId.Value);
+            if (sepet == null || !sepet.SepetDetaylar.Any())
+                return Json(new { success = true, toplamTutar = 0, urunSayisi = 0, items = new object[0] });
+
+            var sepetWithDetails = await _sepetService.GetSepetWithDetailsAsync(sepet.Id);
+            if (sepetWithDetails == null) return Json(new { success = false });
+
+            return Json(new
+            {
+                success = true,
+                toplamTutar = sepetWithDetails.ToplamTutar,
+                urunSayisi = sepetWithDetails.SepetDetaylar.Sum(sd => sd.Adet),
+                items = sepetWithDetails.SepetDetaylar.OrderBy(sd => sd.Id).Select(sd => new
+                {
+                    detayId = sd.Id,
+                    urunAd = sd.Urun.Ad,
+                    adet = sd.Adet,
+                    birimFiyat = sd.BirimFiyat,
+                    opsiyonlar = sd.SeciliOpsiyonlar
+                })
+            });
+        }
     }
 
     // ===== Request DTO'lar =====

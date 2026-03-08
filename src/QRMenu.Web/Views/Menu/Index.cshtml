@@ -1,4 +1,4 @@
-@model List<QRMenu.Core.Entities.Urun>
+﻿@model List<QRMenu.Core.Entities.Urun>
 @{
     ViewData["Title"] = "Menü";
     Layout = null;
@@ -7,147 +7,178 @@
 
 <!DOCTYPE html>
 <html lang="tr">
-
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>QR Menü</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link href="~/css/menu.css" rel="stylesheet" />
 </head>
+<body class="bg-light">
 
-<body>
+    <!-- 1. HEADER -->
+    <header class="menu-header">
+        <div class="header-left">
+            <div class="logo-area">
+                <span class="logo-icon"></span>
+                <span class="logo-text">Kafe Menu</span>
+            </div>
+            @if (Context.Items.ContainsKey("MasaId"))
+            {
+                <div class="table-badge">Masa @Context.Items["MasaId"]</div>
+            }
+        </div>
+        <div class="header-right">
+            <div class="lang-switch">TR</div>
+        </div>
+    </header>
 
-    <!-- HEADER -->
-    <div class="menu-header">
-        <h1>☕ QR MENÜ</h1>
-        @if (Context.Items.ContainsKey("MasaId"))
-        {
-                <div class="masa-badge">📍 Masa @Context.Items["MasaId"]</div>
-        }
+    <!-- 2. KATEGORİ BUTONU (Sticky) -->
+    <div class="category-trigger-area">
+        <button class="btn-categories" type="button" data-bs-toggle="offcanvas" data-bs-target="#categoriesOffcanvas">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+            <span class="ms-2 fw-semibold">Kategoriler</span>
+        </button>
     </div>
 
-    <!-- KATEGORİ TABLARI -->
-    <div class="category-tabs">
-        <a href="#all" class="category-tab active" onclick="filterCategory('all', this)">Tümü</a>
-        @foreach (var kategori in kategoriler)
-        {
-                <a href="#cat-@kategori.Id" class="category-tab" onclick="filterCategory('@kategori.Id', this)">@kategori.Ad</a>
-        }
+    <!-- KATEGORİ OFFCANVAS -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="categoriesOffcanvas">
+        <div class="offcanvas-header border-bottom">
+            <h5 class="offcanvas-title fw-bold">Menü İçeriği</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body p-0">
+            <div class="list-group list-group-flush">
+                @foreach (var cat in kategoriler)
+                {
+                    <a href="#cat-@cat.Id" class="list-group-item list-group-item-action py-3 fw-medium" onclick="closeCategories()">
+                        @cat.Ad
+                    </a>
+                }
+            </div>
+        </div>
     </div>
 
-    <!-- ÜRÜN LİSTESİ -->
-    <div class="products-container">
+    <!-- 3. ÜRÜN LİSTESİ -->
+    <div class="menu-content pb-5 mb-5">
         @foreach (var kategori in kategoriler)
         {
             var urunler = Model.Where(u => u.KategoriId == kategori.Id).ToList();
-                <div class="category-section" data-category="@kategori.Id">
-                    <div class="category-title">@kategori.Ad</div>
-                @foreach (var urun in urunler)
-                {
-                            <div class="product-card @(urun.AktifMi ? "" : "soldout")">
-                                <div class="product-info">
-                                    <div class="product-name">@urun.Ad</div>
-                                    <div class="product-desc">@urun.Aciklama</div>
-                                    <div class="product-badges">
+            if(!urunler.Any()) continue;
+
+            <div class="category-section" id="cat-@kategori.Id">
+                <h2 class="category-title">@kategori.Ad</h2>
+                <div class="products-grid">
+                    @foreach (var urun in urunler)
+                    {
+                        var isSoldOut = !urun.AktifMi;
+                        <div class="product-card-horizontal @(isSoldOut ? "soldout" : "")">
+                            <div class="product-img-wrapper">
                                 @if (urun.PopulerMi)
                                 {
-                                                <span class="badge-popular">🔥 Popüler</span>
+                                    <span class="badge-populer"> Popüler</span>
                                 }
-                                @if (!urun.AktifMi)
-                                {
-                                                <span class="badge-soldout">Tükendi</span>
-                                }
-                                @if (urun.UrunOpsiyonlar?.Any() == true)
-                                {
-                                                <span class="badge-option">⚙️ Seçenekli</span>
-                                }
-                                    </div>
-                                </div>
-                                <div class="product-bottom">
-                                    <div class="product-price">
-                                        <div class="price-value">@urun.Fiyat.ToString("N2")</div>
-                                        <div class="price-currency">TL</div>
-                                    </div>
-                            @if (urun.AktifMi)
-                            {
-                                var opsiyonList = urun.UrunOpsiyonlar?.Select(uo => new { id = uo.Opsiyon.Id, ad = uo.Opsiyon.Ad, grup = uo.Opsiyon.Grup, ekFiyat = uo.Opsiyon.EkFiyat }).ToList() ?? new();
-                                var opsiyonJson = System.Text.Json.JsonSerializer.Serialize(opsiyonList);
-                                            <button class="add-to-cart-btn" onclick="addToCartClick(@urun.Id, '@urun.Ad.Replace("'", "\\'")', @urun.Fiyat.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture), @opsiyonJson)">
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                                                Ekle
-                                            </button>
-                            }
+                                <!-- Placeholder görsel (gri tonlar) -->
+                                <div class="img-placeholder"></div>
+                            </div>
+                            <div class="product-details">
+                                <h3 class="p-title">@urun.Ad</h3>
+                                <p class="p-desc">@urun.Aciklama</p>
+                                <div class="p-bottom">
+                                    <span class="p-price">@urun.Fiyat.ToString("N2") TL</span>
+                                    @if (!isSoldOut)
+                                    {
+                                        var opsiyonList = urun.UrunOpsiyonlar?.Select(uo => new { id = uo.Opsiyon.Id, ad = uo.Opsiyon.Ad, grup = uo.Opsiyon.Grup, ekFiyat = uo.Opsiyon.EkFiyat }).ToList() ?? new();
+                                        var opsiyonJson = System.Text.Json.JsonSerializer.Serialize(opsiyonList);
+                                        <button class="btn-add-circle" onclick="addToCartClick(@urun.Id, '@urun.Ad.Replace("'", "\\'")', @urun.Fiyat.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture), @opsiyonJson)">
+                                            +
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-danger small fw-bold">Tükendi</span>
+                                    }
                                 </div>
                             </div>
-                }
+                        </div>
+                    }
                 </div>
+            </div>
         }
     </div>
 
-    <!-- FOOTER -->
-    <div class="menu-footer">
-        QR Menü Otomasyonu &copy; 2026
+    <!-- 4. YAPIŞKAN ALT BAR -->
+    <div class="sticky-bottom-bar" id="bottomBar" style="display: none;">
+        <button class="btn-waiter" onclick="callWaiter()">
+            <span class="fs-4 d-block lh-1"></span>
+            <span class="small fw-semibold mt-1">Garson</span>
+        </button>
+        <button class="btn-view-cart" type="button" data-bs-toggle="offcanvas" data-bs-target="#cartOffcanvas" onclick="fetchCartDetails()">
+            <div class="d-flex align-items-center justify-content-center">
+                <span class="fw-bold fs-5 me-2">Sepeti Gör</span>
+                <span class="fw-bold fs-5 opacity-75">(<span id="bottomTotal">0.00</span> TL)</span>
+            </div>
+        </button>
     </div>
 
-    <!-- GARSON ÇAĞIR BUTONU -->
-    <button class="call-waiter-btn" onclick="callWaiter()" title="Garson Çağır">
-        🔔
-    </button>
-
-    <!-- FLOATING CART BUTTON -->
-    <a href="/sepet" class="floating-cart-btn" id="floatingCartBtn" style="display: none;">
-        <div class="cart-icon-wrapper">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-            <span class="cart-badge" id="cartBadge">0</span>
+    <!-- SEPET OFFCANVAS (Sağdan kayan pencere) -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="cartOffcanvas">
+        <div class="offcanvas-header bg-white shadow-sm z-1">
+            <h5 class="offcanvas-title fw-bold">Sepetim</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
         </div>
-        <div class="cart-total" id="cartTotal">0.00 TL</div>
-    </a>
+        <div class="offcanvas-body bg-light p-3" id="cartContent">
+            <!-- JS ile doldurulacak -->
+            <div class="text-center text-muted mt-5">Yükleniyor...</div>
+        </div>
+        <div class="offcanvas-footer bg-white border-top p-3 shadow-lg">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="text-muted fw-semibold">Genel Toplam</span>
+                <span class="fs-4 fw-bold text-dark" id="cartOffcanvasTotal">0.00 TL</span>
+            </div>
+            <button class="btn btn-dark w-100 py-3 rounded-4 fs-5 fw-bold" disabled>Siparişi Gönder (Yakında)</button>
+        </div>
+    </div>
 
-    <!-- OPSIYON MODAL -->
+    <!-- OPSIYON MODALI -->
     <div class="modal fade" id="optionsModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content text-bg-dark">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title" id="optionsModalTitle">Ürün Seçenekleri</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content rounded-4 border-0">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold fs-4" id="optionsModalTitle">Ürün Seçenekleri</h5>
+                    <button type="button" class="btn-close bg-light rounded-circle p-2" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body" id="optionsModalBody">
-                    <!-- Dinamik opsiyonlar -->
+                <div class="modal-body pt-3" id="optionsModalBody">
+                    <!-- Dinamik -->
                 </div>
-                <div class="modal-footer border-secondary justify-content-between">
-                    <div class="modal-price">
-                        Toplam: <span id="modalTotalPrice">0.00</span> TL
-                    </div>
-                    <button type="button" class="btn btn-primary" onclick="submitOptionsForm()">Sepete Ekle</button>
+                <div class="modal-footer border-top-0 d-block px-3 pb-3">
+                    <button type="button" class="btn btn-dark w-100 py-3 rounded-4 fs-5 fw-bold d-flex justify-content-between align-items-center" onclick="submitOptionsForm()">
+                        <span>Sepete Ekle</span>
+                        <span id="modalTotalPrice" class="opacity-75">0.00 TL</span>
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- BOOTSTRAP JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
     <script>
-        function filterCategory(categoryId, element) {
-            document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
-            element.classList.add('active');
-
-            document.querySelectorAll('.category-section').forEach(section => {
-                if (categoryId === 'all') {
-                    section.style.display = 'block';
-                } else {
-                    section.style.display = section.dataset.category === categoryId ? 'block' : 'none';
-                }
-            });
+        // Kategori offcanvas kapatma hilesi
+        function closeCategories() {
+            var myOffcanvas = document.getElementById('categoriesOffcanvas');
+            var bsOffcanvas = bootstrap.Offcanvas.getInstance(myOffcanvas);
+            if(bsOffcanvas) bsOffcanvas.hide();
         }
 
         function callWaiter() {
-            alert('🔔 Garson çağrıldı! Masa bilginiz iletildi.');
+            alert(' Garson çağrısı yapıldı.');
         }
 
-        // SEPET İŞLEMLERİ
         let currentUrunId = 0;
         let baseFiyat = 0;
 
@@ -156,11 +187,10 @@
                 postAddToCart(urunId, 1, []);
                 return;
             }
-
+            // Opsiyonlu akış
             currentUrunId = urunId;
             baseFiyat = parseFloat(fiyat);
-            document.getElementById('optionsModalTitle').textContent = urunAd + ' Seçenekleri';
-
+            document.getElementById('optionsModalTitle').textContent = urunAd;
             const body = document.getElementById('optionsModalBody');
             body.innerHTML = '';
 
@@ -172,33 +202,32 @@
 
             for (const [grupAdi, opsList] of Object.entries(gruplar)) {
                 const groupDiv = document.createElement('div');
-                groupDiv.className = 'mb-3';
-                groupDiv.innerHTML = `<h6 class="mb-2 text-warning">${grupAdi}</h6>`;
+                groupDiv.className = 'mb-4';
+                groupDiv.innerHTML = `<h6 class="mb-3 fw-bold text-dark">${grupAdi}</h6>`;
 
                 opsList.forEach(ops => {
                     const id = 'ops_' + ops.id;
-                    const ekFiyatStr = ops.ekFiyat > 0 ? ` (+${ops.ekFiyat.toFixed(2)} TL)` : '';
-                    // Grup adında "ekstra" veya "çoklu" geçiyorsa checkbox, yoksa radio
                     const isMulti = grupAdi.toLowerCase().includes('ekstra') || grupAdi.toLowerCase().includes('çoklu');
                     const inputType = isMulti ? 'checkbox' : 'radio';
-                    const nameAttr = isMulti ? id : 'grup_' + grupAdi.replace(/\\s+/g, '');
+                    const nameAttr = isMulti ? id : 'grup_' + grupAdi.replace(/\s+/g, '');
+                    const ekFiyatStr = ops.ekFiyat > 0 ? `<span class="text-muted small">+${ops.ekFiyat.toFixed(2)} TL</span>` : '';
 
-                    groupDiv.innerHTML += \`
-                        <div class="form-check">
-                            <input class="form-check-input option-input" type="\${inputType}" name="\${nameAttr}" id="\${id}" value="\${ops.id}" data-price="\${ops.ekFiyat}" onchange="updateModalPrice()">
-                            <label class="form-check-label w-100 d-flex justify-content-between" for="\${id}">
-                                <span>\${ops.ad}</span>
-                                <span class="text-muted">\${ekFiyatStr}</span>
-                            </label>
-                        </div>
-                    \`;
+                    groupDiv.innerHTML += `
+                        <label class="form-check custom-option-check p-3 mb-2 rounded-3 border d-flex align-items-center position-relative w-100" style="cursor:pointer;" for="${id}">
+                            <div class="flex-grow-1">
+                                <span class="d-block fw-semibold">${ops.ad}</span>
+                                ${ekFiyatStr}
+                            </div>
+                            <div class="form-check-radio-wrap ms-2">
+                                <input class="form-check-input option-input m-0" type="${inputType}" name="${nameAttr}" id="${id}" value="${ops.id}" data-price="${ops.ekFiyat}" onchange="updateModalPrice()">
+                            </div>
+                        </label>
+                    `;
                 });
                 body.appendChild(groupDiv);
             }
-
             updateModalPrice();
-            const modal = new bootstrap.Modal(document.getElementById('optionsModal'));
-            modal.show();
+            new bootstrap.Modal(document.getElementById('optionsModal')).show();
         }
 
         function updateModalPrice() {
@@ -206,75 +235,143 @@
             document.querySelectorAll('.option-input:checked').forEach(input => {
                 toplam += parseFloat(input.dataset.price);
             });
-            document.getElementById('modalTotalPrice').textContent = toplam.toFixed(2);
+            document.getElementById('modalTotalPrice').textContent = toplam.toFixed(2) + ' TL';
         }
 
         function submitOptionsForm() {
             const selectedOps = [];
-            // "Ekstra" olmayan gruplarda en az bir seçim var mı kontrol edilebilir, basitlik için atlıyoruz
             document.querySelectorAll('.option-input:checked').forEach(input => {
                 selectedOps.push(parseInt(input.value));
             });
-
             postAddToCart(currentUrunId, 1, selectedOps);
-
-            const modalElement = document.getElementById('optionsModal');
-            const modal = bootstrap.Modal.getInstance(modalElement);
+            var modal = bootstrap.Modal.getInstance(document.getElementById('optionsModal'));
             if(modal) modal.hide();
         }
 
         async function postAddToCart(urunId, adet, opsiyonIds) {
             try {
-                const btn = event && event.target.tagName === 'BUTTON' ? event.target : null;
-                if(btn) btn.disabled = true;
-
                 const response = await fetch('/sepet/ekle', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ UrunId: urunId, Adet: adet, OpsiyonIds: opsiyonIds })
                 });
                 const data = await response.json();
-
                 if (data.success) {
-                    updateCartBadge(data.urunSayisi, data.toplamTutar);
-
-                    // Küçük bir Toast eklenebilir
-                    alert('Ürün sepete eklendi!');
+                    updateBottomBar(data.urunSayisi, data.toplamTutar);
+                    // Update offcanvas if it's open
+                    var offcanvasElement = document.getElementById('cartOffcanvas');
+                    if (offcanvasElement.classList.contains('show')) {
+                        fetchCartDetails();
+                    }
                 } else {
                     alert('Hata: ' + data.message);
                 }
-
-                if(btn) btn.disabled = false;
             } catch (err) {
                 console.error(err);
-                alert('Bir hata oluştu.');
             }
         }
 
-        async function fetchCartBadge() {
+        async function updateCartItem(detayId, adet) {
+            try {
+                const response = await fetch('/sepet/guncelle/' + detayId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Adet: adet })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    updateBottomBar(data.urunSayisi, data.toplamTutar);
+                    fetchCartDetails();
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function removeCartItem(detayId) {
+            try {
+                const response = await fetch('/sepet/cikar/' + detayId, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    updateBottomBar(data.urunSayisi, data.toplamTutar);
+                    fetchCartDetails();
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        function updateBottomBar(count, total) {
+            const bottomBar = document.getElementById('bottomBar');
+            if (count > 0) {
+                bottomBar.style.display = 'flex';
+                document.getElementById('bottomTotal').textContent = parseFloat(total).toFixed(2);
+            } else {
+                bottomBar.style.display = 'none';
+                
+                // Eğer sepet açıksa kapatalım
+                var bsOffcanvas = bootstrap.Offcanvas.getInstance(document.getElementById('cartOffcanvas'));
+                if(bsOffcanvas) bsOffcanvas.hide();
+            }
+        }
+
+        async function fetchCartDetails() {
+            try {
+                const response = await fetch('/sepet/detay-json');
+                const data = await response.json();
+                const container = document.getElementById('cartContent');
+                document.getElementById('cartOffcanvasTotal').textContent = parseFloat(data.toplamTutar).toFixed(2) + ' TL';
+
+                if (!data.items || data.items.length === 0) {
+                    container.innerHTML = '<div class="text-center text-muted mt-5"><div class="fs-1 mb-3"></div><h5>Sepetiniz Boş</h5></div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                data.items.forEach(item => {
+                    let opsHtml = '';
+                    if(item.opsiyonlar) {
+                        try {
+                            const parsed = JSON.parse(item.opsiyonlar);
+                            if(parsed.length > 0) {
+                                opsHtml = '<div class="small text-muted mt-1">' + parsed.map(p => p.ad).join(', ') + '</div>';
+                            }
+                        } catch(e) {}
+                    }
+                    
+                    container.innerHTML += `
+                        <div class="cart-item bg-white p-3 rounded-4 mb-3 shadow-sm border-0 position-relative">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="fw-bold mb-0 text-dark">${item.urunAd}</h6>
+                                    ${opsHtml}
+                                    <div class="fw-bold text-success mt-1">${parseFloat(item.birimFiyat).toFixed(2)} TL <span class="text-muted small fw-normal">/ adet</span></div>
+                                </div>
+                                <button class="btn btn-sm text-danger p-0" onclick="removeCartItem(${item.detayId})">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                </button>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mt-3">
+                                <div class="quantity-control bg-light rounded-pill px-2 py-1 border">
+                                    <button class="btn btn-sm btn-link text-decoration-none text-dark fw-bold" onclick="updateCartItem(${item.detayId}, ${item.adet - 1})">-</button>
+                                    <span class="mx-3 fw-bold">${item.adet}</span>
+                                    <button class="btn btn-sm btn-link text-decoration-none text-dark fw-bold" onclick="updateCartItem(${item.detayId}, ${item.adet + 1})">+</button>
+                                </div>
+                                <div class="fw-bold fs-6">${(item.adet * item.birimFiyat).toFixed(2)} TL</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (err) {
+                console.error("Sepet detayı alınamadı", err);
+            }
+        }
+
+        // Sayfa açıldığında sepet tutarını getirip bottom bar'ı göster/gizle
+        async function fetchInitialBadge() {
             try {
                 const response = await fetch('/sepet/bilgi');
                 const data = await response.json();
-                updateCartBadge(data.urunSayisi, data.toplamTutar);
-            } catch (err) {
-                console.error(err);
-            }
+                updateBottomBar(data.urunSayisi, data.toplamTutar);
+            } catch (err) { console.error(err); }
         }
-
-        function updateCartBadge(count, total) {
-            const btn = document.getElementById('floatingCartBtn');
-            if (count > 0) {
-                btn.style.display = 'flex';
-                document.getElementById('cartBadge').textContent = count;
-                document.getElementById('cartTotal').textContent = parseFloat(total).toFixed(2) + ' TL';
-            } else {
-                btn.style.display = 'none';
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', fetchCartBadge);
+        document.addEventListener('DOMContentLoaded', fetchInitialBadge);
     </script>
-
 </body>
-
 </html>
