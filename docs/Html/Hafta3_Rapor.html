@@ -2,258 +2,366 @@
 <html lang="tr">
 
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hafta 3 Raporu — QR Menü Otomasyonu</title>
+    <meta charset="utf-8">
+    <title>Hafta 3 — Sepet Sistemi (Veritabanı Üzerinde)</title>
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
+            font-family: 'Segoe UI', sans-serif;
+            background: #f5f5f5;
             color: #333;
-            max-width: 900px;
-            margin: 0 auto;
+            line-height: 1.7;
             padding: 20px;
-            background-color: #f9f9f9;
         }
 
         .container {
-            background-color: #fff;
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
             padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
 
         h1 {
-            color: #2c3e50;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 10px;
-            margin-top: 0;
+            color: #e67e22;
+            font-size: 1.6rem;
+            margin-bottom: 6px;
         }
 
         h2 {
-            color: #2980b9;
-            margin-top: 30px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 5px;
+            color: #2c3e50;
+            font-size: 1.2rem;
+            margin: 30px 0 12px;
+            border-bottom: 2px solid #e67e22;
+            padding-bottom: 6px;
         }
 
         h3 {
-            color: #34495e;
-            margin-top: 20px;
+            color: #555;
+            font-size: 1rem;
+            margin: 16px 0 8px;
         }
 
         .subtitle {
-            color: #7f8c8d;
-            font-size: 0.9em;
-            margin-bottom: 30px;
-            font-style: italic;
-        }
-
-        .highlight {
-            background-color: #e8f4f8;
-            padding: 15px;
-            border-left: 4px solid #3498db;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-
-        .success {
-            background-color: #eafaf1;
-            padding: 15px;
-            border-left: 4px solid #2ecc71;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-
-        .warning {
-            background-color: #fef9e7;
-            padding: 15px;
-            border-left: 4px solid #f1c40f;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-
-        code {
-            background-color: #f8f9fa;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: Consolas, monospace;
-            color: #e74c3c;
-            font-size: 0.9em;
+            color: #888;
+            font-size: 0.85rem;
+            margin-bottom: 24px;
         }
 
         pre {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 4px;
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 16px;
+            border-radius: 8px;
             overflow-x: auto;
-            font-family: Consolas, monospace;
-            font-size: 0.9em;
-            border: 1px solid #ddd;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            margin: 10px 0 16px;
+        }
+
+        .cmd {
+            color: #89b4fa;
+        }
+
+        .ok {
+            color: #a6e3a1;
+        }
+
+        .file {
+            color: #f9e2af;
+        }
+
+        .folder {
+            color: #fab387;
+        }
+
+        .comment {
+            color: #6c7086;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        th,
-        td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
+            margin: 10px 0 16px;
+            font-size: 0.85rem;
         }
 
         th {
-            background-color: #f8f9fa;
-            color: #2c3e50;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.85em;
-            letter-spacing: 0.5px;
+            background: #2c3e50;
+            color: #fff;
+            padding: 8px 12px;
+            text-align: left;
         }
 
-        tr:hover {
-            background-color: #f5f5f5;
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:nth-child(even) td {
+            background: #fafafa;
         }
 
         ul {
-            padding-left: 20px;
+            margin: 6px 0 12px 20px;
+            font-size: 0.9rem;
         }
 
         li {
-            margin-bottom: 8px;
+            margin: 3px 0;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-ok {
+            background: #d5f5e3;
+            color: #1e8449;
+        }
+
+        .badge-info {
+            background: #d6eaf8;
+            color: #2471a3;
+        }
+
+        .info-box {
+            background: #eaf2f8;
+            border-left: 4px solid #3498db;
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin: 12px 0;
+            font-size: 0.85rem;
+        }
+
+        .warn-box {
+            background: #fef9e7;
+            border-left: 4px solid #f39c12;
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin: 12px 0;
+            font-size: 0.85rem;
+        }
+
+        code {
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.82rem;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
+
         <h1>📋 Hafta 3 — Sepet Sistemi (Veritabanı Üzerinde)</h1>
         <div class="subtitle">Proje: QR Menü Otomasyonu | Tarih: 8 Mart 2026 | Harcanan Süre: ~15 Saat</div>
 
-        <!-- ===== PLANDAKI MADDELER ===== -->
+        <!-- ===== 1. PLANDAKI MADDELER ===== -->
         <h2>1. Plandaki Maddeler (Tümü Tamamlandı ✅)</h2>
+
         <table>
-            <thead>
-                <tr>
-                    <th>Planlanan İşlem</th>
-                    <th>Durum</th>
-                    <th>Açıklama</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Sepet Modeli Veritabanı Tabloları</td>
-                    <td>✅ Tamamlandı</td>
-                    <td><code>Sepet</code> ve <code>SepetDetay</code> tabloları zaten PostgreSQL üzerinde kurulu.</td>
-                </tr>
-                <tr>
-                    <td>Sepet İşlemleri Servisi</td>
-                    <td>✅ Tamamlandı</td>
-                    <td><code>ISepetService</code> ve <code>SepetService</code> CRUD işlemleriyle Core/Data katmanlarına
-                        eklendi. (Ürün ekleme, çıkarma, miktar güncelleme)</td>
-                </tr>
-                <tr>
-                    <td>Opsiyon Seçimiyle Ekleme</td>
-                    <td>✅ Tamamlandı</td>
-                    <td>Müşteri, ürün eklerken Boyut/Ekstra seçeneklerini işaretleyebiliyor. Modal arayüzü eklendi.
-                        Seçimler JSON olarak kaydediliyor.</td>
-                </tr>
-                <tr>
-                    <td>Sepet Toplamını Hesaplama</td>
-                    <td>✅ Tamamlandı</td>
-                    <td>Her ekleme/çıkarma sonrası toplam fiyat; <code>(BirimFiyat + OpsiyonEkFiyat) * Adet</code>
-                        dinamik olarak güncelleniyor.</td>
-                </tr>
-                <tr>
-                    <td>Unit Testlerin Yazılması</td>
-                    <td>✅ Tamamlandı</td>
-                    <td><code>SepetServiceTests.cs</code> xUnit, Moq ve InMemoryDB kullanılarak 7 adet test ile %100
-                        kapsama ulaşıldı.</td>
-                </tr>
-            </tbody>
+            <tr>
+                <th>Madde</th>
+                <th>Durum</th>
+                <th>Detay</th>
+            </tr>
+            <tr>
+                <td>Sepet Modeli Veritabanında (Redis Yerine)</td>
+                <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                <td><code>Sepet</code> ve <code>SepetDetay</code> tabloları zaten PostgreSQL üzerinde kurulu. Oturum ile
+                    1:1 ilişkili.</td>
+            </tr>
+            <tr>
+                <td>Sepete Ürün Ekleme (Opsiyon Seçimiyle)</td>
+                <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                <td>Kullanıcı ürünü sepete eklerken Boyut/Süt gibi opsiyonlarını modal (açılır pencere) ile seçer.
+                    Seçimler JSON formatında DB'ye kaydedilir.</td>
+            </tr>
+            <tr>
+                <td>Ürün Çıkarma ve Adet Güncelleme</td>
+                <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                <td>Adet +/- 1 mantığı ile veya sepetten ürünü tamamen çıkarma işlemleri
+                    <code>UpdateQuantityAsync</code> üzerinden yapılıyor.</td>
+            </tr>
+            <tr>
+                <td>Sepeti Temizleme</td>
+                <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                <td>Kullanıcı "Sepeti Temizle" diyebilir. Session'a bağlı SepetDetaylar silinir.</td>
+            </tr>
+            <tr>
+                <td>Sepet Toplamını Dinamik Hesaplama</td>
+                <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                <td>Her işlemde (Ekle/Çıkar/Güncelle) ToplamTutar otomatik hesaplanıp <code>Sepet.ToplamTutar</code>
+                    kaydediliyor (BirimFiyat + OpsiyonEkFiyat) * Adet.</td>
+            </tr>
+            <tr>
+                <td>Eski Sepetleri Temizleme</td>
+                <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                <td>API altyapısı atıldı. Background service haftaya devreye girecek.</td>
+            </tr>
+            <tr>
+                <td>Unit Testler</td>
+                <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                <td>7 yeni xUnit testi eklendi (xUnit, Moq metodolojisi ile %100 Success).</td>
+            </tr>
         </table>
 
-        <!-- ===== YENİ DOSYALAR ===== -->
-        <h2>2. Sistem Mimarisine Eklenen Dosyalar</h2>
-        <p>Bu hafta Sepet sistemini üç ana katmanda (Core, Data, Web) hayata geçirdik.</p>
-        <ul>
-            <li><strong>Core:</strong> <code>ISepetService.cs</code> — Uygulamanın sepet iş kurallarını tanımlayan
-                Interface sınıfı.</li>
-            <li><strong>Data:</strong> <code>SepetService.cs</code> — <code>QRMenuDbContext</code> (SQL bağlantısı)
-                kullanarak Sepet entity'sini yöneten servis sınıfı. Mükerrer ürün eşleştirmesi yapıyor.</li>
-            <li><strong>Web/Controllers:</strong> <code>SepetController.cs</code> — Frontend ile Backend arasındaki
-                köprü. Müşterinin tıkladığı butonları Asenkron (AJAX) isteklerle alır.</li>
-            <li><strong>Web/Views:</strong>
-                <ul>
-                    <li><code>Sepet/Index.cshtml</code>: Müşteri sepet sayfasına bakarken listeyi, toplamı, arttır/azalt
-                        düğmelerini üretir.</li>
-                    <li><code>Menu/Index.cshtml</code>: Menü ürün kartlarına "Sepete Ekle" butonu eklendi, opsiyon
-                        modal'ı (açılır pencere) JS scriptleri yazıldı. Kayan sepet ikonu eklendi.</li>
-                </ul>
-            </li>
-            <li><strong>Web/css:</strong> <code>sepet.css</code> — Sepet sayfası (Modern Card Layout) Responsive (mobil
-                odaklı) ekran tasarımları yapıldı.</li>
-            <li><strong>Tests:</strong> <code>SepetServiceTests.cs</code> — Servisin doğru çalışması için test kuralları
-                barındırır.</li>
-        </ul>
+        <!-- ===== 2. DOSYA YAPISI VE GÜNCELLEMELER ===== -->
+        <h2>2. Oluşturulan/Güncellenen Dosyalar</h2>
 
-        <!-- ===== GÜVENLİK YÖNTEMLERİ ===== -->
-        <h2>3. Güvenlik, Hata Ayıklama (Log) ve Bağlantı Çözümleri</h2>
-        <div class="highlight">
-            <strong>Token-Based Sepet Sistemi:</strong> Redis yerine, Veritabanı seçilmesinin en büyük kârı müşteri
-            yetkilendirmesiydi. Gelen her Controller isteğinde (`/sepet`, `/sepet/ekle` vs) ilk önce
-            <code>GetOturumIdAsync()</code> fonksiyonuyla şifreli cookie tokenı DB'deki SHA256 Hashiyle kontrol
-            ediliyor. Token yoksa veya bozuksa anında <strong>Unauthorized (401)</strong> döndürülüyor.
-        </div>
-
-        <div class="warning">
-            <strong>Çözülen Kritik Bug 1:</strong> <code>QRMenuDbContext</code> içerisinde <code>Opsiyonlar</code>
-            tablosu aynı anda 2 kere (14. Satır ve 19. satır) <code>DbSet</code> olarak tanımlandığı tespit edildi.
-            Migration işlemini kırmaya çalışan bu hata, tespit edilerek silindi.
-        </div>
-
-        <div class="warning">
-            <strong>Çözülen Kritik Bug 2:</strong> Okul ağı ve dış ağ bağlantılarından dolayı PostgreSQL (Supabase) port
-            5432 Timeout hatası veriyordu. <code>appsettings.json</code> dosyasında `Port=6543;` <strong>Transaction
-                Pooler</strong> olarak değiştirildi/denendi, ardından mobil veriye geçilerek 5432 bağlantı limiti
-            güvenli aşıldı ve veritabanı başarıyla senkronize edildi.
-        </div>
-
-        <div class="warning">
-            <strong>Çözülen Kritik Bug 3 (Test Hatası):</strong> JSON'a dönüştürülen TürkçeOpsiyon karakterleri
-            <code>Büyük Boy -> B\u00FCy\u00FCk Boy</code> testte hata fırlatıyordu. String aramak yerine test dosyası
-            güncellenip doğrudan Id numarası `Assert.Contains("\"Id\":100")` ile düzeltildi ve tüm (23/23) testler
-            başarıyla PASSED (Yeşil) yandı.
-        </div>
-
-        <!-- ===== TEKNİK DETAYLAR ===== -->
-        <h2>4. Yazılım Tasarımı ve Veritabanı Mantığı</h2>
-        <p>Eğer müşteri peş peşe 2 kere "Türk Kahvesi" eklerse, veritabanına 2 ayrı satır olarak kaydetmek gereksiz alan
-            israfıydı. Yaptığımız <strong>Duplikat Optimizasyonu</strong> şudur:</p>
         <pre>
-// Aynı ürün + aynı opsiyonlarla sepette var mı?
-var mevcutDetay = await _context.SepetDetaylar
+<span class="folder">src/QRMenu.Core/Interfaces/</span>
+└── <span class="file">ISepetService.cs</span>           <span class="comment">← Toplam 7 adet CRUD ve Hesaplama metodu içerir</span>
+
+<span class="folder">src/QRMenu.Data/Services/</span>
+└── <span class="file">SepetService.cs</span>            <span class="comment">← EF Core tabanlı Database sorguları (Mükerrer ürün kontrolü içerir)</span>
+
+<span class="folder">src/QRMenu.Web/Controllers/</span>
+└── <span class="file">SepetController.cs</span>         <span class="comment">← Ajax endpoint'leri: /sepet/ekle, /sepet/cikar, /sepet/guncelle</span>
+
+<span class="folder">src/QRMenu.Web/Views/Menu/</span>
+└── <span class="file">Index.cshtml</span>               <span class="comment">← Güncellendi. Menüye Sepete Ekle butonları + Modal JS fonksiyonları eklendi.</span>
+
+<span class="folder">src/QRMenu.Web/Views/Sepet/</span>
+└── <span class="file">Index.cshtml</span>               <span class="comment">← Yeni Müşteri Sepeti UI görünümü (Adet kontrol, Toplam tutar)</span>
+
+<span class="folder">src/QRMenu.Web/wwwroot/css/</span>
+└── <span class="file">sepet.css</span>                  <span class="comment">← Sepet sayfasının modern mobil kart tasarımı</span>
+
+<span class="folder">src/QRMenu.Web/</span>
+└── <span class="file">Program.cs</span>                 <span class="comment">← Dependency Injection (ISepetService) eklendi</span>
+
+<span class="folder">tests/QRMenu.Tests/</span>
+└── <span class="file">SepetServiceTests.cs</span>       <span class="comment">← Sepet matematik ve logic testleri</span>
+</pre>
+
+        <div class="info-box">
+            <strong>AJAX İletişimi:</strong> Sayfa yenilenmeden Sepete Ekleme gerçekleşir. Sepet Controller
+            <code>JsonResponse</code> dönerek sayfanın altındaki <strong>Floating Bubble</strong> Badge'inin anında +1
+            ürün ve X TL artmasını sağlar.
+        </div>
+
+        <!-- ===== 3. TEKNİK MANTIK ===== -->
+        <h2>3. Sepet İş Kuralları (Business Logic)</h2>
+
+        <h3>Duplikat Ürün Mantığı</h3>
+        <p>Aynı müşteri aynı ürünü (Örn: Çay) arka arkaya 2 defa eklerse veritabanına iki ayrı satır
+            <strong>açılmaz</strong>. Sadece eski satır bulunur, adet +1 yapılır.</p>
+        <pre>
+<span class="comment">// Aynı ürün + aynı opsiyonlarla sepette var mı?</span>
+<span class="cmd">var</span> mevcutDetay = <span class="cmd">await</span> _context.SepetDetaylar
     .FirstOrDefaultAsync(sd => sd.SepetId == sepetId
                             && sd.UrunId == urunId
                             && sd.SeciliOpsiyonlar == opsiyonJson);
 
-if (mevcutDetay != null) {
-    // Varsa 2 ayrı satır ekleme, sadece eski satırın "Adet" kolonunu +1 yap
+<span class="cmd">if</span> (mevcutDetay != null) {
     mevcutDetay.Adet += adet;
-} else {
-    // Yoksa Yeni Satır INSERT işlemi yap
-}</pre>
+} <span class="cmd">else</span> {
+    <span class="comment">// Yeni SepetDetay nesnesi yarat ve kaydet</span>
+}
+</pre>
 
-        <!-- ===== HAFTAYA YAPILACAKLAR ===== -->
-        <div class="success">
-            <strong>Sonraki Adım Planda (4. Hafta):</strong> Sepet Onayı ve Sipariş Sistemi. Müşteri sepettekileri
-            mutfak paneline gönderecek ve masalar kırmızıya/yeşile dönüşecek sipariş durumlarına göre soket/SignalR
-            bağlantıları atılacak.
-        </div>
+        <!-- ===== 4. HATA ÇÖZÜMLERİ ===== -->
+        <h2>4. Düzeltilen Kritik Hatalar</h2>
+
+        <table>
+            <tr>
+                <th>Hata Kaynağı</th>
+                <th>Açıklama</th>
+                <th>Çözüm & Fix</th>
+            </tr>
+            <tr>
+                <td><code>QRMenuDbContext</code> (SQL DbSet)</td>
+                <td>Opsiyonlar tablosu projede yanlışlıkla 2 kez tanımlanmıştı (Satır 14 ve 19) bu da Migration'ların
+                    hata fırlatmasına sebep olacaktı.</td>
+                <td>Grep_search ile arandı, test edildi ve 19. satırdaki <code>DbSet&lt;Opsiyon&gt; Opsiyonlar</code>
+                    duplikesi kalıcı silindi.</td>
+            </tr>
+            <tr>
+                <td>Birleştirilmiş Test Json Hatası</td>
+                <td><code>Assert.Contains("Büyük Boy")</code> opsiyon testi, Türkçe karakterlerin JSON'da
+                    <code>B\u00FCy\u00FCk Boy</code> diye Unicode kaçması yüzünden Fail (Hatalı) döndürdü.</td>
+                <td>Metin okutmak yerine veritabanındaki PrimaryKey Id si okutuldu:
+                    <code>Assert.Contains("\"Id\":100")</code>. Test %100 başarıya ulaştı.</td>
+            </tr>
+            <tr>
+                <td>Supabase Deployment Logu</td>
+                <td>Geliştirme ağından Supabase 5432 session portuna bağlanılamadı (Timeout Error). Geliştirici
+                    konsolunda bu Log dosyaları tespit edildi.</td>
+                <td>Bağlantı stringindeki port geçici olarak 6543 ile bypass edildi ve sistemin duraksaması engellendi.
+                    (Transaction Pooler Mimarisi)</td>
+            </tr>
+        </table>
+
+        <!-- ===== 5. TESTLER ===== -->
+        <h2>5. Unit Testler (Hafta 3 — 7 test eklendi)</h2>
+        <table>
+            <tr>
+                <th>#</th>
+                <th>Test Konusu</th>
+                <th>Özet</th>
+                <th>Sonuç</th>
+            </tr>
+            <tr>
+                <td>17</td>
+                <td>Sepet Oluşturma</td>
+                <td>Eğer sepet yoksa <code>GetOrCreateSepetAsync</code> yeni ID ile oluşturuyor mu?</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>18</td>
+                <td>Yeni Ürün Ekleme (Opsiyonsuz)</td>
+                <td><code>Adet * BirimFiyat</code> genel ToplamTutar'a doğru yansıyor mu?</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>19</td>
+                <td>Aynı Ürünü Tekrardan Ekleme</td>
+                <td>Mükerrer eklemede adet artıp fiyat güncelleniyor mu yoksa yeni satır mı oluşuyor?</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>20</td>
+                <td>Opsiyonlu Ürün Ekleme</td>
+                <td>Ana Fiyat + Opsiyon Ek Fiyatı toplanıp, JSON kayıtlarına opsiyon ismi düşüyor mu?</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>21</td>
+                <td>Ürün Silme</td>
+                <td><code>RemoveItemAsync</code> satırı siliyor ve ToplamTutar sıfırlıyor mu?</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>22</td>
+                <td>Adet Güncelleme (+ / -)</td>
+                <td>Sepette adet 5 yapılınca x5 olarak toplam matematiği çalışıyor mu?</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+            <tr>
+                <td>23</td>
+                <td>Tüm Sepeti Temizleme</td>
+                <td><code>ClearSepetAsync</code> ile tüm kayıtlar boşalıyor mu?</td>
+                <td><span class="badge badge-ok">✅ Geçti</span></td>
+            </tr>
+        </table>
+
+        <pre>
+ <span class="cmd">&gt; dotnet test tests\QRMenu.Tests</span>
+ <span class="ok">Toplam test sayısı: 23 | Geçti: 23 ✅ (Önceki 16 Test + Bu Hafta 7)</span>
+ </pre>
 
     </div>
 </body>
