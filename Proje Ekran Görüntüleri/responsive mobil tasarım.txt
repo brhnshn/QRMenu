@@ -1,0 +1,38 @@
+Bu Tasarım Neden "En İyisi"? (UX Anatomisi)
+Sade ve dönüşüm oranı (sipariş verme ihtimali) en yüksek mobil tasarım şu 4 katmandan oluşur:
+
+1. Tepe Alanı (Header - Temiz ve Bilgilendirici)
+
+En üstte sadece kafenizin şık, küçük bir logosu.
+
+Hemen sağında veya altında zarif bir fontla: "Masa 12" (Müşteri doğru masaya oturduğunu teyit etmeli).
+
+Sağ üst köşede dil seçimi (TR/EN) için minimal bir ikon.
+
+2. Açılır Kategori Menüsü (İstediğin Kısım)
+
+Müşteriyi kilometrelerce aşağı kaydırmaktan (scroll) kurtarmak için "Kategoriler" butonu.
+
+Tıklandığında zarifçe aşağı açılan (Accordion) veya ekranın yanından kayarak gelen (Off-canvas) bir liste: Kahveler, Tatlılar, Soğuk İçecekler...
+
+Müşteri "Tatlılar"a tıkladığında sayfa pürüzsüzce o bölüme kayar.
+
+3. Ürün Kartları (Minimalist)
+
+Yan yana iki kutu değil, alt alta geniş tek satır kartlar (Okunabilirlik için çok önemlidir).
+
+Solda ürünün iştah açıcı kare bir fotoğrafı.
+
+Sağda ürün adı, altında ince gri bir fontla kısa açıklama ("Yulaf sütü ile hazırlanmış...").
+
+En sağda fiyat ve belirgin bir "+" (Ekle) butonu.
+
+Eğer o ürün çok satıyorsa sol üst köşesinde taşırmalı zarif bir "🔥 Popüler" rozeti.
+
+4. Yapışkan Alt Bar (Sticky Bottom Action Bar - Hayati Kısım)
+
+Müşteri sayfada ne kadar aşağı kaydırırsa kaydırsın, ekranın en altında her zaman sabit duran bir çubuk olmalı.
+
+Bu çubuğun solunda: "🔔 Garson" (Sadece ikon ve kısa yazı).
+
+Sağında (Büyük ve dikkat çekici bir buton): "Sepeti Gör (150 TL)". Müşteri sepete ürün attıkça bu tutar dinamik olarak artar.

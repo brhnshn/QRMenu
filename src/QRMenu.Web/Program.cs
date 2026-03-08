@@ -29,6 +29,7 @@ builder.Services.AddDbContext<QRMenuDbContext>(options =>
 // DI — Uygulama Servisleri
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IUrunService, UrunService>();
+builder.Services.AddScoped<ISepetService, SepetService>();
 
 // MVC
 builder.Services.AddControllersWithViews();
