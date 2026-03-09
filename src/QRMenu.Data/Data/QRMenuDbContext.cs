@@ -13,6 +13,7 @@ namespace QRMenu.Data.Data
         public DbSet<Urun> Urunler => Set<Urun>();
         public DbSet<Opsiyon> Opsiyonlar => Set<Opsiyon>();
         public DbSet<UrunOpsiyon> UrunOpsiyonlar => Set<UrunOpsiyon>();
+        public DbSet<UrunGorsel> UrunGorseller => Set<UrunGorsel>();
         public DbSet<Oturum> Oturumlar => Set<Oturum>();
         public DbSet<Sepet> Sepetler => Set<Sepet>();
         public DbSet<SepetDetay> SepetDetaylar => Set<SepetDetay>();
@@ -91,6 +92,20 @@ namespace QRMenu.Data.Data
                 entity.HasOne(e => e.Opsiyon)
                       .WithMany(o => o.UrunOpsiyonlar)
                       .HasForeignKey(e => e.OpsiyonId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ===== ÜRÜN GÖRSEL =====
+            modelBuilder.Entity<UrunGorsel>(entity =>
+            {
+                entity.ToTable("UrunGorseller");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.ContentType).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Data).IsRequired();
+
+                entity.HasOne(e => e.Urun)
+                      .WithMany()
+                      .HasForeignKey(e => e.UrunId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
 

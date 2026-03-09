@@ -364,7 +364,7 @@ namespace QRMenu.Web.Controllers
                     urun.GorselUrl,
                     urun.PopulerMi,
                     urun.AktifMi,
-                    Opsiyonlar = urun.UrunOpsiyonlar.Select(uo => new
+                    Opsiyonlar = urun.UrunOpsiyonlar.OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new
                     {
                         uo.Opsiyon.Id,
                         uo.Opsiyon.Ad,
@@ -396,14 +396,24 @@ namespace QRMenu.Web.Controllers
             // Fotoğraf upload
             if (model.Gorsel != null)
             {
-                var gorselUrl = await SaveImageAsync(model.Gorsel);
-                if (gorselUrl == null)
+                var result = await ReadImageAsync(model.Gorsel);
+                if (result == null)
                     return Json(new { success = false, message = "Görsel yüklenemedi. Max 2MB, sadece jpg/png/webp." });
-                urun.GorselUrl = gorselUrl;
-            }
 
-            _context.Urunler.Add(urun);
-            await _context.SaveChangesAsync();
+                _context.Urunler.Add(urun);
+                await _context.SaveChangesAsync();
+
+                // Görsel kaydı (ID gerekli olduğu için SaveChanges sonrası)
+                var gorsel = new UrunGorsel { UrunId = urun.Id, Data = result.Value.data, ContentType = result.Value.contentType };
+                _context.UrunGorseller.Add(gorsel);
+                urun.GorselUrl = $"/images/urun/{urun.Id}";
+                await _context.SaveChangesAsync();
+            }
+            else
+            {
+                _context.Urunler.Add(urun);
+                await _context.SaveChangesAsync();
+            }
 
             _logger.LogInformation("Ürün eklendi. Id={Id}, Ad={Ad}", urun.Id, urun.Ad);
             await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
@@ -429,14 +439,17 @@ namespace QRMenu.Web.Controllers
             // Fotoğraf güncelleme
             if (model.Gorsel != null)
             {
-                // Eski görseli sil
-                if (!string.IsNullOrEmpty(urun.GorselUrl))
-                    DeleteImage(urun.GorselUrl);
-
-                var gorselUrl = await SaveImageAsync(model.Gorsel);
-                if (gorselUrl == null)
+                var result = await ReadImageAsync(model.Gorsel);
+                if (result == null)
                     return Json(new { success = false, message = "Görsel yüklenemedi. Max 2MB, sadece jpg/png/webp." });
-                urun.GorselUrl = gorselUrl;
+
+                // Eski görseli sil, yenisini ekle
+                var eskiGorsel = await _context.UrunGorseller.FirstOrDefaultAsync(g => g.UrunId == urun.Id);
+                if (eskiGorsel != null)
+                    _context.UrunGorseller.Remove(eskiGorsel);
+
+                _context.UrunGorseller.Add(new UrunGorsel { UrunId = urun.Id, Data = result.Value.data, ContentType = result.Value.contentType });
+                urun.GorselUrl = $"/images/urun/{urun.Id}";
             }
 
             await _context.SaveChangesAsync();
@@ -453,22 +466,30 @@ namespace QRMenu.Web.Controllers
             if (urun == null)
                 return Json(new { success = false, message = "Ürün bulunamadı." });
 
-            // Bağlı sipariş detayı varsa pasife çek
-            var siparisVar = await _context.SiparisDetaylar.AnyAsync(sd => sd.UrunId == id);
-            if (siparisVar)
+            // Aktif (iptal/iade olmayan) siparişlerde bağlı detay varsa pasife çek
+            var aktifSiparisVar = await _context.SiparisDetaylar
+                .AnyAsync(sd => sd.UrunId == id
+                    && sd.Siparis.Durum != SiparisDurum.Iptal
+                    && sd.Siparis.Durum != SiparisDurum.Iade);
+            if (aktifSiparisVar)
             {
                 urun.AktifMi = false;
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("Ürün pasife alındı (bağlı sipariş var). Id={Id}", id);
+                _logger.LogInformation("Ürün pasife alındı (aktif sipariş var). Id={Id}", id);
                 await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
-                return Json(new { success = true, message = "Ürün pasife alındı (bağlı sipariş kayıtları var)." });
+                return Json(new { success = true, message = "Ürün pasife alındı (aktif sipariş kayıtları var)." });
             }
 
-            // Görseli sil
-            if (!string.IsNullOrEmpty(urun.GorselUrl))
-                DeleteImage(urun.GorselUrl);
+            // FK Restrict olduğu için ilişkili kayıtları temizle
+            var sepetDetaylar = await _context.SepetDetaylar.Where(sd => sd.UrunId == id).ToListAsync();
+            if (sepetDetaylar.Any())
+                _context.SepetDetaylar.RemoveRange(sepetDetaylar);
 
-            // UrunOpsiyonları cascade ile silinir
+            var siparisDetaylar = await _context.SiparisDetaylar.Where(sd => sd.UrunId == id).ToListAsync();
+            if (siparisDetaylar.Any())
+                _context.SiparisDetaylar.RemoveRange(siparisDetaylar);
+
+            // UrunOpsiyonları + UrunGorseller cascade ile silinir
             _context.Urunler.Remove(urun);
             await _context.SaveChangesAsync();
 
@@ -572,34 +593,42 @@ namespace QRMenu.Web.Controllers
         // ============================================================
 
         private static readonly HashSet<string> _allowedExtensions = new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
+        private static readonly Dictionary<string, string> _mimeTypes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            [".jpg"] = "image/jpeg", [".jpeg"] = "image/jpeg", [".png"] = "image/png", [".webp"] = "image/webp"
+        };
         private const long MaxFileSize = 2 * 1024 * 1024; // 2MB
 
-        private async Task<string?> SaveImageAsync(IFormFile file)
+        private async Task<(byte[] data, string contentType)?> ReadImageAsync(IFormFile file)
         {
             if (file.Length == 0 || file.Length > MaxFileSize)
                 return null;
 
             var ext = Path.GetExtension(file.FileName);
-            if (!_allowedExtensions.Contains(ext))
+            if (!_allowedExtensions.Contains(ext) || !_mimeTypes.TryGetValue(ext, out var contentType))
                 return null;
 
-            var uploadsDir = Path.Combine(_env.WebRootPath, "uploads", "urunler");
-            Directory.CreateDirectory(uploadsDir);
-
-            var fileName = $"{Guid.NewGuid()}{ext}";
-            var filePath = Path.Combine(uploadsDir, fileName);
-
-            using var stream = new FileStream(filePath, FileMode.Create);
-            await file.CopyToAsync(stream);
-
-            return $"/uploads/urunler/{fileName}";
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms);
+            return (ms.ToArray(), contentType);
         }
 
-        private void DeleteImage(string gorselUrl)
+        /// <summary>
+        /// Ürün görselini veritabanından serve eder
+        /// </summary>
+        [HttpGet("/images/urun/{id:int}")]
+        [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)]
+        public async Task<IActionResult> UrunGorsel(int id)
         {
-            var filePath = Path.Combine(_env.WebRootPath, gorselUrl.TrimStart('/'));
-            if (System.IO.File.Exists(filePath))
-                System.IO.File.Delete(filePath);
+            var gorsel = await _context.UrunGorseller
+                .Where(g => g.UrunId == id)
+                .Select(g => new { g.Data, g.ContentType })
+                .FirstOrDefaultAsync();
+
+            if (gorsel?.Data == null || string.IsNullOrEmpty(gorsel.ContentType))
+                return NotFound();
+
+            return File(gorsel.Data, gorsel.ContentType);
         }
     }
 

@@ -187,6 +187,10 @@
 }
 
 /* Sipariş tablosu */
+.siparis-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
 .siparis-table {
     width: 100%;
     border-collapse: collapse;
@@ -361,14 +365,21 @@
         flex-direction: column;
         align-items: stretch;
     }
-    .siparis-table {
-        font-size: 0.78rem;
-    }
+
+    .stepper-wrapper { padding: 14px 6px; margin-bottom: 14px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .stepper-item { min-width: 60px; }
+
+    .siparis-table { font-size: 0.75rem; min-width: 750px; }
     .siparis-table thead th,
-    .siparis-table tbody td {
-        padding: 8px 10px;
-    }
+    .siparis-table tbody td { padding: 8px 8px; white-space: nowrap; }
+
+    .siparis-actions { flex-wrap: nowrap; }
+    .siparis-actions .btn { padding: 3px 7px; font-size: 0.7rem; }
+
     .detay-info-grid {
         grid-template-columns: 1fr;
     }
+
+    .stats-mini { gap: 6px; }
+    .stat-pill { font-size: 0.7rem; padding: 3px 8px; }
 }

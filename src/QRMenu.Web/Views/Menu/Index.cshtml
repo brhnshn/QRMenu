@@ -47,6 +47,9 @@
         </div>
     </div>
 
+    <!-- SİPARİŞ TAKİP STEPPER -->
+    <div id="orderTracker" style="display:none;"></div>
+
     <!-- 3. ÜRÜN LİSTESİ -->
     <div class="menu-content pb-5 mb-5">
         @foreach (var kategori in kategoriler)
@@ -82,7 +85,7 @@
                                     <span class="p-price">@urun.Fiyat.ToString("N2") TL</span>
                                     @if (!isSoldOut)
                                     {
-                                        var opsiyonList = urun.UrunOpsiyonlar?.Select(uo => new { id = uo.Opsiyon.Id, ad = uo.Opsiyon.Ad, grup = uo.Opsiyon.Grup, ekFiyat = uo.Opsiyon.EkFiyat }).ToList() ?? new();
+                                        var opsiyonList = urun.UrunOpsiyonlar?.OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new { id = uo.Opsiyon.Id, ad = uo.Opsiyon.Ad, grup = uo.Opsiyon.Grup, ekFiyat = uo.Opsiyon.EkFiyat }).ToList() ?? new();
                                         var opsiyonJson = System.Text.Json.JsonSerializer.Serialize(opsiyonList);
                                         <button class="btn-add"
                                                 data-urun-id="@urun.Id"
@@ -281,7 +284,7 @@
             for (const [grupAdi, opsList] of Object.entries(gruplar)) {
                 const groupDiv = document.createElement('div');
                 groupDiv.className = 'mb-4';
-                const isMulti = grupAdi.toLowerCase().includes('ekstra') || grupAdi.toLowerCase().includes('çoklu');
+                const isMulti = grupAdi.toLowerCase().includes('ekstra') || grupAdi.toLowerCase().includes('çoklu') || grupAdi.toLowerCase().includes('sos');
                 const requiredTag = !isMulti ? ' <span class="text-danger small">(Zorunlu)</span>' : '';
                 groupDiv.innerHTML = `<h6 class="mb-3 fw-bold text-dark">${grupAdi}${requiredTag}</h6>`;
 
@@ -569,6 +572,58 @@
             console.error('SignalR bağlantı hatası:', err);
         });
 
+        // ===== SİPARİŞ TAKİP (Müşteri Stepper) =====
+        const stepDefs = [
+            { durum: 'Onaylandi', label: 'Onaylandı', icon: '✓' },
+            { durum: 'Hazirlaniyor', label: 'Hazırlanıyor', icon: '🔥' },
+            { durum: 'Hazir', label: 'Hazır', icon: '✅' },
+            { durum: 'TeslimEdildi', label: 'Teslim', icon: '🍽️' }
+        ];
+        const stepOrder = { Onaylandi: 1, Hazirlaniyor: 2, Hazir: 3, TeslimEdildi: 4 };
+
+        function renderOrderTracker(siparisler) {
+            const container = document.getElementById('orderTracker');
+            // Sadece aktif siparişleri göster (ödenmemiş, iptal/iade olmayan)
+            const aktif = siparisler.filter(s => stepOrder[s.durum] !== undefined);
+            if (aktif.length === 0) { container.style.display = 'none'; return; }
+
+            container.style.display = 'block';
+            container.innerHTML = aktif.map(s => {
+                const current = stepOrder[s.durum] || 0;
+                const isCancel = (s.durum === 'Iptal' || s.durum === 'Iade');
+                const stepsHtml = stepDefs.map((st, i) => {
+                    const stepNum = i + 1;
+                    let cls = '';
+                    if (isCancel) cls = 'cancelled';
+                    else if (stepNum < current) cls = 'done';
+                    else if (stepNum === current) cls = 'current';
+                    return `<div class="tracker-step ${cls}"><div class="tracker-dot">${st.icon}</div><div class="tracker-label">${st.label}</div></div>`;
+                }).join('');
+
+                return `<div class="order-tracker">
+                    <div class="order-tracker-title">
+                        <span>Sipariş Durumu</span>
+                        <span class="order-tracker-id">#${s.siparisId} · ${s.toplamTutar.toFixed(2)} TL</span>
+                    </div>
+                    <div class="tracker-steps">${stepsHtml}</div>
+                </div>`;
+            }).join('');
+        }
+
+        async function fetchOrderStatus() {
+            try {
+                const res = await fetch('/siparis/siparislerim');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.success) renderOrderTracker(data.siparisler);
+            } catch(e) { console.error(e); }
+        }
+
+        // Sayfa açıldığında ve sipariş güncellemelerinde durum çek
+        document.addEventListener('DOMContentLoaded', fetchOrderStatus);
+
+        menuConnection.on('SiparisGuncellendi', fetchOrderStatus);
+
         function siparisGonder() {
             new bootstrap.Modal(document.getElementById('siparisOnayModal')).show();
         }
@@ -616,6 +671,7 @@
                     btn.classList.replace('btn-success', 'btn-secondary');
                     updateBottomBar(0, 0);
                     showToast('Siparişiniz mutfağa iletildi!', false);
+                    fetchOrderStatus();
                 } else {
                     showToast(data.message, true);
                     btn.disabled = false;

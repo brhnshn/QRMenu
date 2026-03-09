@@ -119,7 +119,8 @@
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-    overflow: hidden;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 .urun-table {
     width: 100%;
@@ -265,12 +266,23 @@
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-    .filter-bar { flex-direction: column; align-items: stretch; }
+    .filter-bar { flex-direction: column; align-items: stretch; gap: 8px; }
     .filter-bar .form-select,
     .filter-bar .form-control { max-width: 100%; }
     .filter-bar .btn-yeni-urun { margin-left: 0; }
+
+    .kategori-section { padding: 12px; margin-bottom: 16px; }
+    .kategori-chip { padding: 6px 10px; font-size: 0.78rem; }
+
+    .urun-table { min-width: 700px; }
+    .urun-table th,
+    .urun-table td { padding: 8px 10px; font-size: 0.78rem; white-space: nowrap; }
     .urun-table th:nth-child(4),
     .urun-table td:nth-child(4) { display: none; } /* Açıklama kolonu gizle */
+    .urun-table .urun-img,
+    .urun-table .urun-img-placeholder { width: 36px; height: 36px; }
+
+    .content-header { margin-bottom: 12px; }
 }
 
 /* ===== BUTON STİLLERİ (Genel) ===== */

@@ -241,7 +241,7 @@
     <div class="container">
 
         <h1>📋 Hafta 4 — Sipariş Motoru, Admin Siparişler, SignalR, UX & CI/CD</h1>
-        <div class="subtitle">Proje: QR Menü Otomasyonu | Tarih: 8 Mart 2026 | Harcanan Süre: ~24 Saat</div>
+        <div class="subtitle">Proje: QR Menü Otomasyonu | Tarih: 8–9 Mart 2026 | Harcanan Süre: ~32 Saat</div>
 
         <!-- ===== 1. DOSYA YAPISI ===== -->
         <h2>1. Proje Dosya Yapısı (Hafta 4 Güncellemeleri)</h2>
@@ -296,6 +296,19 @@
 └── <span class="folder">tests/</span>
     └── <span class="folder">QRMenu.Tests/</span>
         └── <span class="file">SiparisServiceTests.cs</span>   <span class="comment">← [YENİ] +28 unit test (Toplam: 59)</span>
+</pre>
+
+        <h3>1.2 — 9 Mart Dosya Değişiklikleri</h3>
+        <pre>
+<span class="folder">src/QRMenu.Web/</span>
+├── <span class="folder">Controllers/</span>
+│   ├── <span class="file">AdminController.cs</span>    <span class="comment">← UrunSil() FK temizleme + opsiyon sıralama</span>
+│   └── <span class="file">MenuController.cs</span>     <span class="comment">← opsiyon OrderBy(EkFiyat) eklendi</span>
+├── <span class="folder">Views/Menu/</span>
+│   └── <span class="file">Index.cshtml</span>          <span class="comment">← opsiyon sıralama + sos grubu isMulti düzeltmesi</span>
+└── <span class="folder">wwwroot/css/</span>
+    ├── <span class="file">admin-urunler.css</span>    <span class="comment">← overflow: hidden → overflow-x: auto (mobil fix)</span>
+    └── <span class="file">admin-siparisler.css</span>  <span class="comment">← overflow-x: auto + media query konsolidasyonu (mobil fix)</span>
 </pre>
 
         <!-- ===== 2. PLANLANAN VS GERÇEKLEŞEN ===== -->
@@ -1383,8 +1396,172 @@ connection.on(<span class="str">'SiparisGuncellendi'</span>, <span class="keywor
             Bağlantı bilgileri yalnızca GitHub Secrets üzerinden pipeline sırasında enjekte edilir — kod tabanında hiçbir credential bulunmaz.
         </div>
 
-        <!-- ===== GELECEK HAFTA ===== -->
-        <h2>16. Gelecek Hafta Planı (Hafta 5)</h2>
+        <!-- ===== 16. 9 MART GÜNCELLEMELERİ ===== -->
+        <h2>16. 9 Mart Güncellemeleri — Bug Fix, Menü İçeriği & Opsiyon Düzenlemeleri</h2>
+
+        <h3>16.1 Mobil Admin Panel Düzeltmeleri</h3>
+        <table>
+            <tr><th>Sayfa</th><th>Sorun</th><th>Kök Neden</th><th>Çözüm</th></tr>
+            <tr>
+                <td>Admin Ürünler</td>
+                <td>Tablo fiyat kolonundan sonra kesiliyordu, işlem butonları görünmüyordu</td>
+                <td><code>.urun-table-wrap</code> CSS'inde <code>overflow: hidden</code> base stilinde tanımlıydı</td>
+                <td><code>overflow-x: auto; -webkit-overflow-scrolling: touch;</code> olarak güncellendi</td>
+            </tr>
+            <tr>
+                <td>Admin Siparişler</td>
+                <td>Tablo mobilde taşıyordu, yatay scroll çalışmıyordu</td>
+                <td><code>.siparis-table-wrap</code> base CSS'inde overflow stili hiç yoktu, yalnız media query'de tanımlıydı</td>
+                <td>Base CSS'e <code>overflow-x: auto; -webkit-overflow-scrolling: touch;</code> eklendi, media query konsolide edildi</td>
+            </tr>
+        </table>
+
+        <h3>16.2 Ürün Silme Hatası Düzeltmesi (FK Restrict)</h3>
+        <div class="warn-box">
+            <strong>Hata:</strong> Kategorideki bir ürünü silmeye çalışınca "Bu kategoride ürün var, silinemiyor" uyarısı alınıyordu. Ürün silme butonu da çalışmıyordu.<br>
+            <strong>Kök Neden:</strong> <code>SiparisDetay</code> ve <code>SepetDetay</code> tablolarında <code>DeleteBehavior.Restrict</code> FK tanımı mevcut. İptal edilmiş siparişlerin detay kayıtları fiziksel olarak hâlâ DB'de olduğu için ürün silinemiyor.<br>
+            <strong>Çözüm:</strong> <code>UrunSil()</code> metodu güncellendi — ürün silmeden önce ilişkili <code>SepetDetaylar</code> ve <code>SiparisDetaylar</code> kayıtları <code>RemoveRange()</code> ile temizleniyor.
+        </div>
+        <pre>
+<span class="comment">// AdminController.cs — UrunSil() güncelleme</span>
+<span class="keyword">var</span> sepetDetaylar = <span class="keyword">await</span> _context.SepetDetaylar
+    .Where(sd => sd.UrunId == id).ToListAsync();
+<span class="keyword">if</span> (sepetDetaylar.Any()) _context.SepetDetaylar.RemoveRange(sepetDetaylar);
+
+<span class="keyword">var</span> siparisDetaylar = <span class="keyword">await</span> _context.SiparisDetaylar
+    .Where(sd => sd.UrunId == id).ToListAsync();
+<span class="keyword">if</span> (siparisDetaylar.Any()) _context.SiparisDetaylar.RemoveRange(siparisDetaylar);
+
+_context.Urunler.Remove(urun);
+<span class="keyword">await</span> _context.SaveChangesAsync();
+</pre>
+
+        <h3>16.3 Menü İçeriği Doldurma (Seed Data)</h3>
+        <div class="info-box">
+            <strong>Yöntem:</strong> Mevcut Admin API endpoint'leri (<code>/admin/kategori-ekle</code>, <code>/admin/urun-ekle</code>, <code>/admin/opsiyon-ekle</code>) PowerShell scriptleri ile çağrılarak gerçek restoran menüsü oluşturuldu.
+        </div>
+
+        <table>
+            <tr><th>Kategori</th><th>Ürün Sayısı</th><th>Örnek Ürünler</th></tr>
+            <tr><td>Kahvaltı</td><td>3</td><td>Serpme Kahvaltı, Sahanda Yumurta, Menemen</td></tr>
+            <tr><td>Tostlar</td><td>3</td><td>Kaşarlı Tost, Karışık Tost, Tavuklu Tost</td></tr>
+            <tr><td>Burgerler</td><td>4</td><td>Klasik Burger, Cheese Burger, Tavuk Burger, Double Burger</td></tr>
+            <tr><td>Pizzalar</td><td>3</td><td>Margarita, Karışık Pizza, Tavuklu Pizza</td></tr>
+            <tr><td>Makarnalar</td><td>3</td><td>Bolonez, Alfredo, Pesto Makarna</td></tr>
+            <tr><td>Salatalar</td><td>3</td><td>Sezar Salata, Çoban Salata, Ton Balıklı Salata</td></tr>
+            <tr><td>Tatlılar</td><td>4</td><td>Çikolatalı Sufle, Frambuazlı Cheesecake, Künefe, Tiramisu</td></tr>
+            <tr><td>Kahveler</td><td>4</td><td>Espresso, Cappuccino, Mocha, Flat White</td></tr>
+            <tr><td>Sıcak İçecekler</td><td>4</td><td>Türk Kahvesi, Çay, Sahlep, Sıcak Çikolata</td></tr>
+            <tr><td>Soğuk İçecekler</td><td>4</td><td>Ice Latte, Ev Yapımı Limonata, Mango Smoothie, Buzlu Çay</td></tr>
+            <tr><td>Atıştırmalıklar</td><td>3</td><td>Patates Kızartması, Soğan Halkası, Tavuk Nugget</td></tr>
+        </table>
+        <div class="info-box">
+            <strong>Toplam:</strong> 11 kategori, 38 ürün, 24 opsiyon (Boyut, Süt Tipi, Menü, Ekstra, Porsiyon, Sos grupları)
+        </div>
+
+        <h3>16.4 Opsiyon Grupları ve Yapılandırma</h3>
+        <table>
+            <tr><th>Grup</th><th>Ürünler</th><th>Seçenekler</th><th>Tip</th></tr>
+            <tr><td>Boyut</td><td>Burgerler, Pizzalar, Kahveler, Sıcak/Soğuk İçecekler</td><td>Küçük (0 TL), Orta (+10 TL), Büyük (+25 TL)</td><td>Radio (Zorunlu)</td></tr>
+            <tr><td>Menü</td><td>Burgerler</td><td>Menü — Patates+İçecek (+40 TL)</td><td>Radio (Zorunlu)</td></tr>
+            <tr><td>Süt Tipi</td><td>Kahveler</td><td>Normal Süt (0 TL), Yulaf Sütü (+5 TL), Badem Sütü (+5 TL)</td><td>Radio (Zorunlu)</td></tr>
+            <tr><td>Ekstra</td><td>Tostlar, Pizzalar</td><td>Ekstra Kaşar (+10 TL), Ekstra Sucuk (+15 TL), Ekstra Peynir (+15 TL)</td><td>Checkbox (İsteğe Bağlı)</td></tr>
+            <tr><td>Porsiyon</td><td>Atıştırmalıklar</td><td>Küçük Porsiyon (0 TL), Büyük Porsiyon (+15 TL)</td><td>Radio (Zorunlu)</td></tr>
+            <tr><td>Sos</td><td>Atıştırmalıklar</td><td>Cheddar Sos (+10 TL), Ranch Sos (+10 TL)</td><td>Checkbox (İsteğe Bağlı)</td></tr>
+        </table>
+
+        <h3>16.5 Opsiyon Sıralama Düzeltmesi</h3>
+        <div class="warn-box">
+            <strong>Sorun:</strong> Opsiyonlar "Orta → Küçük → Büyük" şeklinde bozuk sırada gösteriliyordu (DB insertion order'a bağlıydı).<br>
+            <strong>Çözüm:</strong> 3 farklı noktaya <code>.OrderBy(uo => uo.Opsiyon.EkFiyat)</code> eklendi:
+            <ul>
+                <li><code>MenuController.cs</code> — müşteri menü API'si (<code>/menu/json</code>)</li>
+                <li><code>AdminController.cs</code> — admin ürün detay (<code>/admin/urun-detay/{id}</code>)</li>
+                <li><code>Views/Menu/Index.cshtml</code> — Razor view (opsiyonJson serialization)</li>
+            </ul>
+            <strong>Sonuç:</strong> Küçük (0 TL) → Orta (+10 TL) → Büyük (+25 TL) doğru sıralama sağlandı.
+        </div>
+
+        <h3>16.6 Opsiyon Mantık Düzeltmeleri</h3>
+        <table>
+            <tr><th>Düzeltme</th><th>Detay</th></tr>
+            <tr>
+                <td><strong>Normal Süt (0 TL) eklendi</strong></td>
+                <td>Süt Tipi grubunda sadece Yulaf (+5 TL) ve Badem (+5 TL) vardı — müşteriye bedava seçenek yoktu. Normal Süt (0 TL) tüm kahve ürünlerine eklendi.</td>
+            </tr>
+            <tr>
+                <td><strong>Makarna opsiyonları kaldırıldı</strong></td>
+                <td>Spagetti/Penne/Fettuccine seçenekleri gereksizdi — makarna ürünlerinden tüm opsiyonlar ve kullanılmayan opsiyon kayıtları temizlendi.</td>
+            </tr>
+            <tr>
+                <td><strong>Sos grubu isteğe bağlı yapıldı</strong></td>
+                <td>Sos grubu radio (zorunlu) olarak gösteriliyordu ancak müşteri sos istemeyebilir. JavaScript'te <code>isMulti</code> kontrolüne <code>'sos'</code> eklenerek checkbox (isteğe bağlı) yapıldı.</td>
+            </tr>
+        </table>
+
+        <h3>16.7 Türkçe Karakter Düzeltmesi</h3>
+        <div class="warn-box">
+            <strong>Sorun:</strong> PowerShell terminal encoding'i UTF-8 Türkçe karakterleri (ş, ç, ğ, ı, ö, ü, İ) bozuyordu. HTTP istekleriyle gönderilen "Kaşarlı" → "KaÅŸarlÄ±" olarak veritabanına kaydedildi.<br>
+            <strong>Çözüm:</strong> Geçici C# endpoint (<code>[HttpPost("/admin/fix-turkish")]</code>) oluşturuldu. C# source dosyaları UTF-8 encoding kullandığı için Türkçe karakterler doğru işlendi. 38 ürün + 12 kategori + 10 opsiyon güncellendi. Endpoint işlem sonrası koddan kaldırıldı.
+        </div>
+
+        <!-- ===== 17. TÜM KARŞILAŞILAN HATALAR (9 MART) ===== -->
+        <h2>17. 9 Mart — Karşılaşılan Hatalar ve Çözümler</h2>
+        <table>
+            <tr><th>#</th><th>Hata</th><th>Kategori</th><th>Çözüm</th></tr>
+            <tr>
+                <td>12</td>
+                <td><strong>Mobil Admin Ürünler Tablosu Kesilmesi</strong><br>
+                    Fiyat kolonundan sonra içerik görünmüyor, butonlar erişilemiyor</td>
+                <td>CSS / Mobile</td>
+                <td><code>.urun-table-wrap { overflow: hidden }</code> → <code>overflow-x: auto; -webkit-overflow-scrolling: touch;</code></td>
+            </tr>
+            <tr>
+                <td>13</td>
+                <td><strong>Mobil Admin Siparişler Tablosu Taşması</strong><br>
+                    Sayfa genişliğini aşıyor, kaydırılamıyor</td>
+                <td>CSS / Mobile</td>
+                <td>Base CSS'e <code>.siparis-table-wrap { overflow-x: auto }</code> eklendi, media query konsolide edildi</td>
+            </tr>
+            <tr>
+                <td>14</td>
+                <td><strong>Ürün Silme Butonu Çalışmıyor</strong><br>
+                    <code>23503: FK constraint violated</code> — Restrict FK engeli</td>
+                <td>Database / FK</td>
+                <td><code>SepetDetaylar</code> ve <code>SiparisDetaylar</code> kayıtları silme öncesi <code>RemoveRange()</code> ile temizleniyor</td>
+            </tr>
+            <tr>
+                <td>15</td>
+                <td><strong>PowerShell UTF-8 Encoding Bozulması</strong><br>
+                    "Kaşarlı" → "KaÅŸarlÄ±" olarak DB'ye kaydediliyor</td>
+                <td>Encoding / i18n</td>
+                <td>PowerShell yerine C# geçici endpoint ile doğrudan DB güncelleme — C# source UTF-8 BOM ile doğru encoding</td>
+            </tr>
+            <tr>
+                <td>16</td>
+                <td><strong>Opsiyon Sıralama Bozukluğu</strong><br>
+                    Orta → Küçük → Büyük (DB insertion order)</td>
+                <td>UX / Sıralama</td>
+                <td>3 noktaya <code>.OrderBy(uo => uo.Opsiyon.EkFiyat)</code> eklendi</td>
+            </tr>
+            <tr>
+                <td>17</td>
+                <td><strong>Süt Tipi Grubunda Bedava Seçenek Yok</strong><br>
+                    Müşteri her durumda +5 TL ödüyordu</td>
+                <td>UX / İş Kuralı</td>
+                <td>"Normal Süt" (0 TL) opsiyonu oluşturulup tüm kahve ürünlerine eklendi</td>
+            </tr>
+            <tr>
+                <td>18</td>
+                <td><strong>Sos Grubu Yanlış Zorunlu Gösterimi</strong><br>
+                    Müşteri sos istemese bile seçim yapması gerekiyordu</td>
+                <td>UX / İş Kuralı</td>
+                <td>JS'te <code>isMulti</code> kontrolüne <code>'sos'</code> eklenerek checkbox (isteğe bağlı) yapıldı</td>
+            </tr>
+        </table>
+
+        <!-- ===== 18. GELECEK HAFTA ===== -->
+        <h2>18. Gelecek Hafta Planı (Hafta 5)</h2>
         <div class="state-box">
             <strong>Hafta 5 — Mutfak & Garson Paneli + Ödeme Sistemi + Deploy:</strong>
             <ul>

@@ -6,6 +6,7 @@ using QRMenu.Core.Interfaces;
 using QRMenu.Data.Services;
 using QRMenu.Web.Middleware;
 using QRMenu.Web.Hubs;
+using QRMenu.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +42,9 @@ builder.Services.AddControllersWithViews();
 
 // SignalR — Gerçek zamanlı menü güncellemeleri
 builder.Services.AddSignalR();
+
+// Background Service — 1 günden eski oturumları sil
+builder.Services.AddHostedService<OturumTemizleyici>();
 
 // ===== RATE LIMITING =====
 builder.Services.AddRateLimiter(options =>
