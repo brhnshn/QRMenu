@@ -534,6 +534,12 @@ namespace QRMenu.Web.Controllers
             Opsiyon opsiyon;
             if (mevcutOpsiyon != null)
             {
+                // Fiyat değiştiyse güncelle
+                if (mevcutOpsiyon.EkFiyat != model.EkFiyat)
+                {
+                    mevcutOpsiyon.EkFiyat = model.EkFiyat;
+                    await _context.SaveChangesAsync();
+                }
                 opsiyon = mevcutOpsiyon;
             }
             else
