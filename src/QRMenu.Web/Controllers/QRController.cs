@@ -55,7 +55,7 @@ namespace QRMenu.Web.Controllers
             {
                 HttpOnly = true,
                 Secure = !_env.IsDevelopment(), // Development'ta HTTP, Production'da HTTPS
-                SameSite = SameSiteMode.Strict,
+                SameSite = SameSiteMode.Lax,    // Lax: QR tarayıcıdan (cross-site) gelen GET redirect'lerde cookie gönderilir
                 Expires = DateTimeOffset.UtcNow.AddMinutes(90),
                 Path = "/"
             };
