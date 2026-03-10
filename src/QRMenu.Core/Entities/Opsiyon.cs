@@ -7,6 +7,7 @@ namespace QRMenu.Core.Entities
         public string? AdEN { get; set; }
         public string Grup { get; set; } = string.Empty; // "Boyut", "Süt Tipi"
         public decimal EkFiyat { get; set; }
+        public bool Zorunlu { get; set; } = true; // Varsayılan olarak zorunlu
 
         // Navigation Properties
         public ICollection<UrunOpsiyon> UrunOpsiyonlar { get; set; } = new List<UrunOpsiyon>();

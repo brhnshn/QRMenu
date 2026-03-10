@@ -167,8 +167,8 @@ namespace QRMenu.Web.Controllers
                 durumInt = (int)siparis.Durum,
                 toplamTutar = siparis.ToplamTutar,
                 notlar = siparis.Notlar,
-                olusturmaTarihi = siparis.OlusturmaTarihi.ToString("dd.MM.yyyy HH:mm"),
-                guncellemeTarihi = siparis.GuncellemeTarihi?.ToString("dd.MM.yyyy HH:mm"),
+                olusturmaTarihi = siparis.OlusturmaTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
+                guncellemeTarihi = siparis.GuncellemeTarihi?.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
                 detaylar = siparis.SiparisDetaylar.Select(sd => new
                 {
                     urunAd = sd.Urun.Ad,
@@ -227,7 +227,7 @@ namespace QRMenu.Web.Controllers
                 durum = s.Durum.ToString(),
                 durumInt = (int)s.Durum,
                 toplamTutar = s.ToplamTutar,
-                olusturmaTarihi = s.OlusturmaTarihi.ToString("dd.MM.yyyy HH:mm"),
+                olusturmaTarihi = s.OlusturmaTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
                 urunSayisi = s.SiparisDetaylar.Sum(sd => sd.Adet),
                 detayOzet = string.Join(", ", s.SiparisDetaylar.Select(sd => $"{sd.Adet}× {sd.Urun.Ad}"))
             }));
@@ -369,7 +369,8 @@ namespace QRMenu.Web.Controllers
                         uo.Opsiyon.Id,
                         uo.Opsiyon.Ad,
                         uo.Opsiyon.Grup,
-                        uo.Opsiyon.EkFiyat
+                        uo.Opsiyon.EkFiyat,
+                        uo.Opsiyon.Zorunlu
                     })
                 }
             });
@@ -534,10 +535,11 @@ namespace QRMenu.Web.Controllers
             Opsiyon opsiyon;
             if (mevcutOpsiyon != null)
             {
-                // Fiyat değiştiyse güncelle
-                if (mevcutOpsiyon.EkFiyat != model.EkFiyat)
+                // Fiyat veya zorunluluk değiştiyse güncelle
+                if (mevcutOpsiyon.EkFiyat != model.EkFiyat || mevcutOpsiyon.Zorunlu != model.Zorunlu)
                 {
                     mevcutOpsiyon.EkFiyat = model.EkFiyat;
+                    mevcutOpsiyon.Zorunlu = model.Zorunlu;
                     await _context.SaveChangesAsync();
                 }
                 opsiyon = mevcutOpsiyon;
@@ -548,7 +550,8 @@ namespace QRMenu.Web.Controllers
                 {
                     Ad = model.Ad,
                     Grup = model.Grup,
-                    EkFiyat = model.EkFiyat
+                    EkFiyat = model.EkFiyat,
+                    Zorunlu = model.Zorunlu
                 };
                 _context.Opsiyonlar.Add(opsiyon);
                 await _context.SaveChangesAsync();

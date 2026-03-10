@@ -151,8 +151,26 @@ body {
 .img-placeholder {
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
 }
+
+.img-placeholder::after {
+    content: '☕';
+}
+.img-placeholder[data-kategori*="Soğuk"]::after { content: '🧊'; }
+.img-placeholder[data-kategori*="Kahvaltı"]::after { content: '🍳'; }
+.img-placeholder[data-kategori*="Tost"]::after { content: '🥪'; }
+.img-placeholder[data-kategori*="Burger"]::after { content: '🍔'; }
+.img-placeholder[data-kategori*="Pizza"]::after { content: '🍕'; }
+.img-placeholder[data-kategori*="Makarna"]::after { content: '🍝'; }
+.img-placeholder[data-kategori*="Salata"]::after { content: '🥗'; }
+.img-placeholder[data-kategori*="Tatlı"]::after { content: '🍰'; }
+.img-placeholder[data-kategori*="Kahve"]::after { content: '☕'; }
+.img-placeholder[data-kategori*="Atıştırmalık"]::after { content: '🍟'; }
 
 .product-img {
     width: 100%;
@@ -194,7 +212,7 @@ body {
     color: #6c757d;
     margin: 0 0 8px 0;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
     line-height: 1.4;

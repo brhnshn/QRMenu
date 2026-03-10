@@ -246,16 +246,22 @@
                     <div class="col-4">
                         <input type="text" class="form-control form-control-sm" id="yeniOpsiyonGrup" placeholder="Grup (ör: Boyut)" maxlength="50" />
                     </div>
-                    <div class="col-4">
+                    <div class="col-3">
                         <input type="text" class="form-control form-control-sm" id="yeniOpsiyonAd" placeholder="Ad (ör: Büyük)" maxlength="100" />
                     </div>
                     <div class="col-2">
                         <input type="number" class="form-control form-control-sm" id="yeniOpsiyonFiyat" placeholder="0.00" step="any" min="0" value="0" />
                     </div>
+                    <div class="col-1 d-flex align-items-center justify-content-center">
+                        <div class="form-check form-switch m-0" title="Zorunlu">
+                            <input class="form-check-input" type="checkbox" id="yeniOpsiyonZorunlu" checked />
+                        </div>
+                    </div>
                     <div class="col-2">
                         <button class="btn btn-success btn-sm w-100" onclick="opsiyonEkle()"><i class="bi bi-plus"></i></button>
                     </div>
                 </div>
+                <div class="small text-muted mb-1"><i class="bi bi-info-circle"></i> Switch açık = Zorunlu (müşteri seçmek zorunda)</div>
             </div>
         </div>
     </div>
@@ -464,6 +470,7 @@
                     '<span class="opsiyon-tag">' + o.grup + '</span>' +
                     '<span>' + o.ad + '</span>' +
                     (o.ekFiyat > 0 ? '<span class="text-muted small">+' + o.ekFiyat.toFixed(2) + ' TL</span>' : '') +
+                    (o.zorunlu ? '<span class="badge bg-danger ms-1" style="font-size:0.65rem">Zorunlu</span>' : '<span class="badge bg-secondary ms-1" style="font-size:0.65rem">Opsiyonel</span>') +
                 '</div>' +
                 '<button class="btn-opsiyon-sil" onclick="opsiyonSil(' + o.id + ')"><i class="bi bi-x-lg"></i></button>' +
             '</div>';
@@ -476,13 +483,14 @@
         var grup = document.getElementById('yeniOpsiyonGrup').value.trim();
         var ad = document.getElementById('yeniOpsiyonAd').value.trim();
         var ekFiyat = parseFloat(document.getElementById('yeniOpsiyonFiyat').value) || 0;
+        var zorunlu = document.getElementById('yeniOpsiyonZorunlu').checked;
 
         if (!grup || !ad) { mesaj('Grup ve Ad alanları zorunlu.', 'danger'); return; }
 
         var res = await fetch('/admin/opsiyon-ekle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ urunId: urunId, ad: ad, grup: grup, ekFiyat: ekFiyat })
+            body: JSON.stringify({ urunId: urunId, ad: ad, grup: grup, ekFiyat: ekFiyat, zorunlu: zorunlu })
         });
         var data = await res.json();
         if (data.success) {

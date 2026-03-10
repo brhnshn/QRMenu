@@ -64,5 +64,7 @@ namespace QRMenu.Web.ViewModels
 
         [Range(0, 9999.99)]
         public decimal EkFiyat { get; set; }
+
+        public bool Zorunlu { get; set; } = true;
     }
 }

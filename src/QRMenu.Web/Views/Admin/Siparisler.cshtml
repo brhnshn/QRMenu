@@ -138,20 +138,30 @@
 </table>
 </div>
 
-<!-- DETAY MODALI -->
-<div class="modal fade" id="detayModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content" style="border-radius:16px; border:0">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold" id="detayModalTitle">Sipariş Detayı</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="detayModalBody">
-                <div class="text-center text-muted py-4">Yükleniyor...</div>
-            </div>
+<!-- FİŞ OVERLAY -->
+<div id="fisOverlay" style="display:none; position:fixed; inset:0; z-index:99998; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; cursor:pointer;" onclick="if(event.target===this)fisKapat()">
+    <div style="position:relative; background:#fff; width:480px; max-width:95vw; max-height:90vh; overflow-y:auto; padding:2.5rem 2rem; font-family:'Courier New',monospace; border-radius:8px;" onclick="event.stopPropagation()">
+        <button onclick="fisKapat()" style="position:absolute; top:12px; right:16px; background:none; border:none; font-size:1.8rem; cursor:pointer; color:#999;">&times;</button>
+        <div id="fisContent">
+            <div style="text-align:center; color:#aaa; padding:2rem;">Yükleniyor...</div>
         </div>
     </div>
 </div>
+
+<!-- GARSON ÇAĞRI OVERLAY -->
+<div id="garsonOverlay" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; flex-direction:column; cursor:pointer;" onclick="garsonOverlayKapat()">
+    <div style="text-align:center; animation: garsonPulse 0.6s ease-in-out infinite alternate;">
+        <div style="font-size:5rem;">🔔</div>
+        <h1 style="color:#fff; font-size:2.5rem; margin:1rem 0; font-weight:800;" id="garsonOverlayText">Masa ? Garson Çağırıyor!</h1>
+        <p style="color:rgba(255,255,255,0.7); font-size:1.1rem;">Kapatmak için tıklayın</p>
+    </div>
+</div>
+<style>
+    @@keyframes garsonPulse {
+        from { transform: scale(1); }
+        to { transform: scale(1.05); }
+    }
+</style>
 
 @functions {
     string DurumText(QRMenu.Core.Enums.SiparisDurum d) => d switch
@@ -237,18 +247,16 @@
         }
     }
 
-    // Detay modal
+    // Fiş overlay
     async function siparisDetay(id) {
-        const modal = new bootstrap.Modal(document.getElementById('detayModal'));
-        document.getElementById('detayModalTitle').textContent = `Sipariş #${id}`;
-        document.getElementById('detayModalBody').innerHTML = '<div class="text-center text-muted py-4">Yükleniyor...</div>';
-        modal.show();
+        document.getElementById('fisContent').innerHTML = '<div style="text-align:center; color:#aaa; padding:2rem;">Yükleniyor...</div>';
+        document.getElementById('fisOverlay').style.display = 'flex';
 
         try {
             const res = await fetch(`/admin/siparis-detay/${id}`);
             const data = await res.json();
             if (!data.success) {
-                document.getElementById('detayModalBody').innerHTML = `<div class="text-center text-danger py-4">${data.message}</div>`;
+                document.getElementById('fisContent').innerHTML = `<div style="text-align:center; color:red; padding:2rem;">${data.message}</div>`;
                 return;
             }
 
@@ -259,47 +267,55 @@
                     try {
                         const parsed = JSON.parse(d.opsiyonlar);
                         if (parsed.length > 0) {
-                            opsHtml = `<div class="detay-urun-ops">${parsed.map(p => p.Ad).join(', ')}</div>`;
+                            opsHtml = `<div style="font-size:1rem; color:#666; padding-left:1.5rem;">${parsed.map(p => p.Ad).join(', ')}</div>`;
                         }
                     } catch(e) {}
                 }
                 urunlerHtml += `
-                    <li>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; padding:10px 0; border-bottom:1px dashed #ccc;">
                         <div>
-                            <span class="detay-urun-name">${d.adet}× ${d.urunAd}</span>
+                            <span style="font-weight:700; font-size:1.15rem;">${d.adet}× ${d.urunAd}</span>
                             ${opsHtml}
                         </div>
-                        <strong>${(d.adet * d.birimFiyat).toFixed(2)} ₺</strong>
-                    </li>`;
+                        <span style="font-weight:800; font-size:1.15rem; white-space:nowrap;">${(d.adet * d.birimFiyat).toFixed(2)} ₺</span>
+                    </div>`;
             });
 
-            document.getElementById('detayModalBody').innerHTML = `
-                <div class="detay-info-grid">
-                    <div class="detay-info-item">
-                        <div class="label">Masa</div>
-                        <div class="value">Masa ${data.masaNo || '-'}</div>
-                    </div>
-                    <div class="detay-info-item">
-                        <div class="label">Durum</div>
-                        <div class="value"><span class="durum-badge durum-${data.durum}">${durumLabel(data.durum)}</span></div>
-                    </div>
-                    <div class="detay-info-item">
-                        <div class="label">Toplam Tutar</div>
-                        <div class="value">${data.toplamTutar.toFixed(2)} ₺</div>
-                    </div>
-                    <div class="detay-info-item">
-                        <div class="label">Tarih</div>
-                        <div class="value">${data.olusturmaTarihi}</div>
-                    </div>
+            document.getElementById('fisContent').innerHTML = `
+                <div style="text-align:center; margin-bottom:1.2rem;">
+                    <div style="font-size:2rem; font-weight:900; letter-spacing:2px;">QR MENÜ</div>
+                    <div style="font-size:1rem; color:#888;">Sipariş Fişi</div>
+                    <div style="border-top:3px solid #222; margin:10px 0;"></div>
                 </div>
-                ${data.notlar ? `<div class="alert alert-info py-2 px-3 small mb-3"><strong>Not:</strong> ${escapeHtml(data.notlar)}</div>` : ''}
-                <h6 class="fw-bold mb-2">Ürünler</h6>
-                <ul class="detay-urun-list">${urunlerHtml}</ul>
+                <div style="display:flex; justify-content:space-between; font-size:1.1rem; margin-bottom:6px;">
+                    <span><strong>Fiş No:</strong> #${data.id}</span>
+                    <span><strong>Masa:</strong> ${data.masaNo || '-'}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:1rem; margin-bottom:10px;">
+                    <span><strong>Tarih:</strong> ${data.olusturmaTarihi}</span>
+                    <span class="durum-badge durum-${data.durum}" style="font-size:0.85rem;">${durumLabel(data.durum)}</span>
+                </div>
+                <div style="border-top:2px dashed #999; margin:10px 0;"></div>
+                ${urunlerHtml}
+                <div style="border-top:3px solid #222; margin:14px 0 8px;"></div>
+                <div style="display:flex; justify-content:space-between; font-size:1.6rem; font-weight:900;">
+                    <span>TOPLAM</span>
+                    <span>${data.toplamTutar.toFixed(2)} ₺</span>
+                </div>
+                ${data.notlar ? `<div style="margin-top:12px; padding:10px; background:#f8f9fa; border-radius:8px; font-size:1rem;"><strong>📝 Not:</strong> ${escapeHtml(data.notlar)}</div>` : ''}
+                <div style="text-align:center; margin-top:1.2rem; color:#bbb; font-size:0.9rem;">
+                    ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─<br/>
+                    Teşekkür ederiz 🙏
+                </div>
             `;
         } catch (e) {
             console.error(e);
-            document.getElementById('detayModalBody').innerHTML = '<div class="text-center text-danger py-4">Detay yüklenemedi.</div>';
+            document.getElementById('fisContent').innerHTML = '<div style="text-align:center; color:red; padding:2rem;">Detay yüklenemedi.</div>';
         }
+    }
+
+    function fisKapat() {
+        document.getElementById('fisOverlay').style.display = 'none';
     }
 
     function durumLabel(d) {
@@ -458,8 +474,57 @@
         }
     });
 
+    siparisConnection.on('GarsonCagrisi', function(masaNo) {
+        garsonBildirimGoster(masaNo);
+    });
+
     siparisConnection.start().catch(function(err) {
         console.error('SignalR bağlantı hatası:', err);
     });
+
+    // Garson çağrı bildirimi — büyük overlay + uzun alarm sesi
+    let garsonSesCtx = null;
+    let garsonSesOsc = null;
+
+    function garsonBildirimGoster(masaNo) {
+        document.getElementById('garsonOverlayText').textContent = 'Masa ' + masaNo + ' Garson Çağırıyor!';
+        const overlay = document.getElementById('garsonOverlay');
+        overlay.style.display = 'flex';
+        garsonAlarmCal();
+    }
+
+    function garsonOverlayKapat() {
+        document.getElementById('garsonOverlay').style.display = 'none';
+        garsonAlarmDurdur();
+    }
+
+    function garsonAlarmCal() {
+        try {
+            garsonSesCtx = new (window.AudioContext || window.webkitAudioContext)();
+            garsonSesOsc = garsonSesCtx.createOscillator();
+            const gain = garsonSesCtx.createGain();
+            garsonSesOsc.connect(gain);
+            gain.connect(garsonSesCtx.destination);
+            garsonSesOsc.type = 'sine';
+            // Tekrarlayan bip bip sesi (3 saniye)
+            const now = garsonSesCtx.currentTime;
+            for (let i = 0; i < 6; i++) {
+                garsonSesOsc.frequency.setValueAtTime(880, now + i * 0.5);
+                garsonSesOsc.frequency.setValueAtTime(660, now + i * 0.5 + 0.25);
+                gain.gain.setValueAtTime(0.4, now + i * 0.5);
+                gain.gain.setValueAtTime(0.05, now + i * 0.5 + 0.25);
+            }
+            gain.gain.setValueAtTime(0.01, now + 3);
+            garsonSesOsc.start(now);
+            garsonSesOsc.stop(now + 3);
+        } catch(e) { console.error('Ses çalınamadı:', e); }
+    }
+
+    function garsonAlarmDurdur() {
+        try {
+            if (garsonSesOsc) { garsonSesOsc.stop(); garsonSesOsc = null; }
+            if (garsonSesCtx) { garsonSesCtx.close(); garsonSesCtx = null; }
+        } catch(e) {}
+    }
 </script>
 }

@@ -75,7 +75,7 @@
                                 }
                                 else
                                 {
-                                    <div class="img-placeholder"></div>
+                                    <div class="img-placeholder" data-kategori="@urun.Kategori?.Ad"></div>
                                 }
                             </div>
                             <div class="product-details">
@@ -85,7 +85,7 @@
                                     <span class="p-price">@urun.Fiyat.ToString("N2") TL</span>
                                     @if (!isSoldOut)
                                     {
-                                        var opsiyonList = urun.UrunOpsiyonlar?.OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new { id = uo.Opsiyon.Id, ad = uo.Opsiyon.Ad, grup = uo.Opsiyon.Grup, ekFiyat = uo.Opsiyon.EkFiyat }).ToList() ?? new();
+                                        var opsiyonList = urun.UrunOpsiyonlar?.OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new { id = uo.Opsiyon.Id, ad = uo.Opsiyon.Ad, grup = uo.Opsiyon.Grup, ekFiyat = uo.Opsiyon.EkFiyat, zorunlu = uo.Opsiyon.Zorunlu }).ToList() ?? new();
                                         var opsiyonJson = System.Text.Json.JsonSerializer.Serialize(opsiyonList);
                                         <button class="btn-add"
                                                 data-urun-id="@urun.Id"
@@ -110,7 +110,7 @@
     </div>
 
     <!-- 4. YAPIŞKAN ALT BAR -->
-    <div class="sticky-bottom-bar" id="bottomBar" style="display: none;">
+    <div class="sticky-bottom-bar" id="bottomBar">
         <button class="btn-waiter" onclick="callWaiter()">
             <span class="fs-4 d-block lh-1"></span>
             <span class="small fw-semibold mt-1">Garson</span>
@@ -241,8 +241,18 @@
             setupScrollObserver();
         });
 
-        function callWaiter() {
-            alert(' Garson çağrısı yapıldı.');
+        async function callWaiter() {
+            try {
+                const res = await fetch('/siparis/garson-cagir', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('✅ Garson çağrıldı! Birazdan masanıza gelecek.');
+                } else {
+                    showToast('⚠️ ' + (data.message || 'Bir hata oluştu.'));
+                }
+            } catch(e) {
+                showToast('⚠️ Garson çağrılamadı, tekrar deneyin.');
+            }
         }
 
         let currentUrunId = 0;
@@ -284,9 +294,13 @@
             for (const [grupAdi, opsList] of Object.entries(gruplar)) {
                 const groupDiv = document.createElement('div');
                 groupDiv.className = 'mb-4';
-                const isMulti = grupAdi.toLowerCase().includes('ekstra') || grupAdi.toLowerCase().includes('çoklu') || grupAdi.toLowerCase().includes('sos');
-                const requiredTag = !isMulti ? ' <span class="text-danger small">(Zorunlu)</span>' : '';
-                groupDiv.innerHTML = `<h6 class="mb-3 fw-bold text-dark">${grupAdi}${requiredTag}</h6>`;
+                // Gruptaki ilk opsiyonun zorunlu alanına bak (aynı gruptaki tüm opsiyonlar aynı değere sahip)
+                const isZorunlu = opsList[0].zorunlu === true;
+                const isMulti = !isZorunlu;
+                const grupTag = isZorunlu
+                    ? ' <span class="text-danger small">(Zorunlu)</span>'
+                    : ' <span class="text-muted small">(Opsiyonel)</span>';
+                groupDiv.innerHTML = `<h6 class="mb-3 fw-bold text-dark">${grupAdi}${grupTag}</h6>`;
 
                 const nameAttr = isMulti ? '' : 'grup_' + grupAdi.replace(/\s+/g, '');
                 if (!isMulti) requiredGroups.push(nameAttr);
@@ -396,13 +410,8 @@
         }
 
         function updateBottomBar(count, total) {
-            const bottomBar = document.getElementById('bottomBar');
-            if (count > 0) {
-                bottomBar.style.display = 'flex';
-                document.getElementById('bottomTotal').textContent = parseFloat(total).toFixed(2);
-            } else {
-                bottomBar.style.display = 'none';
-                
+            document.getElementById('bottomTotal').textContent = parseFloat(total).toFixed(2);
+            if (count <= 0) {
                 // Eğer sepet açıksa kapatalım
                 var bsOffcanvas = bootstrap.Offcanvas.getInstance(document.getElementById('cartOffcanvas'));
                 if(bsOffcanvas) bsOffcanvas.hide();
@@ -534,7 +543,7 @@
                     if (urun.gorselUrl) {
                         html += '<img src="' + escapeHtml(urun.gorselUrl) + '" alt="' + escapeHtml(urun.ad) + '" class="product-img" loading="lazy" />';
                     } else {
-                        html += '<div class="img-placeholder"></div>';
+                        html += '<div class="img-placeholder" data-kategori="' + escapeHtml(kat.ad) + '"></div>';
                     }
                     html += '</div>';
                     html += '<div class="product-details">';
@@ -656,21 +665,14 @@
                 }
                 const data = await res.json();
                 if(data.success) {
-                    document.getElementById('cartContent').innerHTML = `
-                        <div class="text-center mt-5">
-                            <div style="width:64px;height:64px;background:#d4edda;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#155724" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            </div>
-                            <h5 class="fw-bold">Siparişiniz Alındı!</h5>
-                            <p class="text-muted mb-1">Sipariş #${data.siparisId}</p>
-                            <p class="fs-5 fw-bold text-success">${data.toplamTutar.toFixed(2)} TL</p>
-                            <span class="badge bg-warning text-dark rounded-pill px-3 py-2">${data.durum}</span>
-                        </div>`;
-                    document.getElementById('cartOffcanvasTotal').textContent = '0.00 TL';
-                    btn.textContent = 'Sipariş Gönderildi ✓';
-                    btn.classList.replace('btn-success', 'btn-secondary');
-                    updateBottomBar(0, 0);
                     showToast('Siparişiniz mutfağa iletildi!', false);
+                    // Sepeti sıfırla ve yeni sipariş için hazırla
+                    await fetchCartDetails();
+                    btn.disabled = false;
+                    btn.textContent = 'Siparişi Gönder';
+                    btn.classList.remove('btn-secondary');
+                    btn.classList.add('btn-success');
+                    updateBottomBar(0, 0);
                     fetchOrderStatus();
                 } else {
                     showToast(data.message, true);

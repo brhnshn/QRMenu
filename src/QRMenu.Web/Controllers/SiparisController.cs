@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
 using QRMenu.Core.Enums;
 using QRMenu.Core.Interfaces;
@@ -36,6 +37,35 @@ namespace QRMenu.Web.Controllers
             var hash = _tokenService.HashToken(token);
             var oturum = await _tokenService.ValidateTokenAsync(hash);
             return oturum?.Id;
+        }
+
+        private async Task<(int oturumId, int masaNo)?> GetOturumBilgiAsync()
+        {
+            var token = Request.Cookies["qrmenu_token"];
+            if (string.IsNullOrEmpty(token)) return null;
+
+            var hash = _tokenService.HashToken(token);
+            var oturum = await _tokenService.ValidateTokenAsync(hash);
+            if (oturum == null) return null;
+            return (oturum.Id, oturum.Masa?.MasaNo ?? 0);
+        }
+
+        /// <summary>
+        /// Garson çağır: POST /siparis/garson-cagir (AJAX)
+        /// </summary>
+        [HttpPost("/siparis/garson-cagir")]
+        [EnableRateLimiting("GarsonCagirPolicy")]
+        public async Task<IActionResult> GarsonCagir()
+        {
+            var bilgi = await GetOturumBilgiAsync();
+            if (bilgi == null) return Unauthorized();
+
+            var masaNo = bilgi.Value.masaNo;
+            _logger.LogInformation("Garson çağrıldı! Masa={MasaNo}", masaNo);
+
+            await _menuHub.Clients.All.SendAsync("GarsonCagrisi", masaNo);
+
+            return Json(new { success = true, message = "Garson çağrıldı!" });
         }
 
         /// <summary>
@@ -88,7 +118,7 @@ namespace QRMenu.Web.Controllers
                 siparisId = siparis.Id,
                 durum = siparis.Durum.ToString(),
                 toplamTutar = siparis.ToplamTutar,
-                olusturmaTarihi = siparis.OlusturmaTarihi,
+                olusturmaTarihi = siparis.OlusturmaTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
                 notlar = siparis.Notlar,
                 detaylar = siparis.SiparisDetaylar.Select(sd => new
                 {
@@ -143,7 +173,7 @@ namespace QRMenu.Web.Controllers
                     siparisId = s.Id,
                     durum = s.Durum.ToString(),
                     toplamTutar = s.ToplamTutar,
-                    olusturmaTarihi = s.OlusturmaTarihi,
+                    olusturmaTarihi = s.OlusturmaTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
                     detaylar = s.SiparisDetaylar.Select(sd => new
                     {
                         urunAd = sd.Urun.Ad,

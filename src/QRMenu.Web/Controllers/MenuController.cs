@@ -55,7 +55,8 @@ namespace QRMenu.Web.Controllers
                             id = uo.Opsiyon.Id,
                             ad = uo.Opsiyon.Ad,
                             grup = uo.Opsiyon.Grup,
-                            ekFiyat = uo.Opsiyon.EkFiyat
+                            ekFiyat = uo.Opsiyon.EkFiyat,
+                            zorunlu = uo.Opsiyon.Zorunlu
                         })
                     })
                 });
