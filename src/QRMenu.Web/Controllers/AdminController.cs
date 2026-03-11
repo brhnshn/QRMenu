@@ -13,6 +13,13 @@ namespace QRMenu.Web.Controllers
 {
     public class AdminController : Controller
     {
+        private static readonly TimeZoneInfo _turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
+        private static string ToTurkeyTime(DateTime utc) =>
+            TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), _turkeyTz).ToString("dd.MM.yyyy HH:mm");
+        private static string? ToTurkeyTime(DateTime? utc) =>
+            utc.HasValue ? ToTurkeyTime(utc.Value) : null;
+
         private readonly QRMenuDbContext _context;
         private readonly ILogger<AdminController> _logger;
         private readonly IWebHostEnvironment _env;
@@ -167,8 +174,8 @@ namespace QRMenu.Web.Controllers
                 durumInt = (int)siparis.Durum,
                 toplamTutar = siparis.ToplamTutar,
                 notlar = siparis.Notlar,
-                olusturmaTarihi = siparis.OlusturmaTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
-                guncellemeTarihi = siparis.GuncellemeTarihi?.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
+                olusturmaTarihi = ToTurkeyTime(siparis.OlusturmaTarihi),
+                guncellemeTarihi = ToTurkeyTime(siparis.GuncellemeTarihi),
                 detaylar = siparis.SiparisDetaylar.Select(sd => new
                 {
                     urunAd = sd.Urun.Ad,
@@ -227,7 +234,7 @@ namespace QRMenu.Web.Controllers
                 durum = s.Durum.ToString(),
                 durumInt = (int)s.Durum,
                 toplamTutar = s.ToplamTutar,
-                olusturmaTarihi = s.OlusturmaTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
+                olusturmaTarihi = ToTurkeyTime(s.OlusturmaTarihi),
                 urunSayisi = s.SiparisDetaylar.Sum(sd => sd.Adet),
                 detayOzet = string.Join(", ", s.SiparisDetaylar.Select(sd => $"{sd.Adet}× {sd.Urun.Ad}"))
             }));

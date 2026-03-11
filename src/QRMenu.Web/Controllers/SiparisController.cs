@@ -9,6 +9,11 @@ namespace QRMenu.Web.Controllers
 {
     public class SiparisController : Controller
     {
+        private static readonly TimeZoneInfo _turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
+        private static string ToTurkeyTime(DateTime utc) =>
+            TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), _turkeyTz).ToString("dd.MM.yyyy HH:mm");
+
         private readonly ISiparisService _siparisService;
         private readonly ISepetService _sepetService;
         private readonly ITokenService _tokenService;
@@ -118,7 +123,7 @@ namespace QRMenu.Web.Controllers
                 siparisId = siparis.Id,
                 durum = siparis.Durum.ToString(),
                 toplamTutar = siparis.ToplamTutar,
-                olusturmaTarihi = siparis.OlusturmaTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
+                olusturmaTarihi = ToTurkeyTime(siparis.OlusturmaTarihi),
                 notlar = siparis.Notlar,
                 detaylar = siparis.SiparisDetaylar.Select(sd => new
                 {
@@ -173,7 +178,7 @@ namespace QRMenu.Web.Controllers
                     siparisId = s.Id,
                     durum = s.Durum.ToString(),
                     toplamTutar = s.ToplamTutar,
-                    olusturmaTarihi = s.OlusturmaTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
+                    olusturmaTarihi = ToTurkeyTime(s.OlusturmaTarihi),
                     detaylar = s.SiparisDetaylar.Select(sd => new
                     {
                         urunAd = sd.Urun.Ad,
