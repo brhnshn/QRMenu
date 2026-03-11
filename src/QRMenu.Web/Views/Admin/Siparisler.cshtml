@@ -3,6 +3,11 @@
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
     ViewData["Title"] = "Siparişler";
     
+    var turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(
+        OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
+    Func<DateTime, string> toTR = dt =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(dt, DateTimeKind.Utc), turkeyTz).ToString("dd.MM HH:mm");
+    
     var bekleyen = Model.Count(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.Onaylandi);
     var hazirlaniyor = Model.Count(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor);
     var hazir = Model.Count(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir);
@@ -113,7 +118,7 @@
                     <td class="text-truncate" style="max-width:220px;" title="@detayOzet">@detayOzet</td>
                     <td><strong>@s.ToplamTutar.ToString("N2") ₺</strong></td>
                     <td><span class="durum-badge durum-@s.Durum">@DurumText(s.Durum)</span></td>
-                    <td>@s.OlusturmaTarihi.ToLocalTime().ToString("dd.MM HH:mm")</td>
+                    <td>@toTR(s.OlusturmaTarihi)</td>
                     <td>
                         <div class="siparis-actions">
                             <button class="btn btn-outline-primary btn-sm" onclick="siparisDetay(@s.Id)">
