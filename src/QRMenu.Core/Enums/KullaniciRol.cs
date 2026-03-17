@@ -5,6 +5,7 @@ namespace QRMenu.Core.Enums
         Admin = 0,
         Garson = 1,
         Barista = 2,
-        Kasa = 3
+        Kasa = 3,
+        Mutfak = 4
     }
 }

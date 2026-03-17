@@ -1,10 +1,18 @@
 using QRMenu.Core.Entities;
 using QRMenu.Core.Enums;
+using QRMenu.Core.DTOs;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace QRMenu.Core.Interfaces
 {
     public interface ISiparisService
     {
+        /// <summary>
+        /// Garson panelinden sepetsiz, anında masaya sipariş ekler.
+        /// </summary>
+        Task<Siparis> ManuelSiparisOlusturAsync(int masaId, List<ManuelSiparisDetayDto> urunler, string? notlar = null);
+
         /// <summary>
         /// Sepetteki ürünleri siparişe çevirir (Transaction ile atomik).
         /// Sipariş oluştuktan sonra sepet temizlenir.

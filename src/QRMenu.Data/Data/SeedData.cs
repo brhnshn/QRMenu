@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using QRMenu.Core.Entities;
+using QRMenu.Core.Enums;
 
 namespace QRMenu.Data.Data
 {
@@ -73,6 +74,14 @@ namespace QRMenu.Data.Data
                 new UrunOpsiyon { UrunId = 5, OpsiyonId = 3 },
                 new UrunOpsiyon { UrunId = 5, OpsiyonId = 4 },
                 new UrunOpsiyon { UrunId = 5, OpsiyonId = 5 }
+            );
+
+            // ===== KULLANICILAR =====
+            modelBuilder.Entity<Kullanici>().HasData(
+                new Kullanici { Id = 1, KullaniciAdi = "admin", AdSoyad = "Sistem Yöneticisi", SifreHash = "123456", Rol = KullaniciRol.Admin, AktifMi = true },
+                new Kullanici { Id = 2, KullaniciAdi = "garson", AdSoyad = "Garson Test", SifreHash = "123456", Rol = KullaniciRol.Garson, AktifMi = true },
+                new Kullanici { Id = 3, KullaniciAdi = "kasa", AdSoyad = "Kasa Test", SifreHash = "123456", Rol = KullaniciRol.Kasa, AktifMi = true },
+                new Kullanici { Id = 4, KullaniciAdi = "mutfak", AdSoyad = "Mutfak Test", SifreHash = "123456", Rol = KullaniciRol.Mutfak, AktifMi = true }
             );
         }
     }

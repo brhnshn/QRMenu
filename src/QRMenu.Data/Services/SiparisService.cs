@@ -51,7 +51,6 @@ namespace QRMenu.Data.Services
             // Transaction desteği kontrol — InMemory provider'da transaction yok
             var supportsTransactions = _context.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory";
 
-            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
             if (supportsTransactions)
             {
                 var strategy = _context.Database.CreateExecutionStrategy();
@@ -59,6 +58,24 @@ namespace QRMenu.Data.Services
             }
 
             return await ExecuteSiparisOlusturAsync(sepetId, notlar, false);
+        }
+
+        /// <summary>
+        /// Garson panelinden sepetsiz, anında masaya sipariş ekler.
+        /// </summary>
+        public async Task<Siparis> ManuelSiparisOlusturAsync(int masaId, List<QRMenu.Core.DTOs.ManuelSiparisDetayDto> urunler, string? notlar = null)
+        {
+            if (urunler == null || !urunler.Any())
+                throw new InvalidOperationException("Ürün listesi boş olamaz.");
+
+            var supportsTransactions = _context.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory";
+            if (supportsTransactions)
+            {
+                var strategy = _context.Database.CreateExecutionStrategy();
+                return await strategy.ExecuteAsync(() => ExecuteManuelSiparisOlusturAsync(masaId, urunler, notlar, true));
+            }
+
+            return await ExecuteManuelSiparisOlusturAsync(masaId, urunler, notlar, false);
         }
 
         private async Task<Siparis> ExecuteSiparisOlusturAsync(int sepetId, string? notlar, bool useTransaction)
@@ -140,13 +157,103 @@ namespace QRMenu.Data.Services
             }
         }
 
+        private async Task<Siparis> ExecuteManuelSiparisOlusturAsync(int masaId, List<QRMenu.Core.DTOs.ManuelSiparisDetayDto> urunler, string? notlar, bool useTransaction)
+        {
+            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
+
+            try
+            {
+                if (useTransaction)
+                    transaction = await _context.Database.BeginTransactionAsync();
+
+                decimal toplamTutar = 0;
+                var siparisDetaylar = new List<SiparisDetay>();
+
+                foreach (var item in urunler)
+                {
+                    var urunDB = await _context.Urunler.FindAsync(item.UrunId);
+                    if (urunDB == null || !urunDB.AktifMi)
+                        throw new InvalidOperationException($"Ürün bulunamadı veya pasif: {item.UrunId}");
+
+                    decimal birimFiyat = urunDB.Fiyat;
+                    string? seciliOpsiyonlarJson = null;
+
+                    if (item.OpsiyonIds != null && item.OpsiyonIds.Any())
+                    {
+                        var opsiyonlar = await _context.Opsiyonlar
+                            .Where(o => item.OpsiyonIds.Contains(o.Id))
+                            .ToListAsync();
+                        
+                        birimFiyat += opsiyonlar.Sum(o => o.EkFiyat);
+                        seciliOpsiyonlarJson = System.Text.Json.JsonSerializer.Serialize(opsiyonlar.Select(o => new { o.Id, o.Ad, o.EkFiyat }));
+                    }
+
+                    toplamTutar += (birimFiyat * item.Adet);
+
+                    siparisDetaylar.Add(new SiparisDetay
+                    {
+                        UrunId = urunDB.Id,
+                        Adet = item.Adet,
+                        BirimFiyat = birimFiyat,
+                        SeciliOpsiyonlar = seciliOpsiyonlarJson,
+                        Durum = SiparisDurum.Onaylandi
+                    });
+                }
+
+                var siparis = new Siparis
+                {
+                    MasaId = masaId,
+                    OturumId = null, // Garson oluşturduğu için şu anki mantıkta zorunlu değil (Veritabanında nullable)
+                    Durum = SiparisDurum.Onaylandi,
+                    OlusturmaTarihi = DateTime.UtcNow,
+                    ToplamTutar = toplamTutar,
+                    Notlar = notlar,
+                    RowVersion = Guid.NewGuid().ToByteArray()
+                };
+
+                _context.Siparisler.Add(siparis);
+                await _context.SaveChangesAsync(); // siparis.Id almak için
+
+                foreach (var detay in siparisDetaylar)
+                {
+                    detay.SiparisId = siparis.Id;
+                    _context.SiparisDetaylar.Add(detay);
+                }
+
+                await _context.SaveChangesAsync();
+
+                if (transaction != null)
+                    await transaction.CommitAsync();
+
+                _logger.LogInformation(
+                    "Garson tarafından manuel sipariş oluşturuldu. SiparisId={SiparisId}, MasaId={MasaId}, Tutar={Tutar}",
+                    siparis.Id, masaId, siparis.ToplamTutar);
+
+                return siparis;
+            }
+            catch
+            {
+                if (transaction != null)
+                    await transaction.RollbackAsync();
+                throw;
+            }
+            finally
+            {
+                if (transaction != null)
+                    await transaction.DisposeAsync();
+            }
+        }
+
         /// <summary>
         /// Sipariş durumunu günceller — State Machine kurallarına uygun olmalı.
         /// RowVersion ile concurrency kontrolü.
         /// </summary>
         public async Task<Siparis> DurumGuncelleAsync(int siparisId, SiparisDurum yeniDurum)
         {
-            var siparis = await _context.Siparisler.FindAsync(siparisId);
+            var siparis = await _context.Siparisler
+                .Include(s => s.SiparisDetaylar)
+                .FirstOrDefaultAsync(s => s.Id == siparisId);
+
             if (siparis == null)
                 throw new InvalidOperationException("Sipariş bulunamadı.");
 
@@ -162,6 +269,15 @@ namespace QRMenu.Data.Services
             siparis.Durum = yeniDurum;
             siparis.GuncellemeTarihi = DateTime.UtcNow;
             siparis.RowVersion = Guid.NewGuid().ToByteArray();
+
+            // Alt ürünlerin (iptal ya da ödenmiş olmayan) durumlarını da ana siparişle eşzamanlı güncelle
+            foreach(var detay in siparis.SiparisDetaylar)
+            {
+                if (detay.Durum != SiparisDurum.Iptal && detay.Durum != SiparisDurum.TamOdendi && detay.Durum != SiparisDurum.Iade)
+                {
+                    detay.Durum = yeniDurum;
+                }
+            }
 
             try
             {
