@@ -1,0 +1,152 @@
+@model List<QRMenu.Core.Entities.Masa>
+@{
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = "Garson Panel - Masalar";
+    ViewData["ActivePage"] = "GarsonMasalar";
+    ViewData["PageTitle"] = "Aktif Masalar";
+}
+
+<style>
+    .kare-masa {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px 16px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        color: #333;
+        display: block;
+        border: 2px solid transparent;
+        position: relative;
+    }
+    .kare-masa:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        color: #333;
+    }
+    .masa-dolu { border-color: #f87171; }
+    .masa-bos { border-color: #34d399; }
+    .masa-label { font-size: 1.25rem; font-weight: 800; margin-bottom: 8px; color: #2c3e50; }
+    .masa-status { font-size: 0.85rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; display: inline-block; }
+    .status-dolu { background: #fee2e2; color: #b91c1c; }
+    .status-bos { background: #d1fae5; color: #047857; }
+
+    /* Zil Animasyonu */
+    .zil-box {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        color: #ef4444;
+        font-size: 1.4rem;
+        animation: zilPulse 1s infinite alternate;
+    }
+    @@keyframes zilPulse {
+        from { transform: scale(1); opacity: 1; text-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+        to { transform: scale(1.2); opacity: 0.8; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+    }
+</style>
+
+<div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-4 mt-2">
+    @foreach(var masa in Model.OrderBy(m => m.MasaNo))
+    {
+        var doluMu = masa.Siparisler.Any();
+        <div class="col">
+            <a href="/Garson/Masa/@masa.Id" class="kare-masa @(doluMu ? "masa-dolu" : "masa-bos")">
+                <div class="masa-label">Masa @masa.MasaNo</div>
+                <div class="masa-status @(doluMu ? "status-dolu" : "status-bos")">
+                    @(doluMu ? "Dolu" : "Boş")
+                </div>
+                @if(doluMu)
+                {
+                    <div class="zil-box">
+                        <i class="bi bi-bell-fill"></i>
+                    </div>
+                    <div style="font-size:0.8rem; color:#888; margin-top:12px; font-weight:600;">
+                        @masa.Siparisler.SelectMany(s => s.SiparisDetaylar).Sum(d => d.Adet) Ürün
+                    </div>
+                }
+            </a>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/hubs/menu")
+            .withAutomaticReconnect()
+            .build();
+
+        connection.on("SiparisEklendi", function () {
+            location.reload();
+        });
+
+        connection.on("SiparisGuncellendi", function () {
+            // Eğer bir bildirim (overlay) açıksa, reload'u ertele veya yapma ki kullanıcı okuyabilsin
+            if (document.getElementById('garsonNoticeOverlay').style.display === 'flex') {
+                console.log("Bildirim açık, reload ertelendi.");
+                return;
+            }
+            setTimeout(() => { location.reload(); }, 500);
+        });
+
+        connection.on("GarsonCagrisi", function (masaNo) {
+            showGarsonNotice(`🔔 Masa ${masaNo} Garson Çağırıyor!`);
+            playNoticeSound();
+        });
+
+        connection.on("SiparisHazir", function (masaNo) {
+            showGarsonNotice(`✅ Masa ${masaNo} Siparişi Hazır!`);
+            playNoticeSound();
+        });
+
+        connection.start().then(() => {
+            console.log("Garson Masalar SignalR Bağlantısı başarılı.");
+        }).catch(err => console.error("SignalR Hatası:", err));
+
+        function showGarsonNotice(text) {
+            document.getElementById('garsonNoticeText').textContent = text;
+            document.getElementById('garsonNoticeOverlay').style.display = 'flex';
+        }
+
+        function closeGarsonNotice() {
+            document.getElementById('garsonNoticeOverlay').style.display = 'none';
+            location.reload(); // Bildirim kapandığında verileri tazele
+        }
+
+        function playNoticeSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                const now = ctx.currentTime;
+                osc.frequency.setValueAtTime(880, now);
+                osc.frequency.exponentialRampToValueAtTime(440, now + 0.5);
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                osc.start(now);
+                osc.stop(now + 0.5);
+            } catch(e) { console.log("Ses çalınamadı"); }
+        }
+    </script>
+}
+
+<!-- GARSON BİLDİRİM OVERLAY -->
+<div id="garsonNoticeOverlay" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; flex-direction:column; cursor:pointer;" onclick="closeGarsonNotice()">
+    <div style="text-align:center; animation: garsonNoticePulse 0.6s ease-in-out infinite alternate;">
+        <div style="font-size:5rem;">🔔</div>
+        <h1 style="color:#fff; font-size:2.5rem; margin:1rem 0; font-weight:800;" id="garsonNoticeText">Masa ?</h1>
+        <p style="color:rgba(255,255,255,0.7); font-size:1.1rem;">Kapatmak için tıklayın</p>
+    </div>
+</div>
+<style>
+    @@keyframes garsonNoticePulse {
+        from { transform: scale(1); }
+        to { transform: scale(1.05); }
+    }
+</style>

@@ -1,0 +1,396 @@
+@model QRMenu.Core.Entities.Masa
+@{
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = $"Masa {Model.MasaNo}";
+    ViewData["ActivePage"] = "GarsonMasalar";
+    ViewData["PageTitle"] = $"Masa {Model.MasaNo} Yönetimi";
+
+    var siparisler = ViewBag.AktifSiparisler as List<QRMenu.Core.Entities.Siparis>;
+    var kategoriler = ViewBag.Kategoriler as List<QRMenu.Core.Entities.Kategori>;
+
+    var turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
+    Func<DateTime, string> toTR = dt => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(dt, DateTimeKind.Utc), turkeyTz).ToString("HH:mm");
+}
+
+@section Styles {
+    <link href="~/css/admin-siparisler.css" rel="stylesheet" />
+    <style>
+        .masa-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+            margin-bottom: 24px;
+        }
+        
+        /* Garson özel tablo ayarları */
+        .siparis-table-wrap { margin-top: 0; }
+        .siparis-table tbody tr { cursor: pointer; }
+
+        /* Offcanvas Menü Stilleri */
+        .menu-kategori { margin-bottom: 30px; }
+        .menu-kategori h5 { border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 16px; color: #475569; font-family: sans-serif; }
+        .menu-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            font-family: sans-serif;
+        }
+        .menu-item:hover { border-color: #3b82f6; }
+    </style>
+}
+
+<div class="masa-header">
+    <a href="/Garson/Masalar" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Geri
+    </a>
+    <h4 class="mb-0 fw-bold" style="color: #2c3e50; font-family: sans-serif;">Masa @Model.MasaNo</h4>
+    <button class="btn btn-success fw-bold" style="font-family: sans-serif;" type="button" data-bs-toggle="offcanvas" data-bs-target="#siparisEkleOffcanvas">
+        <i class="bi bi-plus-lg"></i> Yeni Sipariş Al
+    </button>
+</div>
+
+<div class="siparis-table-wrap">
+    <table class="siparis-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Ürünler</th>
+                <th>Tutar</th>
+                <th>Durum</th>
+                <th>Saat</th>
+                <th>Aksiyon</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (siparisler == null || !siparisler.Any())
+            {
+                <tr>
+                    <td colspan="6">
+                        <div class="siparis-empty">
+                            <div class="icon">📋</div>
+                            <h5>Aktif sipariş bulunamadı</h5>
+                        </div>
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var s in siparisler)
+                {
+                    var detayOzet = string.Join(", ", s.SiparisDetaylar.Select(sd => $"{sd.Adet}x {sd.Urun.Ad}"));
+                    <tr onclick="siparisDetayAc(@s.Id)">
+                        <td><strong>#@s.Id</strong></td>
+                        <td class="text-truncate" style="max-width:300px;">@detayOzet</td>
+                        <td><strong>@s.ToplamTutar.ToString("N2") TL</strong></td>
+                        <td><span class="durum-badge durum-@s.Durum">@DurumLabel(s.Durum.ToString())</span></td>
+                        <td>@toTR(s.OlusturmaTarihi)</td>
+                        <td>
+                            @if (s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir)
+                            {
+                                <button class="btn btn-info btn-sm fw-bold text-white" onclick="event.stopPropagation(); durumGuncelle(@s.Id, 'TeslimEdildi')">
+                                    <i class="bi bi-bag-check"></i> Teslim Et
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- SİPARİŞ DETAY OVERLAY (Admin'deki gibi) -->
+<div id="fisOverlay" style="display:none; position:fixed; inset:0; z-index:99998; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; cursor:pointer;" onclick="if(event.target===this)fisKapat()">
+    <div class="detay-panel" onclick="event.stopPropagation()">
+        <button class="detay-kapat" onclick="fisKapat()">&times;</button>
+        <div id="fisContent" style="width:100%; display:flex; flex-direction:inherit;">
+            <div style="text-align:center; color:#aaa; padding:3rem 2rem; width:100%;">Yükleniyor...</div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    string DurumLabel(string d) => d switch {
+        "Onaylandi" => "Onaylandı",
+        "Hazirlaniyor" => "Hazırlanıyor",
+        "Hazir" => "Hazır",
+        "TeslimEdildi" => "Teslim Edildi",
+        "KismiOdendi" => "Kısmi Ödendi",
+        "TamOdendi" => "Tam Ödendi",
+        "Iptal" => "İptal",
+        _ => d
+    };
+}
+
+<!-- Offcanvas (Sağdan Açılan Menü) -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="siparisEkleOffcanvas" aria-labelledby="siparisEkleLabel" style="width: 450px;">
+    <div class="offcanvas-header bg-light border-bottom">
+        <h5 class="offcanvas-title fw-bold" id="siparisEkleLabel">Yeni Sipariş (Masa @Model.MasaNo)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Kapat"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div id="urunHavuzu" style="height: 60%; overflow-y: auto; padding-right: 10px;">
+            @if (kategoriler != null)
+            {
+                foreach (var kat in kategoriler)
+                {
+                    <div class="menu-kategori">
+                        <h5>@kat.Ad</h5>
+                        @foreach (var urun in kat.Urunler)
+                        {
+                            <div class="menu-item" onclick="sepeteEkle(@urun.Id, '@urun.Ad', @urun.Fiyat.ToString("F2").Replace(",", "."))">
+                                <div>
+                                    <div class="fw-bold text-dark">@urun.Ad</div>
+                                    <div class="text-primary fw-bold" style="font-size: 0.9rem;">@urun.Fiyat.ToString("N2") TL</div>
+                                </div>
+                                <i class="bi bi-plus-circle text-primary" style="font-size: 1.5rem;"></i>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+        <hr />
+        <div id="sepetOnizleme" style="height: 35%; display: flex; flex-direction: column;">
+            <h6 class="fw-bold text-secondary">Seçili Ürünler</h6>
+            <div id="sepetListesi" style="flex: 1; overflow-y: auto; font-size: 0.9rem;">
+                <div class="text-muted text-center mt-3">Sipariş boş.</div>
+            </div>
+            <div class="mt-3">
+                <button type="button" class="btn btn-success w-100 fw-bold py-2" id="btnSiparisTamamla" onclick="siparisiGonder()" disabled>
+                    Siparişi Onayla
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let acikSiparisId = null;
+
+        // Fiş Detay Aç
+        async function siparisDetayAc(id) {
+            acikSiparisId = id;
+            document.getElementById('fisContent').innerHTML = '<div style="text-align:center; color:#aaa; padding:3rem 2rem;">Yükleniyor...</div>';
+            document.getElementById('fisOverlay').style.display = 'flex';
+
+            try {
+                // Garson'un kendi controller'ındaki API'yi kullanıyoruz
+                const res = await fetch(`/Garson/SiparisDetay/${id}`);
+                const data = await res.json();
+                if (!data.success) {
+                    document.getElementById('fisContent').innerHTML = `<div style="text-align:center; color:#e74c3c; padding:3rem 2rem;">${data.message}</div>`;
+                    return;
+                }
+                renderFis(data);
+            } catch (e) {
+                console.error(e);
+                document.getElementById('fisContent').innerHTML = '<div style="text-align:center; color:#e74c3c; padding:3rem 2rem;">Detay yüklenemedi.</div>';
+            }
+        }
+
+        function renderFis(data) {
+            let urunlerHtml = '';
+            data.detaylar.forEach(d => {
+                let opsHtml = '';
+                if (d.opsiyonlar) {
+                    try {
+                        const parsed = JSON.parse(d.opsiyonlar);
+                        if (parsed.length > 0) {
+                            opsHtml = `<div style="font-size:0.85rem; color:#ef4444; padding-left:1.5rem;">+ ${parsed.map(p => p.Ad).join(', ')}</div>`;
+                        }
+                    } catch(e) {}
+                }
+                urunlerHtml += `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; padding:12px 0; border-bottom:1px dashed #ddd;">
+                        <div>
+                            <span style="font-weight:700; font-size:1.1rem;">${d.adet}x ${d.urunAd}</span>
+                            ${opsHtml}
+                        </div>
+                        <span style="font-weight:800; font-size:1.1rem; white-space:nowrap;">${(d.adet * d.birimFiyat).toFixed(2)} TL</span>
+                    </div>`;
+            });
+
+            // Garson için aksiyonlar (Sadece Teslim Et)
+            let actionsHtml = '';
+            if (data.durum === 'Hazir') {
+                actionsHtml = `<button class="detay-action-btn action-info" onclick="durumGuncelle(${data.id}, 'TeslimEdildi')">
+                    <i class="bi bi-bag-check"></i> Teslim Et
+                </button>`;
+            } else {
+                actionsHtml = '<div style="color:#aaa; text-align:center; font-size:0.9rem; padding:20px 0;">Bu durum için işlem yok</div>';
+            }
+
+            document.getElementById('fisContent').innerHTML = `
+                <div class="real-receipt">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:24px 28px 16px; border-bottom:1px solid #f0f0f0;">
+                        <span style="font-size:1.5rem; font-weight:800; color:#2c3e50;">#${data.id}</span>
+                        <span class="durum-badge durum-${data.durum}">${data.durum}</span>
+                    </div>
+                    <div style="padding:14px 28px;">
+                        ${urunlerHtml}
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:18px 28px; background:#f8f9fa; border-top:2px solid #2c3e50; font-size:1.3rem; font-weight:900;">
+                        <span>TOPLAM</span>
+                        <span>${data.toplamTutar.toFixed(2)} TL</span>
+                    </div>
+                    <div class="receipt-zigzag"></div>
+                </div>
+                <div class="action-sidebar">
+                    <h6>İşlemler</h6>
+                    ${actionsHtml}
+                    <button class="btn btn-outline-danger w-100 mt-4 fw-bold" onclick="fisKapat()">Kapat</button>
+                </div>
+            `;
+        }
+
+        function fisKapat() {
+            document.getElementById('fisOverlay').style.display = 'none';
+        }
+
+        // Durum Güncelle
+        async function durumGuncelle(id, durum) {
+            try {
+                const res = await fetch(`/Garson/DurumGuncelle/${id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ yeniDurum: durum })
+                });
+                const result = await res.json();
+                if(result.success) location.reload();
+                else alert("Hata: " + result.message);
+            } catch(e) { console.error(e); }
+        }
+
+        // --- Eski Manuel Sipariş Mantığı (Offcanvas) ---
+        let eklenecekUrunler = [];
+        function sepeteEkle(urunId, ad, fiyat) {
+            let existing = eklenecekUrunler.find(u => u.urunId === urunId);
+            if (existing) existing.adet++;
+            else eklenecekUrunler.push({ urunId: urunId, ad: ad, fiyat: parseFloat(fiyat), adet: 1 });
+            sepetiCiz();
+        }
+        function miktarAzalt(urunId) {
+            let existing = eklenecekUrunler.find(u => u.urunId === urunId);
+            if(existing) {
+                existing.adet--;
+                if(existing.adet <= 0) eklenecekUrunler = eklenecekUrunler.filter(u => u.urunId !== urunId);
+            }
+            sepetiCiz();
+        }
+        function sepetiCiz() {
+            const listDiv = document.getElementById('sepetListesi');
+            const btn = document.getElementById('btnSiparisTamamla');
+            if (eklenecekUrunler.length === 0) {
+                listDiv.innerHTML = '<div class="text-muted text-center mt-3">Sipariş boş.</div>';
+                btn.disabled = true;
+                return;
+            }
+            listDiv.innerHTML = '';
+            let toplam = 0;
+            eklenecekUrunler.forEach(u => {
+                toplam += (u.fiyat * u.adet);
+                listDiv.innerHTML += `
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                        <div class="fw-bold">${u.ad} (x${u.adet})</div>
+                        <div class="d-flex align-items-center gap-2">
+                             <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="miktarAzalt(${u.urunId})">-</button>
+                             <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="sepeteEkle(${u.urunId}, '${u.ad}', ${u.fiyat})">+</button>
+                        </div>
+                    </div>`;
+            });
+            btn.disabled = false;
+            btn.innerHTML = `Siparişi Onayla (${toplam.toFixed(2)} TL)`;
+        }
+        async function siparisiGonder() {
+            const payload = { masaId: @Model.Id, urunler: eklenecekUrunler.map(u => ({ urunId: u.urunId, adet: u.adet })) };
+            const res = await fetch('/Garson/Masa/ManuelSiparis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if((await res.json()).success) location.reload();
+        }
+
+        // SignalR Entegrasyonu
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/hubs/menu")
+            .withAutomaticReconnect()
+            .build();
+
+        connection.on("SiparisGuncellendi", function () {
+            if (document.getElementById('garsonNoticeOverlay').style.display === 'flex') {
+                return;
+            }
+            setTimeout(() => { location.reload(); }, 500);
+        });
+
+        connection.on("GarsonCagrisi", function (masaNo) {
+            showGarsonNotice(`🔔 Masa ${masaNo} Garson Çağırıyor!`);
+            playNoticeSound();
+        });
+
+        connection.on("SiparisHazir", function (masaNo) {
+            showGarsonNotice(`✅ Masa ${masaNo} Siparişi Hazır!`);
+            playNoticeSound();
+        });
+
+        connection.start().then(() => {
+            console.log("Garson Masa Detay SignalR Bağlantısı başarılı.");
+        }).catch(err => console.error("SignalR Hatası:", err));
+
+        function showGarsonNotice(text) {
+            document.getElementById('garsonNoticeText').textContent = text;
+            document.getElementById('garsonNoticeOverlay').style.display = 'flex';
+        }
+
+        function closeGarsonNotice() {
+            document.getElementById('garsonNoticeOverlay').style.display = 'none';
+            location.reload();
+        }
+
+        function playNoticeSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                const now = ctx.currentTime;
+                osc.frequency.setValueAtTime(880, now);
+                osc.frequency.exponentialRampToValueAtTime(440, now + 0.5);
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                osc.start(now);
+                osc.stop(now + 0.5);
+            } catch(e) { console.log("Ses çalınamadı"); }
+        }
+    </script>
+}
+
+<!-- GARSON BİLDİRİM OVERLAY -->
+<div id="garsonNoticeOverlay" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; flex-direction:column; cursor:pointer;" onclick="closeGarsonNotice()">
+    <div style="text-align:center; animation: garsonNoticePulse 0.6s ease-in-out infinite alternate;">
+        <div style="font-size:5rem;">🔔</div>
+        <h1 style="color:#fff; font-size:2.5rem; margin:1rem 0; font-weight:800;" id="garsonNoticeText">Masa ?</h1>
+        <p style="color:rgba(255,255,255,0.7); font-size:1.1rem;">Kapatmak için tıklayın</p>
+    </div>
+</div>
+<style>
+    @@keyframes garsonNoticePulse {
+        from { transform: scale(1); }
+        to { transform: scale(1.05); }
+    }
+</style>

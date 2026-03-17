@@ -8,9 +8,11 @@ using QRMenu.Data.Data;
 using QRMenu.Core.Entities;
 using QRMenu.Core.Enums;
 using QRMenu.Core.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 
 namespace QRMenu.Web.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class AdminController : Controller
     {
         private static readonly TimeZoneInfo _turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(

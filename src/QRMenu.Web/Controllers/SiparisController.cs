@@ -91,6 +91,7 @@ namespace QRMenu.Web.Controllers
                 var siparis = await _siparisService.SiparisOlusturAsync(sepet.Id, request?.Notlar);
 
                 await _menuHub.Clients.All.SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.All.SendAsync("SiparisEklendi");
 
                 return Json(new
                 {

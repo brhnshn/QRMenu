@@ -1,0 +1,218 @@
+@model QRMenu.Core.Entities.Masa
+@{
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = $"Masa {Model.MasaNo} Tahsilat Ekranı";
+    ViewData["ActivePage"] = "KasaMasalar";
+    ViewData["PageTitle"] = $"Masa {Model.MasaNo} Tahsilat";
+
+    var siparisler = ViewBag.AktifSiparisler as List<QRMenu.Core.Entities.Siparis>;
+}
+
+<style>
+    .kasa-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #fff;
+        padding: 16px 24px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        margin-bottom: 24px;
+    }
+    .kasa-header h4 { font-family: sans-serif; letter-spacing: -0.5px; }
+    .kasa-item-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 24px;
+        background: #fff;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        border: 1px solid #f1f5f9;
+        transition: border-color 0.2s;
+    }
+    .kasa-item-row.selected {
+        border-color: #3b82f6;
+        background: #eff6ff;
+    }
+    .kasa-checkbox {
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        margin-right: 16px;
+    }
+    .kasa-footer {
+        position: sticky;
+        bottom: 0;
+        background: #fff;
+        padding: 20px 24px;
+        border-top: 2px solid #e2e8f0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 10;
+    }
+    .tutar-display {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #2c3e50;
+    }
+</style>
+
+<div class="kasa-header">
+    <a href="/Kasa/Masalar" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Geri
+    </a>
+    <h4 class="mb-0 fw-bold text-dark">Masa @Model.MasaNo Tahsilatı</h4>
+    <button class="btn btn-outline-primary" type="button" onclick="tumunuSec()">
+        Tümünü Seç
+    </button>
+</div>
+
+<div id="odemeListesi" style="margin-bottom: 100px;">
+    @if (siparisler != null && siparisler.Any())
+    {
+        bool odenecekVarMi = false;
+
+        foreach(var siparis in siparisler)
+        {
+            var bekleyenDetaylar = siparis.SiparisDetaylar
+                .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal)
+                .ToList();
+
+            if (bekleyenDetaylar.Any())
+            {
+                odenecekVarMi = true;
+                <div class="mb-4">
+                    <h6 class="text-muted fw-bold mb-3 ms-2">Adisyon #@siparis.Id - @siparis.OlusturmaTarihi.ToString("HH:mm")</h6>
+                    
+                    @foreach(var detay in bekleyenDetaylar)
+                    {
+                        var satirTutar = detay.Adet * detay.BirimFiyat;
+                        <label class="kasa-item-row">
+                            <div class="d-flex align-items-center">
+                                <input type="checkbox" class="kasa-checkbox urun-check" value="@detay.Id" data-fiyat="@satirTutar.ToString().Replace(",", ".")" onchange="hesapla()" />
+                                <div>
+                                    <div class="fw-bold fs-5 text-dark">@detay.Adet x @detay.Urun.Ad</div>
+                                    @if (!string.IsNullOrEmpty(detay.SeciliOpsiyonlar) && detay.SeciliOpsiyonlar != "[]")
+                                    {
+                                        var optStr = "";
+                                        try {
+                                            var opsJson = System.Text.Json.JsonDocument.Parse(detay.SeciliOpsiyonlar);
+                                            var opsList = new System.Collections.Generic.List<string>();
+                                            foreach(var ops in opsJson.RootElement.EnumerateArray()) {
+                                                opsList.Add(ops.GetProperty("Ad").GetString() ?? "");
+                                            }
+                                            optStr = string.Join(", ", opsList);
+                                        } catch {}
+                                        <div class="text-muted" style="font-size:0.85rem;">@optStr</div>
+                                    }
+                                    <div style="font-size:0.8rem; color:#888;">Durum: @detay.Durum</div>
+                                </div>
+                            </div>
+                            <div class="fw-bold fs-5">@satirTutar.ToString("N2") TL</div>
+                        </label>
+                    }
+                </div>
+            }
+        }
+
+        if (!odenecekVarMi)
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i>
+                <h5 class="mt-3 text-muted">Açık hesap bulunmuyor, tüm ürünler ödenmiş.</h5>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <h5 class="mt-3 text-muted">Bu masaya ait aktif sipariş bulunmuyor.</h5>
+        </div>
+    }
+</div>
+
+<div class="kasa-footer">
+    <div>
+        <div class="text-muted fw-bold mb-1">Seçilen Tutar</div>
+        <div class="tutar-display" id="secilenTutarTxt">0.00 TL</div>
+    </div>
+    <div class="d-flex gap-3">
+        <button class="btn btn-warning btn-lg fw-bold px-4 position-relative" id="btnNakit" onclick="odemeYap('Nakit')" disabled>
+            <i class="bi bi-cash-stack"></i> Nakit
+        </button>
+        <button class="btn btn-primary btn-lg fw-bold px-4" id="btnKredi" onclick="odemeYap('Kart')" disabled>
+            <i class="bi bi-credit-card"></i> Kredi Kartı
+        </button>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function hesapla() {
+            let toplam = 0;
+            const checks = document.querySelectorAll('.urun-check');
+            let secilenSayisi = 0;
+
+            checks.forEach(check => {
+                const row = check.closest('.kasa-item-row');
+                if (check.checked) {
+                    toplam += parseFloat(check.getAttribute('data-fiyat'));
+                    row.classList.add('selected');
+                    secilenSayisi++;
+                } else {
+                    row.classList.remove('selected');
+                }
+            });
+
+            document.getElementById('secilenTutarTxt').innerText = toplam.toFixed(2) + ' TL';
+
+            const disableBtns = secilenSayisi === 0;
+            document.getElementById('btnNakit').disabled = disableBtns;
+            document.getElementById('btnKredi').disabled = disableBtns;
+        }
+
+        function tumunuSec() {
+            const checks = document.querySelectorAll('.urun-check');
+            let hepsiSecili = Array.from(checks).every(c => c.checked);
+
+            checks.forEach(c => {
+                c.checked = !hepsiSecili; // Eğer hepsi seçiliyse kaldır, değilse tümünü seç
+            });
+            hesapla();
+        }
+
+        async function odemeYap(tip) {
+            const checks = document.querySelectorAll('.urun-check:checked');
+            if (checks.length === 0) return;
+
+            const selectedIds = Array.from(checks).map(c => parseInt(c.value));
+            
+            document.getElementById('btnNakit').disabled = true;
+            document.getElementById('btnKredi').disabled = true;
+
+            const payload = {
+                masaId: @Model.Id,
+                siparisDetayIds: selectedIds,
+                odemeTipi: tip
+            };
+
+            const response = await fetch('/Kasa/TahsilatYap', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                location.reload();
+            } else {
+                alert("Tahsilat hatası: " + result.message);
+                hesapla(); // Butonları yeniden aktif etmek için
+            }
+        }
+    </script>
+}

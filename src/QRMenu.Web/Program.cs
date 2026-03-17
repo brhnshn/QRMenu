@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Threading.RateLimiting;
 using Serilog;
 using QRMenu.Data.Data;
@@ -7,6 +8,7 @@ using QRMenu.Data.Services;
 using QRMenu.Web.Middleware;
 using QRMenu.Web.Hubs;
 using QRMenu.Web.Services;
+using QRMenu.Data.Interceptors;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,20 +27,42 @@ builder.Host.UseSerilog();
 // ===== SERVICES =====
 
 // DbContext — PostgreSQL (Supabase) bağlantısı
-builder.Services.AddDbContext<QRMenuDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<QRMenuDbContext>((sp, options) =>
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+    
+    // AuditLogInterceptor'ı DI üzerinden alıp ekle
+    var interceptor = sp.GetRequiredService<AuditLogInterceptor>();
+    options.AddInterceptors(interceptor);
+});
 
 // Memory Cache — Sepet okumalarını hızlandırmak için (Supabase Stockholm latency çözümü)
 builder.Services.AddMemoryCache();
 
 // DI — Uygulama Servisleri
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserProvider, CurrentUserProvider>();
+builder.Services.AddScoped<AuditLogInterceptor>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IUrunService, UrunService>();
 builder.Services.AddScoped<ISepetService, SepetService>();
 builder.Services.AddScoped<ISiparisService, SiparisService>();
+builder.Services.AddScoped<IOdemeService, OdemeService>();
 
 // MVC
 builder.Services.AddControllersWithViews();
+
+// Authentication
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Auth/Login";
+        options.LogoutPath = "/Auth/Logout";
+        options.AccessDeniedPath = "/Auth/Login";
+        options.Cookie.Name = "QRMenuAuth";
+        options.ExpireTimeSpan = TimeSpan.FromDays(7);
+        options.SlidingExpiration = true;
+    });
 
 // SignalR — Gerçek zamanlı menü güncellemeleri
 builder.Services.AddSignalR();
@@ -99,6 +123,7 @@ app.UseRateLimiter();
 // Token doğrulama middleware (müşteri istekleri için)
 app.UseTokenValidation();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 // ===== ROUTING =====

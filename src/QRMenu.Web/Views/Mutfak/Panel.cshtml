@@ -1,0 +1,173 @@
+@model List<QRMenu.Core.Entities.Siparis>
+@{
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = "Mutfak KDS";
+    ViewData["ActivePage"] = "MutfakPaneli";
+    ViewData["PageTitle"] = "Mutfak Ekranı (KDS)";
+}
+
+@section Styles {
+    <style>
+        .admin-content { background-color: #0f172a !important; min-height: 100vh; margin-top: 56px !important; }
+        .ticket-grid { padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; align-items: start; }
+        
+        .ticket-card { background: #ffffff; color: #0f172a; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: 4px solid transparent; transition: border-color 0.3s; }
+        .ticket-header { border-bottom: 2px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .masa-badge { background: #e2e8f0; color: #0f172a; font-size: 1.6rem; font-weight: 900; padding: 4px 12px; border-radius: 8px; }
+        .timer-badge { font-size: 1.2rem; font-weight: 800; padding: 4px 10px; border-radius: 6px; background: #f1f5f9; color: #475569; }
+        
+        .urun-list { flex: 1; margin-bottom: 15px; }
+        .urun-row { font-size: 1.3rem; font-weight: 800; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; }
+        .urun-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .opsiyon-text { font-size: 0.95rem; font-weight: 600; color: #ef4444; margin-left: 24px; display: block; }
+        
+        .action-btns { display: flex; gap: 8px; margin-top: auto; }
+        .action-btns button { flex: 1; font-weight: 800; padding: 12px; font-size: 1.1rem; }
+
+        /* Zaman Sınırları ve Animasyonlar */
+        .ticket-warning { border-color: #f59e0b; }
+        .ticket-warning .timer-badge { background: #fef3c7; color: #b45309; }
+        
+        .ticket-danger { border-color: #ef4444; animation: pulseRed 2s infinite; }
+        .ticket-danger .timer-badge { background: #fee2e2; color: #b91c1c; }
+
+        @@keyframes pulseRed {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        #clock { font-family: monospace; }
+    </style>
+}
+
+<!-- Alarm sesi (gizli) -->
+<audio id="bellSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
+<div class="ticket-grid" id="kdsGrid">
+    @if(Model != null && Model.Any())
+    {
+        foreach (var siparis in Model)
+        {
+            <div class="ticket-card shadow-sm" data-id="@siparis.Id" data-tarih="@siparis.OlusturmaTarihi.ToString("o")">
+                <div class="ticket-header">
+                    <div class="masa-badge">Masa @siparis.Masa.MasaNo</div>
+                    <div class="timer-badge timer-text">00:00</div>
+                </div>
+                <div class="urun-list">
+                    @foreach(var detay in siparis.SiparisDetaylar.Where(d => d.Durum == QRMenu.Core.Enums.SiparisDurum.Onaylandi || d.Durum == QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor))
+                    {
+                        <div class="urun-row">
+                            <span class="text-primary">@detay.Adet x</span> @detay.Urun.Ad
+                            @if(!string.IsNullOrEmpty(detay.SeciliOpsiyonlar) && detay.SeciliOpsiyonlar != "[]")
+                            {
+                                var optStr = "";
+                                try {
+                                    var opsJson = System.Text.Json.JsonDocument.Parse(detay.SeciliOpsiyonlar);
+                                    var opsList = new System.Collections.Generic.List<string>();
+                                    foreach(var ops in opsJson.RootElement.EnumerateArray()) {
+                                        opsList.Add(ops.GetProperty("Ad").GetString() ?? "");
+                                    }
+                                    optStr = string.Join(", ", opsList);
+                                } catch {}
+                                <span class="opsiyon-text">@optStr</span>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="action-btns">
+                    @if (siparis.Durum == QRMenu.Core.Enums.SiparisDurum.Onaylandi)
+                    {
+                        <button class="btn btn-warning" onclick="durumGuncelle(@siparis.Id, 'Hazirlaniyor')">
+                            <i class="bi bi-fire"></i> Hazırlanıyor
+                        </button>
+                    }
+                    else if (siparis.Durum == QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor)
+                    {
+                        <button class="btn btn-success" onclick="durumGuncelle(@siparis.Id, 'Hazir')">
+                            <i class="bi bi-check-circle-fill"></i> Hazır
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="col-12 text-center text-muted py-5" style="grid-column: 1 / -1;">
+            <i class="bi bi-cup-hot" style="font-size: 5rem; color: #334155;"></i>
+            <h3 class="mt-3 text-white">Şu an bekleyen sipariş yok. Elinize sağlık!</h3>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Timer Hesaplamaları (5 dk sarı, 8 dk kırmızı sınır)
+        function updateTimers() {
+            const cards = document.querySelectorAll('.ticket-card');
+            const now = new Date();
+
+            cards.forEach(card => {
+                const tarihStr = card.getAttribute('data-tarih');
+                const pDate = new Date(tarihStr);
+                
+                // .NET 'o' formatı (ISO 8601) gönderdiği için JS Date() bunu doğru anlar.
+                // Timezone farkını manuel eklemeye gerek yok, (now - pDate) ms cinsinden mutlak farktır.
+                const diffMs = now - pDate;
+                if(diffMs < 0) return;
+
+                const diffSec = Math.floor(diffMs / 1000);
+                const mins = Math.floor(diffSec / 60);
+                const secs = diffSec % 60;
+                
+                card.querySelector('.timer-text').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+                if (mins >= 8) {
+                    card.classList.remove('ticket-warning');
+                    card.classList.add('ticket-danger');
+                } else if (mins >= 5) {
+                    card.classList.add('ticket-warning');
+                }
+            });
+        }
+        
+        setInterval(updateTimers, 1000);
+        updateTimers();
+
+        async function durumGuncelle(siparisId, durum) {
+            const payload = { yeniDurum: durum };
+            const res = await fetch(`/Mutfak/DurumGuncelle/${siparisId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if(data.success) {
+                // SignalR zaten tetiklendiği için reload yeterli veya otomatik yenilenir
+                location.reload();
+            } else {
+                alert("Durum güncellenirken hata: " + data.message);
+            }
+        }
+
+        // SignalR Entegrasyonu
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/hubs/menu")
+            .withAutomaticReconnect()
+            .build();
+
+        connection.on("SiparisEklendi", function () {
+            document.getElementById('bellSound').play().catch(e => console.log('Ses çalma hatası:', e));
+            setTimeout(() => { location.reload(); }, 1000);
+        });
+
+        connection.on("SiparisGuncellendi", function () {
+            setTimeout(() => { location.reload(); }, 500);
+        });
+
+        connection.start().then(() => {
+            console.log("KDS Bağlantısı başarılı.");
+        }).catch(err => console.error("SignalR KDS Hatası:", err));
+    </script>
+}

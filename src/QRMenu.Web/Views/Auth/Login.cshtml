@@ -1,0 +1,57 @@
+@{
+    Layout = null; // Login ekranı için admin layout'u kullanılmaz.
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sisteme Giriş - QR Menü Yönetimi</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+        body { 
+            background: linear-gradient(135deg, #f3f4f6 0%, #e2e8f0 100%); 
+            display: flex; align-items: center; justify-content: center; 
+            height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        }
+        .login-card { 
+            background: #fff; padding: 40px; border-radius: 16px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1); 
+            width: 100%; max-width: 420px; 
+        }
+        .login-title { 
+            font-weight: 800; font-size: 1.8rem; color: #1e293b; 
+            text-align: center; margin-bottom: 20px; 
+        }
+        .form-control { border-radius: 8px; padding: 12px; }
+        .btn-primary { border-radius: 8px; padding: 12px; background-color: #3b82f6; border: none; }
+        .btn-primary:hover { background-color: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h2 class="login-title">QR Menü Yönetimi</h2>
+        
+        <p class="text-center text-muted mb-4">Lütfen yetkili hesap bilgilerinizle giriş yapın.</p>
+        
+        @if (ViewBag.Error != null)
+        {
+            <div class="alert alert-danger p-3 mb-4 rounded-3 text-center fw-bold" style="font-size: 0.9rem;">
+                @ViewBag.Error
+            </div>
+        }
+        
+        <form action="/Auth/Login" method="post">
+            <div class="mb-3">
+                <label class="form-label fw-bold text-secondary">Kullanıcı Adı</label>
+                <input type="text" name="username" class="form-control" required autofocus />
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-bold text-secondary">Şifre</label>
+                <input type="password" name="password" class="form-control" required />
+            </div>
+            <button type="submit" class="btn btn-primary w-100 fw-bold">Giriş Yap</button>
+        </form>
+    </div>
+</body>
+</html>
