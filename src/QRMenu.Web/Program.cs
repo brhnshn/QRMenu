@@ -9,6 +9,7 @@ using QRMenu.Web.Middleware;
 using QRMenu.Web.Hubs;
 using QRMenu.Web.Services;
 using QRMenu.Data.Interceptors;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -113,6 +114,11 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
@@ -120,11 +126,11 @@ app.UseRouting();
 // Rate Limiting
 app.UseRateLimiter();
 
-// Token doğrulama middleware (müşteri istekleri için)
-app.UseTokenValidation();
-
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Token doğrulama middleware (müşteri istekleri için) - Auth'dan SONRA çalışmalı ki personeli tanıyabilsin
+app.UseTokenValidation();
 
 // ===== ROUTING =====
 app.MapControllerRoute(
