@@ -46,6 +46,7 @@ namespace QRMenu.Web.Controllers
         public async Task<IActionResult> Masalar()
         {
             var masalar = await _context.Masalar
+                .Where(m => m.AktifMi)
                 .Include(m => m.Siparisler.Where(s => s.Durum != SiparisDurum.Iptal && s.Durum != SiparisDurum.TamOdendi && s.Durum != SiparisDurum.Iade))
                 .OrderBy(m => m.MasaNo)
                 .ToListAsync();
@@ -67,8 +68,18 @@ namespace QRMenu.Web.Controllers
         [HttpGet("/admin/masa-olustur/{masaNo:int}")]
         public async Task<IActionResult> MasaOlustur(int masaNo)
         {
-            if (await _context.Masalar.AnyAsync(m => m.MasaNo == masaNo))
+            var mevcut = await _context.Masalar.FirstOrDefaultAsync(m => m.MasaNo == masaNo);
+            if (mevcut != null)
+            {
+                if (!mevcut.AktifMi)
+                {
+                    mevcut.AktifMi = true;
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Masa pasif durumdan aktif yapıldı. MasaNo={MasaNo}", masaNo);
+                    return Json(new { success = true });
+                }
                 return Json(new { success = false, message = $"Masa {masaNo} zaten var" });
+            }
 
             _context.Masalar.Add(new Masa { MasaNo = masaNo, AktifMi = true });
             await _context.SaveChangesAsync();

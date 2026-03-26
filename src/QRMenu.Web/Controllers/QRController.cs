@@ -70,7 +70,6 @@ namespace QRMenu.Web.Controllers
                 HttpOnly = true,
                 Secure = false, // Reverse proxy uyumluluğu için
                 SameSite = SameSiteMode.Lax,
-                Expires = DateTimeOffset.UtcNow.AddMinutes(90),
                 Path = "/"
             };
             Response.Cookies.Append("qrmenu_token", rawToken, cookieOptions);
