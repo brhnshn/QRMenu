@@ -5,5 +5,6 @@ namespace QRMenu.Web.ViewModels
         public int MasaNo { get; set; }
         public string QrUrl { get; set; } = "";
         public string QrBase64 { get; set; } = "";
+        public bool DoluMu { get; set; }
     }
 }

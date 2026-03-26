@@ -42,6 +42,7 @@ namespace QRMenu.Web.Controllers
 
             var masalar = await _context.Masalar
                 .Include(m => m.Siparisler.Where(s => s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade))
+                    .ThenInclude(s => s.SiparisDetaylar)
                 .OrderBy(m => m.MasaNo)
                 .ToListAsync();
 

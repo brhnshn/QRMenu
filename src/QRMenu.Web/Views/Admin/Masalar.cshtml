@@ -29,8 +29,8 @@
                 <div class="masa-card-body">
                     <div class="masa-no">Masa @item.MasaNo</div>
                     <div class="masa-bolge"><i class="bi bi-geo-alt"></i> Bölge: Salon</div>
-                    <span class="masa-durum durum-bos">
-                        <i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Boş
+                    <span class="masa-durum @(item.DoluMu ? "durum-dolu" : "durum-bos")">
+                        <i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> @(item.DoluMu ? "Dolu" : "Boş")
                     </span>
 
                     <div class="qr-area">

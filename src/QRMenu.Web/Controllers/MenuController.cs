@@ -61,6 +61,7 @@ namespace QRMenu.Web.Controllers
                         u.GorselUrl,
                         u.PopulerMi,
                         u.AktifMi,
+                        u.Kalori,
                         Opsiyonlar = (u.UrunOpsiyonlar ?? new List<UrunOpsiyon>()).OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new
                         {
                             id = uo.Opsiyon.Id,

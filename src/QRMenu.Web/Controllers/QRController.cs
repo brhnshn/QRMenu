@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using QRMenu.Core.Interfaces;
+using QRMenu.Data.Data;
 
 namespace QRMenu.Web.Controllers
 {
@@ -8,27 +10,39 @@ namespace QRMenu.Web.Controllers
         private readonly ITokenService _tokenService;
         private readonly ILogger<QRController> _logger;
         private readonly IWebHostEnvironment _env;
+        private readonly QRMenuDbContext _context;
 
-        public QRController(ITokenService tokenService, ILogger<QRController> logger, IWebHostEnvironment env)
+        public QRController(ITokenService tokenService, ILogger<QRController> logger, IWebHostEnvironment env, QRMenuDbContext context)
         {
             _tokenService = tokenService;
             _logger = logger;
             _env = env;
+            _context = context;
         }
 
         /// <summary>
         /// QR kod ile giriş noktası
-        /// URL: /qr/{masaId}  (sabit, masaya yapışık QR)
+        /// URL: /qr/{masaNo}  (sabit, masaya yapışık QR)
         /// Token sunucu tarafında üretilir, cookie'ye yazılır
         /// </summary>
-        [HttpGet("/qr/{masaId:int}")]
-        public async Task<IActionResult> Index(int masaId)
+        [HttpGet("/qr/{masaNo:int}")]
+        public async Task<IActionResult> Index(int masaNo)
         {
-            if (masaId <= 0)
+            if (masaNo <= 0)
             {
-                _logger.LogWarning("QR giriş: Geçersiz masa numarası. masaId={MasaId}", masaId);
+                _logger.LogWarning("QR giriş: Geçersiz masa numarası. MasaNo={MasaNo}", masaNo);
                 return BadRequest("Geçersiz QR kod.");
             }
+
+            // MasaNo'dan gerçek Masa kaydını bul
+            var masa = await _context.Masalar.FirstOrDefaultAsync(m => m.MasaNo == masaNo && m.AktifMi);
+            if (masa == null)
+            {
+                _logger.LogWarning("QR giriş: Masa bulunamadı. MasaNo={MasaNo}", masaNo);
+                return NotFound("Bu masa bulunamadı.");
+            }
+
+            var masaId = masa.Id;
 
             // Zaten aktif oturumu var mı? (Cookie kontrolü)
             var existingToken = Request.Cookies["qrmenu_token"];
@@ -40,28 +54,28 @@ namespace QRMenu.Web.Controllers
                 if (existingOturum != null && existingOturum.MasaId == masaId)
                 {
                     // Aynı masada geçerli oturumu var, direkt menüye
-                    _logger.LogInformation("QR giriş: Mevcut oturum kullanılıyor. MasaId={MasaId}", masaId);
+                    _logger.LogInformation("QR giriş: Mevcut oturum kullanılıyor. MasaNo={MasaNo}, MasaId={MasaId}", masaNo, masaId);
                     return RedirectToAction("Index", "Menu");
                 }
                 // Farklı masa veya geçersiz oturum → eski cookie'yi sil
                 Response.Cookies.Delete("qrmenu_token");
             }
 
-            // Yeni oturum oluştur
+            // Yeni oturum oluştur (gerçek MasaId ile)
             var (oturum, rawToken) = await _tokenService.CreateSessionAsync(masaId);
 
             // Cookie'ye raw token'ı yaz
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = !_env.IsDevelopment(), // Development'ta HTTP, Production'da HTTPS
-                SameSite = SameSiteMode.Lax,    // Lax: QR tarayıcıdan (cross-site) gelen GET redirect'lerde cookie gönderilir
+                Secure = !_env.IsDevelopment(),
+                SameSite = SameSiteMode.Lax,
                 Expires = DateTimeOffset.UtcNow.AddMinutes(90),
                 Path = "/"
             };
             Response.Cookies.Append("qrmenu_token", rawToken, cookieOptions);
 
-            _logger.LogInformation("QR giriş başarılı. MasaId={MasaId}, OturumId={OturumId}", masaId, oturum.Id);
+            _logger.LogInformation("QR giriş başarılı. MasaNo={MasaNo}, MasaId={MasaId}, OturumId={OturumId}", masaNo, masaId, oturum.Id);
 
             return RedirectToAction("Index", "Menu");
         }

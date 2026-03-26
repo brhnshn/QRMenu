@@ -42,6 +42,8 @@ namespace QRMenu.Web.ViewModels
         public bool PopulerMi { get; set; }
         public bool AktifMi { get; set; } = true;
 
+        public int? Kalori { get; set; }
+
         /// <summary>
         /// Ürün görseli (max 2MB, jpg/png/webp)
         /// </summary>

@@ -46,6 +46,7 @@ namespace QRMenu.Web.Controllers
         public async Task<IActionResult> Masalar()
         {
             var masalar = await _context.Masalar
+                .Include(m => m.Siparisler.Where(s => s.Durum != SiparisDurum.Iptal && s.Durum != SiparisDurum.TamOdendi && s.Durum != SiparisDurum.Iade))
                 .OrderBy(m => m.MasaNo)
                 .ToListAsync();
 
@@ -54,7 +55,8 @@ namespace QRMenu.Web.Controllers
             {
                 MasaNo = m.MasaNo,
                 QrUrl = m.QrKodUrl ?? "",
-                QrBase64 = ""
+                QrBase64 = "",
+                DoluMu = m.Siparisler.Any()
             }).ToList();
 
             ViewBag.BaseUrl = baseUrl;
@@ -373,6 +375,7 @@ namespace QRMenu.Web.Controllers
                     urun.GorselUrl,
                     urun.PopulerMi,
                     urun.AktifMi,
+                    urun.Kalori,
                     Opsiyonlar = urun.UrunOpsiyonlar.OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new
                     {
                         uo.Opsiyon.Id,
@@ -400,28 +403,21 @@ namespace QRMenu.Web.Controllers
                 Fiyat = model.Fiyat,
                 KategoriId = model.KategoriId,
                 PopulerMi = model.PopulerMi,
-                AktifMi = model.AktifMi
+                AktifMi = model.AktifMi,
+                Kalori = model.Kalori
             };
 
-            // Fotoğraf upload
+            _context.Urunler.Add(urun);
+            await _context.SaveChangesAsync();
+
+            // Fotoğraf upload — dosya sistemine kaydet
             if (model.Gorsel != null)
             {
-                var result = await ReadImageAsync(model.Gorsel);
-                if (result == null)
+                var savedPath = await SaveImageToFileAsync(model.Gorsel, urun.Id);
+                if (savedPath == null)
                     return Json(new { success = false, message = "Görsel yüklenemedi. Max 2MB, sadece jpg/png/webp." });
 
-                _context.Urunler.Add(urun);
-                await _context.SaveChangesAsync();
-
-                // Görsel kaydı (ID gerekli olduğu için SaveChanges sonrası)
-                var gorsel = new UrunGorsel { UrunId = urun.Id, Data = result.Value.data, ContentType = result.Value.contentType };
-                _context.UrunGorseller.Add(gorsel);
-                urun.GorselUrl = $"/images/urun/{urun.Id}";
-                await _context.SaveChangesAsync();
-            }
-            else
-            {
-                _context.Urunler.Add(urun);
+                urun.GorselUrl = savedPath;
                 await _context.SaveChangesAsync();
             }
 
@@ -445,21 +441,16 @@ namespace QRMenu.Web.Controllers
             urun.KategoriId = model.KategoriId;
             urun.PopulerMi = model.PopulerMi;
             urun.AktifMi = model.AktifMi;
+            urun.Kalori = model.Kalori;
 
-            // Fotoğraf güncelleme
+            // Fotoğraf güncelleme — dosya sistemine kaydet
             if (model.Gorsel != null)
             {
-                var result = await ReadImageAsync(model.Gorsel);
-                if (result == null)
+                var savedPath = await SaveImageToFileAsync(model.Gorsel, urun.Id);
+                if (savedPath == null)
                     return Json(new { success = false, message = "Görsel yüklenemedi. Max 2MB, sadece jpg/png/webp." });
 
-                // Eski görseli sil, yenisini ekle
-                var eskiGorsel = await _context.UrunGorseller.FirstOrDefaultAsync(g => g.UrunId == urun.Id);
-                if (eskiGorsel != null)
-                    _context.UrunGorseller.Remove(eskiGorsel);
-
-                _context.UrunGorseller.Add(new UrunGorsel { UrunId = urun.Id, Data = result.Value.data, ContentType = result.Value.contentType });
-                urun.GorselUrl = $"/images/urun/{urun.Id}";
+                urun.GorselUrl = savedPath;
             }
 
             await _context.SaveChangesAsync();
@@ -607,37 +598,55 @@ namespace QRMenu.Web.Controllers
         }
 
         // ============================================================
-        // YARDIMCI METODLAR — Fotoğraf Upload
+        // YARDIMCI METODLAR — Fotoğraf Upload (Dosya Sistemi)
         // ============================================================
 
         private static readonly HashSet<string> _allowedExtensions = new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
-        private static readonly Dictionary<string, string> _mimeTypes = new(StringComparer.OrdinalIgnoreCase)
-        {
-            [".jpg"] = "image/jpeg", [".jpeg"] = "image/jpeg", [".png"] = "image/png", [".webp"] = "image/webp"
-        };
         private const long MaxFileSize = 2 * 1024 * 1024; // 2MB
 
-        private async Task<(byte[] data, string contentType)?> ReadImageAsync(IFormFile file)
+        /// <summary>
+        /// Görseli wwwroot/uploads/urunler/ altına kaydeder, URL path döner
+        /// </summary>
+        private async Task<string?> SaveImageToFileAsync(IFormFile file, int urunId)
         {
             if (file.Length == 0 || file.Length > MaxFileSize)
                 return null;
 
-            var ext = Path.GetExtension(file.FileName);
-            if (!_allowedExtensions.Contains(ext) || !_mimeTypes.TryGetValue(ext, out var contentType))
+            var ext = Path.GetExtension(file.FileName)?.ToLowerInvariant();
+            if (string.IsNullOrEmpty(ext) || !_allowedExtensions.Contains(ext))
                 return null;
 
-            using var ms = new MemoryStream();
-            await file.CopyToAsync(ms);
-            return (ms.ToArray(), contentType);
+            var uploadsDir = Path.Combine(_env.WebRootPath, "uploads", "urunler");
+            Directory.CreateDirectory(uploadsDir);
+
+            // Eski dosyaları temizle (farklı uzantıda olabilir)
+            foreach (var oldFile in Directory.GetFiles(uploadsDir, $"{urunId}.*"))
+                System.IO.File.Delete(oldFile);
+
+            var fileName = $"{urunId}{ext}";
+            var filePath = Path.Combine(uploadsDir, fileName);
+
+            using var stream = new FileStream(filePath, FileMode.Create);
+            await file.CopyToAsync(stream);
+
+            return $"/uploads/urunler/{fileName}";
         }
 
         /// <summary>
-        /// Ürün görselini veritabanından serve eder
+        /// Geriye dönük uyumluluk: Eski /images/urun/{id} URL'leri için
+        /// DB'den serve et veya static dosyaya yönlendir
         /// </summary>
         [HttpGet("/images/urun/{id:int}")]
         [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)]
         public async Task<IActionResult> UrunGorsel(int id)
         {
+            // Önce static dosya var mı bak
+            var uploadsDir = Path.Combine(_env.WebRootPath, "uploads", "urunler");
+            var staticFiles = Directory.Exists(uploadsDir) ? Directory.GetFiles(uploadsDir, $"{id}.*") : Array.Empty<string>();
+            if (staticFiles.Length > 0)
+                return Redirect($"/uploads/urunler/{Path.GetFileName(staticFiles[0])}");
+
+            // Yoksa DB'den serve et (eski veriler için)
             var gorsel = await _context.UrunGorseller
                 .Where(g => g.UrunId == id)
                 .Select(g => new { g.Data, g.ContentType })
