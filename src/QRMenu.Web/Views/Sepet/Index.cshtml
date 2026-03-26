@@ -1,177 +1,319 @@
 @model QRMenu.Core.Entities.Sepet
 @{
     ViewData["Title"] = "Sepetim";
-    Layout = null; // Mobil görünüm odaklı
+    Layout = null;
 }
 
 <!DOCTYPE html>
-<html lang="tr">
+<html class="light" lang="tr">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sepetim - QR Menü</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link href="~/css/sepet.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary":"#ffefec","surface":"#f8f6f5","primary":"#a23718","secondary":"#765600",
+                        "surface-container-lowest":"#ffffff","surface-container-low":"#f2f0f0",
+                        "surface-container":"#eae8e7","outline":"#777776","secondary-container":"#ffca57",
+                        "on-secondary":"#fff1dc","primary-fixed":"#fd7954","outline-variant":"#aeadac",
+                        "on-surface":"#2e2f2f","on-secondary-container":"#5d4300","primary-container":"#fd7954",
+                        "on-surface-variant":"#5c5b5b","surface-container-high":"#e4e2e2",
+                        "surface-container-highest":"#dedcdc","primary-dim":"#922c0c",
+                        "error":"#b31b25","on-error":"#ffefee","background":"#f8f6f5"
+                    },
+                    fontFamily: { "headline":["Plus Jakarta Sans"],"body":["Be Vietnam Pro"],"label":["Plus Jakarta Sans"] },
+                    borderRadius: {"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { min-height: 100dvh; }
+    </style>
 </head>
-<body>
+<body class="bg-surface font-body text-on-surface selection:bg-primary-container selection:text-on-primary-container">
 
-    <!-- HEADER -->
-    <div class="sepet-header">
-        <a href="/Menu/Index" class="back-btn">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
-        </a>
-        <h1>🛒 Sepetim</h1>
-        <div style="width: 36px;"></div> <!-- Ortalamak için boş div -->
-    </div>
+    <!-- Top Navigation (Stitch Cart) -->
+    <header class="fixed top-0 w-full z-[60] bg-white/80 backdrop-blur-md">
+        <div class="flex justify-between items-center px-6 py-4 w-full max-w-screen-xl mx-auto">
+            <div class="flex items-center gap-4">
+                <a href="/Menu/Index" class="hover:bg-neutral-100 transition-colors p-2 rounded-full" style="text-decoration:none;">
+                    <span class="material-symbols-outlined text-orange-800">arrow_back</span>
+                </a>
+                <h1 class="font-headline font-bold text-lg uppercase tracking-tight text-orange-800">Kafe Menü</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                @if (Context.Items.ContainsKey("MasaId"))
+                {
+                    <span class="font-label text-sm font-semibold text-on-surface-variant">Masa @Context.Items["MasaId"]</span>
+                }
+                <span class="material-symbols-outlined text-orange-800">shopping_bag</span>
+            </div>
+        </div>
+    </header>
 
-    <!-- SEPET İÇERİĞİ -->
-    <div class="sepet-container">
+    <main class="pt-24 pb-40 px-6 max-w-2xl mx-auto">
         @if (Model == null || !Model.SepetDetaylar.Any())
         {
-            <div class="empty-cart">
-                <div class="empty-icon">🛒</div>
-                <h3>Sepetiniz Boş</h3>
-                <p class="text-muted">Menüden lezzetli ürünler eklemeye başlayabilirsiniz.</p>
-                <a href="/Menu/Index" class="btn btn-primary mt-3 radius-30 px-4 py-2">Menüye Dön</a>
+            <!-- Empty State -->
+            <div class="text-center py-20">
+                <span class="material-symbols-outlined text-7xl opacity-20 block mb-4">shopping_cart</span>
+                <h3 class="font-headline font-extrabold text-2xl text-on-surface mb-2">Sepetiniz Boş</h3>
+                <p class="text-on-surface-variant font-medium mb-8">Menüden lezzetli ürünler eklemeye başlayın.</p>
+                <a href="/Menu/Index" class="inline-flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-headline font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform" style="text-decoration:none;">
+                    <span class="material-symbols-outlined text-xl">restaurant_menu</span>
+                    Menüye Dön
+                </a>
             </div>
         }
         else
         {
-            <div class="cart-items">
+            <!-- Page Title (Stitch) -->
+            <div class="mb-10">
+                <h2 class="font-headline text-4xl font-extrabold text-on-surface tracking-tight leading-none mb-2">Seçimlerinizi Gözden Geçirin</h2>
+                <p class="text-on-surface-variant font-medium">Onayınız alındığında taze olarak hazırlanacaktır.</p>
+            </div>
+
+            <!-- Order Items (Stitch Bento) -->
+            <div class="space-y-6">
                 @foreach (var detay in Model.SepetDetaylar)
                 {
-                    <div class="cart-item" id="item-@detay.Id">
-                        <div class="item-info">
-                            <div class="item-name">@detay.Urun.Ad</div>
+                    <div class="bg-surface-container-lowest rounded-xl p-4 flex gap-4 items-center group" id="item-@detay.Id">
+                        <div class="flex-grow">
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-headline font-bold text-on-surface text-lg">@detay.Urun.Ad</h3>
+                                <span class="font-label font-bold text-on-surface">@detay.BirimFiyat.ToString("N2") ₺</span>
+                            </div>
                             @if (!string.IsNullOrEmpty(detay.SeciliOpsiyonlar) && detay.SeciliOpsiyonlar != "[]")
                             {
-                                <div class="item-options text-muted small mt-1">
+                                <p class="text-on-surface-variant text-sm line-clamp-1 mb-2">
                                     @{
                                         try {
                                             var opsJson = System.Text.Json.JsonDocument.Parse(detay.SeciliOpsiyonlar);
                                             var opsList = new List<string>();
                                             foreach(var ops in opsJson.RootElement.EnumerateArray()) {
-                                                var ad = ops.GetProperty("Ad").GetString() ?? "";
-                                                var ekFiyat = ops.GetProperty("EkFiyat").GetDecimal();
-                                                opsList.Add(ekFiyat > 0 ? $"{ad} (+{ekFiyat:N2} TL)" : ad);
+                                                opsList.Add(ops.GetProperty("Ad").GetString() ?? "");
                                             }
                                             @string.Join(", ", opsList)
                                         } catch { }
                                     }
-                                </div>
+                                </p>
                             }
-                            <div class="item-price mt-2">@detay.BirimFiyat.ToString("N2") TL</div>
-                        </div>
-
-                        <div class="item-actions">
-                            <div class="qty-control group">
-                                <button class="qty-btn minus" onclick="updateQuantity(@detay.Id, @(detay.Adet - 1))">-</button>
-                                <span class="qty-val">@detay.Adet</span>
-                                <button class="qty-btn plus" onclick="updateQuantity(@detay.Id, @(detay.Adet + 1))">+</button>
+                            <div class="flex items-center justify-between mt-2">
+                                <div class="flex items-center bg-surface-container-highest rounded-full px-1 py-1">
+                                    <button class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white transition-colors active:scale-90 border-0 bg-transparent cursor-pointer"
+                                            onclick="updateQuantity(@detay.Id, @(detay.Adet - 1))">
+                                        <span class="material-symbols-outlined text-sm">remove</span>
+                                    </button>
+                                    <span class="w-8 text-center font-bold text-sm">@detay.Adet</span>
+                                    <button class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white transition-colors active:scale-90 border-0 bg-transparent cursor-pointer"
+                                            onclick="updateQuantity(@detay.Id, @(detay.Adet + 1))">
+                                        <span class="material-symbols-outlined text-sm">add</span>
+                                    </button>
+                                </div>
+                                <button class="text-error text-sm font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity border-0 bg-transparent cursor-pointer"
+                                        onclick="removeItem(@detay.Id)">
+                                    <span class="material-symbols-outlined text-sm">delete</span>
+                                    Sil
+                                </button>
                             </div>
-                            <button class="remove-btn group" onclick="removeItem(@detay.Id)">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                            </button>
                         </div>
                     </div>
                 }
             </div>
 
-            <!-- SİPARİŞ ÖZETİ -->
-            <div class="cart-summary">
-                <div class="summary-row total">
-                    <span>Toplam Tutar:</span>
-                    <span id="cartTotalSum">@Model.ToplamTutar.ToString("N2") TL</span>
+            <!-- Breakdown (Stitch) -->
+            <section class="mt-12 space-y-6">
+                <div class="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
+                    <div class="space-y-3 mb-6">
+                        <div class="flex justify-between items-center text-on-surface-variant font-medium">
+                            <span>Ara Toplam</span>
+                            <span>@Model.ToplamTutar.ToString("N2") ₺</span>
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-surface-container flex justify-between items-end">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Toplam Tutar</p>
+                            <h4 class="font-headline text-3xl font-extrabold text-on-surface">@Model.ToplamTutar.ToString("N2") ₺</h4>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="summary-actions mt-4">
-                    <button class="btn btn-outline-danger w-100 mb-3 radius-30 py-2 fw-semibold" onclick="clearCart()">Sepeti Temizle</button>
-                    <button class="btn btn-success w-100 radius-30 py-3 fw-bold fs-5" id="completeOrderBtn" onclick="siparisGonder()">Siparişi Gönder</button>
+
+                <!-- Sepeti Temizle -->
+                <div class="flex justify-center">
+                    <button onclick="clearCart()" class="flex items-center gap-2 px-5 py-2.5 bg-surface-container-high rounded-full hover:bg-surface-container-highest transition-colors active:scale-95 border-0 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">delete_sweep</span>
+                        <span class="font-headline font-bold text-on-surface text-sm">Sepeti Temizle</span>
+                    </button>
                 </div>
-            </div>
+            </section>
         }
+    </main>
+
+    <!-- Bottom Action (Stitch) -->
+    @if (Model != null && Model.SepetDetaylar.Any())
+    {
+        <div class="fixed bottom-[72px] left-0 w-full z-[55] px-6 pb-4 pt-4 bg-gradient-to-t from-surface via-surface to-transparent">
+            <div class="max-w-2xl mx-auto">
+                <button id="completeOrderBtn" onclick="siparisGonder()"
+                        class="w-full bg-gradient-to-r from-primary to-primary-container text-white py-5 rounded-full font-headline font-bold text-lg shadow-[0_12px_32px_rgba(162,55,24,0.3)] active:scale-95 transition-transform flex items-center justify-center gap-3 border-0 cursor-pointer">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                    Siparişi Onayla
+                </button>
+                <p class="text-center mt-3 text-[11px] font-medium text-on-surface-variant uppercase tracking-widest">
+                    Onayınız alındığında siparişiniz mutfağa iletilecektir.
+                </p>
+            </div>
+        </div>
+    }
+
+    <!-- ═══ BOTTOM NAV (Stitch — same as Menu page) ═══ -->
+    <nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-3xl z-[60]">
+        <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/Menu/Index" style="text-decoration:none;">
+            <span class="material-symbols-outlined">restaurant_menu</span>
+            <span class="font-body text-[11px] font-semibold mt-1">Menü</span>
+        </a>
+        <a class="flex flex-col items-center justify-center bg-orange-100 text-orange-900 rounded-xl px-3 py-1.5 transition-transform active:scale-90" href="/Sepet" style="text-decoration:none;">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shopping_cart</span>
+            <span class="font-body text-[11px] font-semibold mt-1">Sepet</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/siparislerim" style="text-decoration:none;">
+            <span class="material-symbols-outlined">receipt_long</span>
+            <span class="font-body text-[11px] font-semibold mt-1">Siparişlerim</span>
+        </a>
+    </nav>
+
+    <!-- ═══ STITCH CONFIRM MODAL ═══ -->
+    <div class="fixed inset-0 z-[9999] flex items-center justify-center p-6 opacity-0 pointer-events-none transition-opacity duration-300" id="confirmModal" style="background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-8 text-center shadow-2xl transform scale-95 transition-transform duration-300" id="confirmCard">
+            <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-5">
+                <span class="material-symbols-outlined text-primary text-3xl" id="confirmIcon">help</span>
+            </div>
+            <h3 class="font-headline font-extrabold text-xl text-on-surface mb-2" id="confirmTitle">Emin misiniz?</h3>
+            <p class="text-on-surface-variant text-sm mb-8" id="confirmMessage">Bu işlem geri alınamaz.</p>
+            <div class="flex gap-3">
+                <button class="flex-1 py-3.5 rounded-2xl font-headline font-bold text-sm bg-surface-container-high text-on-surface hover:bg-surface-container-highest active:scale-95 transition-all border-0 cursor-pointer" onclick="closeConfirm()">Vazgeç</button>
+                <button class="flex-1 py-3.5 rounded-2xl font-headline font-bold text-sm bg-primary text-on-primary hover:bg-primary-dim active:scale-95 transition-all shadow-lg shadow-primary/20 border-0 cursor-pointer" id="confirmOkBtn" onclick="">Onayla</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ STITCH SUCCESS MODAL ═══ -->
+    <div class="fixed inset-0 z-[9999] flex items-center justify-center p-6 opacity-0 pointer-events-none transition-opacity duration-300" id="successModal" style="background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-8 text-center shadow-2xl transform scale-95 transition-transform duration-300" id="successCard">
+            <div class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-5">
+                <span class="material-symbols-outlined text-green-600 text-4xl" style="font-variation-settings:'FILL' 1;">check_circle</span>
+            </div>
+            <h3 class="font-headline font-extrabold text-2xl text-on-surface mb-2" id="successTitle">Başarılı!</h3>
+            <p class="text-on-surface-variant text-sm mb-6" id="successMessage">İşlem tamamlandı.</p>
+            <div class="flex items-center justify-center gap-2 text-on-surface-variant text-xs">
+                <span class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                <span id="successRedirectText">Yönlendiriliyorsunuz...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ ERROR TOAST ═══ -->
+    <div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none">
+        <div id="toastEl" class="bg-error text-white px-6 py-3 rounded-2xl shadow-xl font-headline font-semibold text-sm flex items-center gap-2 opacity-0 transition-all duration-300 translate-y-4" style="pointer-events:auto;">
+            <span id="toastMsg"></span>
+        </div>
     </div>
 
     <script>
+        // ===== STITCH MODAL HELPERS =====
+        function showConfirm(icon, title, message, okLabel, onConfirm) {
+            document.getElementById('confirmIcon').textContent = icon;
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmMessage').textContent = message;
+            document.getElementById('confirmOkBtn').textContent = okLabel;
+            document.getElementById('confirmOkBtn').onclick = function() { closeConfirm(); onConfirm(); };
+            const modal = document.getElementById('confirmModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('confirmCard').classList.remove('scale-95');
+        }
+        function closeConfirm() {
+            document.getElementById('confirmModal').classList.add('opacity-0', 'pointer-events-none');
+            document.getElementById('confirmCard').classList.add('scale-95');
+        }
+        function showSuccess(title, message, redirectUrl, delay) {
+            document.getElementById('successTitle').textContent = title;
+            document.getElementById('successMessage').textContent = message;
+            document.getElementById('successRedirectText').textContent = redirectUrl ? 'Yönlendiriliyorsunuz...' : '';
+            const modal = document.getElementById('successModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('successCard').classList.remove('scale-95');
+            if (redirectUrl) { setTimeout(function(){ window.location.href = redirectUrl; }, delay || 2000); }
+        }
+        function showErrorToast(msg) {
+            const el = document.getElementById('toastEl');
+            document.getElementById('toastMsg').textContent = msg;
+            el.style.opacity = '1'; el.style.transform = 'translateY(0)';
+            setTimeout(function(){ el.style.opacity = '0'; el.style.transform = 'translateY(16px)'; }, 3500);
+        }
+
+        // ===== SEPET İŞLEMLERİ =====
         async function updateQuantity(detayId, newAdet) {
             if (newAdet < 1) {
-                if(confirm("Ürünü sepetten çıkarmak istiyor musunuz?")) {
-                    removeItem(detayId);
-                }
+                showConfirm('delete', 'Ürünü Kaldır', 'Bu ürünü sepetinizden çıkarmak istediğinize emin misiniz?', 'Kaldır', function(){ removeItem(detayId); });
                 return;
             }
-
             try {
-                const res = await fetch(`/sepet/guncelle/${detayId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ Adet: newAdet })
-                });
+                const res = await fetch('/sepet/guncelle/' + detayId, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ Adet: newAdet }) });
                 const data = await res.json();
-                if(data.success) {
-                    location.reload(); 
-                } else {
-                    alert(data.message);
-                }
-            } catch(e) {
-                console.error(e);
-            }
+                if (data.success) location.reload(); else showErrorToast(data.message);
+            } catch(e) { console.error(e); showErrorToast('Bağlantı hatası.'); }
         }
 
         async function removeItem(detayId) {
             try {
-                const res = await fetch(`/sepet/cikar/${detayId}`, { method: 'POST' });
+                const res = await fetch('/sepet/cikar/' + detayId, { method: 'POST' });
                 const data = await res.json();
-                if(data.success) {
-                    location.reload();
-                } else {
-                    alert(data.message);
-                }
-            } catch(e) { console.error(e); }
+                if (data.success) location.reload(); else showErrorToast(data.message);
+            } catch(e) { console.error(e); showErrorToast('Bağlantı hatası.'); }
         }
 
         async function clearCart() {
-            if(!confirm("Sepetteki tüm ürünler silinecek. Emin misiniz?")) return;
-            
-            try {
-                const res = await fetch('/sepet/temizle', { method: 'POST' });
-                const data = await res.json();
-                if(data.success) {
-                    location.reload();
-                } else {
-                    alert(data.message);
-                }
-            } catch(e) { console.error(e); }
+            showConfirm('delete_sweep', 'Sepeti Temizle', 'Sepetteki tüm ürünler silinecek. Emin misiniz?', 'Temizle', async function(){
+                try {
+                    const res = await fetch('/sepet/temizle', { method: 'POST' });
+                    const data = await res.json();
+                    if (data.success) location.reload(); else showErrorToast(data.message);
+                } catch(e) { console.error(e); showErrorToast('Bağlantı hatası.'); }
+            });
         }
 
-        async function siparisGonder() {
-            if(!confirm('Siparişiniz mutfağa gönderilecek. Onaylıyor musunuz?')) return;
-
-            const btn = document.getElementById('completeOrderBtn');
-            btn.disabled = true;
-            btn.textContent = 'Gönderiliyor...';
-
-            try {
-                const res = await fetch('/siparis/olustur', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({})
-                });
-                const data = await res.json();
-                if(data.success) {
-                    alert('Siparişiniz mutfağa iletildi! Sipariş #' + data.siparisId);
-                    location.reload();
-                } else {
-                    alert('Hata: ' + data.message);
+        function siparisGonder() {
+            showConfirm('restaurant', 'Siparişi Onayla', 'Siparişiniz mutfağa gönderilecek. Onaylıyor musunuz?', 'Gönder', async function(){
+                const btn = document.getElementById('completeOrderBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Gönderiliyor...';
+                try {
+                    const res = await fetch('/siparis/olustur', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+                    const data = await res.json();
+                    if (data.success) {
+                        showSuccess('Afiyet Olsun! 🎉', 'Siparişiniz mutfağa iletildi. Kısa sürede hazırlanacaktır.', '/siparislerim', 2500);
+                    } else {
+                        showErrorToast('Hata: ' + data.message);
+                        btn.disabled = false;
+                        btn.innerHTML = '<span class="material-symbols-outlined" style="font-variation-settings:\'FILL\' 1;">check_circle</span> Siparişi Onayla';
+                    }
+                } catch(e) {
+                    console.error(e);
+                    showErrorToast('Bağlantı hatası. Tekrar deneyin.');
                     btn.disabled = false;
-                    btn.textContent = 'Siparişi Gönder';
+                    btn.innerHTML = '<span class="material-symbols-outlined" style="font-variation-settings:\'FILL\' 1;">check_circle</span> Siparişi Onayla';
                 }
-            } catch(e) {
-                console.error(e);
-                btn.disabled = false;
-                btn.textContent = 'Siparişi Gönder';
-            }
+            });
         }
     </script>
 </body>

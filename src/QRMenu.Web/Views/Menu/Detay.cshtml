@@ -1,0 +1,286 @@
+@model QRMenu.Core.Entities.Urun
+@{
+    ViewData["Title"] = Model.Ad;
+    Layout = null;
+    var opsiyonlar = Model.UrunOpsiyonlar?.OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new { id = uo.Opsiyon.Id, ad = uo.Opsiyon.Ad, grup = uo.Opsiyon.Grup, ekFiyat = uo.Opsiyon.EkFiyat, zorunlu = uo.Opsiyon.Zorunlu }).ToList() ?? new();
+    var gruplar = opsiyonlar.GroupBy(o => o.grup).ToList();
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@Model.Ad - QR Menü</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary":"#ffefec","surface":"#f8f6f5","primary":"#a23718","secondary":"#765600",
+                        "surface-container-lowest":"#ffffff","surface-container-low":"#f2f0f0",
+                        "surface-container":"#eae8e7","outline":"#777776","secondary-container":"#ffca57",
+                        "on-secondary":"#fff1dc","primary-fixed":"#fd7954","outline-variant":"#aeadac",
+                        "on-surface":"#2e2f2f","on-secondary-container":"#5d4300","primary-container":"#fd7954",
+                        "on-surface-variant":"#5c5b5b","surface-container-high":"#e4e2e2",
+                        "surface-container-highest":"#dedcdc","primary-dim":"#922c0c",
+                        "error":"#b31b25","on-error":"#ffefee","background":"#f8f6f5",
+                        "error-container":"#fb5151"
+                    },
+                    fontFamily: { "headline":["Plus Jakarta Sans"],"body":["Be Vietnam Pro"],"label":["Plus Jakarta Sans"] },
+                    borderRadius: {"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        body { min-height: 100dvh; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary/20">
+
+    <!-- Top Navigation (Stitch — z-[60]) -->
+    <header class="fixed top-0 w-full z-[60] bg-white/80 backdrop-blur-md">
+        <div class="flex justify-between items-center px-6 py-4 max-w-screen-xl mx-auto">
+            <div class="flex items-center gap-4">
+                <a href="/Menu/Index" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors" style="text-decoration:none;">
+                    <span class="material-symbols-outlined text-on-surface">arrow_back</span>
+                </a>
+                <h1 class="font-headline font-bold text-lg uppercase tracking-tight text-orange-800">Kafe Menü</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                @if (Context.Items.ContainsKey("MasaId"))
+                {
+                    <span class="font-label text-sm font-semibold text-on-surface-variant">Masa @Context.Items["MasaId"]</span>
+                }
+            </div>
+        </div>
+    </header>
+
+    <main class="pb-48">
+        <!-- Hero Section with Image (Stitch) -->
+        <section class="relative h-[442px] md:h-[530px] overflow-hidden mt-[72px]">
+            @if (!string.IsNullOrEmpty(Model.GorselUrl))
+            {
+                <img alt="@Model.Ad" class="w-full h-full object-cover" src="@Model.GorselUrl" />
+            }
+            else
+            {
+                <div class="w-full h-full bg-gradient-to-br from-surface-container-low to-surface-container flex items-center justify-center text-7xl">
+                    @{
+                        var emoji2 = "☕";
+                        var katAd2 = Model.Kategori?.Ad ?? "";
+                        if (katAd2.Contains("Burger")) emoji2 = "🍔";
+                        else if (katAd2.Contains("Pizza")) emoji2 = "🍕";
+                        else if (katAd2.Contains("Tost")) emoji2 = "🥪";
+                        else if (katAd2.Contains("Tatlı")) emoji2 = "🍰";
+                        else if (katAd2.Contains("Salata")) emoji2 = "🥗";
+                        else if (katAd2.Contains("Kahve")) emoji2 = "☕";
+                    }
+                    @emoji2
+                </div>
+            }
+            <div class="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent"></div>
+        </section>
+
+        <!-- Content Canvas (Stitch) -->
+        <div class="max-w-2xl mx-auto px-6 -mt-16 relative z-10">
+            <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 class="font-headline font-extrabold text-3xl md:text-4xl text-on-surface leading-tight">@Model.Ad</h2>
+                    <span class="font-headline font-bold text-2xl text-primary whitespace-nowrap ml-4">@Model.Fiyat.ToString("N2") ₺</span>
+                </div>
+
+                <!-- Badges -->
+                <div class="flex gap-2 mb-6">
+                    @if (Model.PopulerMi)
+                    {
+                        <span class="bg-secondary-container text-on-secondary-container text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">Popüler</span>
+                    }
+                    @if (!Model.AktifMi)
+                    {
+                        <span class="bg-error-container text-on-error text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">Tükendi</span>
+                    }
+                </div>
+
+                <!-- Description -->
+                @if (!string.IsNullOrEmpty(Model.Aciklama))
+                {
+                    <p class="text-on-surface-variant leading-relaxed text-lg mb-8">@Model.Aciklama</p>
+                }
+
+                <!-- Customization Sections (Stitch) -->
+                @if (Model.AktifMi && gruplar.Any())
+                {
+                    <div class="space-y-10">
+                        @foreach (var grup in gruplar)
+                        {
+                            var isZorunlu2 = grup.First().zorunlu;
+                            var inputType2 = isZorunlu2 ? "radio" : "checkbox";
+                            var nameAttr2 = isZorunlu2 ? $"grup_{grup.Key?.Replace(" ", "")}" : "";
+                            var barColor2 = isZorunlu2 ? "bg-secondary" : "bg-outline-variant";
+
+                            <div class="space-y-4">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-1 h-6 @barColor2 rounded-full"></span>
+                                    <h3 class="font-headline font-bold text-xl uppercase tracking-tighter">
+                                        @grup.Key
+                                        @if (isZorunlu2)
+                                        {
+                                            <span class="text-error text-xs font-bold normal-case">(Zorunlu)</span>
+                                        }
+                                    </h3>
+                                </div>
+                                <div class="grid gap-3">
+                                    @foreach (var ops in grup)
+                                    {
+                                        var inputId2 = $"ops_{ops.id}";
+                                        var inputName3 = isZorunlu2 ? nameAttr2 : inputId2;
+
+                                        <label class="flex items-center justify-between p-4 rounded-xl bg-surface-container-low cursor-pointer hover:bg-surface-container-high transition-colors" for="@inputId2">
+                                            <div class="flex items-center gap-4">
+                                                <div class="relative flex items-center">
+                                                    <input class="option-input peer h-6 w-6 rounded border-outline-variant text-primary focus:ring-primary/20 cursor-pointer appearance-none border-2 checked:bg-primary checked:border-primary"
+                                                           type="@inputType2" name="@inputName3" id="@inputId2"
+                                                           value="@ops.id" data-price="@ops.ekFiyat.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                                           onchange="updateDetayPrice()" />
+                                                    <span class="material-symbols-outlined absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none text-sm left-1" style="font-variation-settings: 'wght' 700;">check</span>
+                                                </div>
+                                                <span class="font-semibold text-on-surface">@ops.ad</span>
+                                            </div>
+                                            @if (ops.ekFiyat > 0)
+                                            {
+                                                <span class="font-headline font-bold text-secondary">+@ops.ekFiyat.ToString("N2") ₺</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="font-label text-xs uppercase text-on-surface-variant font-bold">Dahil</span>
+                                            }
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </main>
+
+    <!-- Floating Footer Action Area (Stitch — above bottom nav) -->
+    @if (Model.AktifMi)
+    {
+        <footer class="fixed bottom-[72px] left-0 w-full z-[55]">
+            <div class="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-surface to-transparent pointer-events-none"></div>
+            <div class="relative max-w-2xl mx-auto px-6 pb-4 pt-4">
+                <div class="bg-surface-container-lowest/90 backdrop-blur-xl rounded-2xl p-4 shadow-[0_-12px_40px_rgba(0,0,0,0.08)] flex items-center gap-4">
+                    <!-- Quantity Selector -->
+                    <div class="flex items-center bg-surface-container-highest rounded-xl p-1 shrink-0">
+                        <button onclick="changeQty(-1)" class="w-10 h-10 flex items-center justify-center hover:bg-surface-container-low rounded-lg transition-transform active:scale-90 border-0 bg-transparent cursor-pointer">
+                            <span class="material-symbols-outlined text-on-surface-variant">remove</span>
+                        </button>
+                        <span class="w-10 text-center font-headline font-bold text-lg" id="detayQty">1</span>
+                        <button onclick="changeQty(1)" class="w-10 h-10 flex items-center justify-center hover:bg-surface-container-low rounded-lg transition-transform active:scale-90 border-0 bg-transparent cursor-pointer">
+                            <span class="material-symbols-outlined text-on-surface">add</span>
+                        </button>
+                    </div>
+                    <!-- Primary Action Button -->
+                    <button id="btnDetayAddToCart" onclick="detayAddToCart()"
+                            class="flex-1 bg-gradient-to-r from-primary to-primary-container h-12 rounded-xl flex items-center justify-between px-6 text-white font-headline font-bold uppercase tracking-widest shadow-lg shadow-primary/20 transition-transform active:scale-[0.98] border-0 cursor-pointer">
+                        <span>Sepete Ekle</span>
+                        <span class="text-on-primary/90" id="detayTotalPrice">@Model.Fiyat.ToString("N2") ₺</span>
+                    </button>
+                </div>
+                <div id="detayWarning" class="text-error text-xs font-semibold text-center mt-2" style="display:none;">Lütfen tüm zorunlu seçenekleri belirleyin.</div>
+            </div>
+        </footer>
+    }
+
+    <!-- ═══ BOTTOM NAV (Stitch — same as other pages) ═══ -->
+    <nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-3xl z-[60]">
+        <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/Menu/Index" style="text-decoration:none;">
+            <span class="material-symbols-outlined">restaurant_menu</span>
+            <span class="font-body text-[11px] font-semibold mt-1">Menü</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/Sepet" style="text-decoration:none;">
+            <span class="material-symbols-outlined">shopping_cart</span>
+            <span class="font-body text-[11px] font-semibold mt-1">Sepet</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/siparislerim" style="text-decoration:none;">
+            <span class="material-symbols-outlined">receipt_long</span>
+            <span class="font-body text-[11px] font-semibold mt-1">Siparişlerim</span>
+        </a>
+    </nav>
+
+    <script>
+        const BASE_PRICE = @Model.Fiyat.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+        const URUN_ID = @Model.Id;
+        let detayQty = 1;
+
+        const requiredGroups = [];
+        @foreach (var grup in gruplar.Where(g => g.First().zorunlu))
+        {
+            <text>requiredGroups.push('grup_@grup.Key?.Replace(" ", "")');</text>
+        }
+
+        function changeQty(delta) {
+            detayQty = Math.max(1, detayQty + delta);
+            document.getElementById('detayQty').textContent = detayQty;
+            updateDetayPrice();
+        }
+
+        function updateDetayPrice() {
+            let unit = BASE_PRICE;
+            document.querySelectorAll('.option-input:checked').forEach(input => { unit += parseFloat(input.dataset.price); });
+            const total = unit * detayQty;
+            document.getElementById('detayTotalPrice').textContent = total.toFixed(2) + ' ₺';
+
+            const btn = document.getElementById('btnDetayAddToCart');
+            const warning = document.getElementById('detayWarning');
+            if (!btn) return;
+            let allSelected = true;
+            requiredGroups.forEach(grpName => { if (!document.querySelector('input[name="' + grpName + '"]:checked')) allSelected = false; });
+            if (requiredGroups.length > 0) {
+                btn.style.opacity = allSelected ? '1' : '0.5';
+                btn.disabled = !allSelected;
+                if (warning) warning.style.display = allSelected ? 'none' : 'block';
+            }
+        }
+
+        async function detayAddToCart() {
+            const selectedOps = [];
+            document.querySelectorAll('.option-input:checked').forEach(input => { selectedOps.push(parseInt(input.value)); });
+
+            const btn = document.getElementById('btnDetayAddToCart');
+            btn.disabled = true;
+            btn.innerHTML = '<span>Ekleniyor...</span><span></span>';
+
+            try {
+                const response = await fetch('/sepet/ekle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ UrunId: URUN_ID, Adet: detayQty, OpsiyonIds: selectedOps })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    window.location.href = '/Menu/Index';
+                } else {
+                    alert('Hata: ' + data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>Sepete Ekle</span><span class="text-on-primary/90">' + (BASE_PRICE * detayQty).toFixed(2) + ' ₺</span>';
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Bağlantı hatası.');
+                btn.disabled = false;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', updateDetayPrice);
+    </script>
+</body>
+</html>

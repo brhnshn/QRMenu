@@ -26,6 +26,17 @@ namespace QRMenu.Web.Controllers
         }
 
         /// <summary>
+        /// Ürün detay sayfası
+        /// </summary>
+        public async Task<IActionResult> Detay(int id)
+        {
+            var urunler = await _urunService.GetAllAsync();
+            var urun = urunler.FirstOrDefault(u => u.Id == id);
+            if (urun == null) return NotFound();
+            return View(urun);
+        }
+
+        /// <summary>
         /// Menü verisi JSON — SignalR güncellemesi sonrası frontend bu endpoint'i çağırır
         /// </summary>
         [HttpGet("/menu/json")]

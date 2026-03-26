@@ -1,4 +1,4 @@
-﻿@model List<QRMenu.Core.Entities.Urun>
+@model List<QRMenu.Core.Entities.Urun>
 @{
     ViewData["Title"] = "Menü";
     Layout = null;
@@ -6,99 +6,178 @@
 }
 
 <!DOCTYPE html>
-<html lang="tr">
+<html class="light" lang="tr">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>QR Menü</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link href="~/css/menu.css" rel="stylesheet" />
-</head>
-<body class="bg-light">
-
-    <!-- 1. HEADER -->
-    <header class="menu-header">
-        <div class="header-left">
-            <div class="logo-area">
-                <span class="logo-icon"></span>
-                <span class="logo-text">Kafe Menu</span>
-            </div>
-            @if (Context.Items.ContainsKey("MasaId"))
-            {
-                <div class="table-badge">Masa @Context.Items["MasaId"]</div>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary-fixed-variant":"#581200","on-primary":"#ffefec","surface":"#f8f6f5",
+                        "on-tertiary-fixed-variant":"#6e6d6d","error-container":"#fb5151","primary":"#a23718",
+                        "secondary":"#765600","surface-container-lowest":"#ffffff","on-tertiary-container":"#636262",
+                        "on-secondary-container":"#5d4300","surface-tint":"#a23718","surface-variant":"#dedcdc",
+                        "surface-container-low":"#f2f0f0","primary-fixed-dim":"#ec6d49","surface-container":"#eae8e7",
+                        "outline":"#777776","secondary-container":"#ffca57","on-error":"#ffefee",
+                        "surface-bright":"#f8f6f5","on-secondary":"#fff1dc","primary-fixed":"#fd7954",
+                        "outline-variant":"#aeadac","on-tertiary":"#f5f2f1","on-surface":"#2e2f2f",
+                        "on-primary-container":"#480d00","on-primary-fixed":"#000000","error":"#b31b25",
+                        "surface-container-highest":"#dedcdc","inverse-surface":"#0e0e0e","primary-dim":"#922c0c",
+                        "on-background":"#2e2f2f","primary-container":"#fd7954","on-surface-variant":"#5c5b5b",
+                        "secondary-dim":"#674b00","secondary-fixed-dim":"#f6ba2d",
+                        "surface-container-high":"#e4e2e2","surface-dim":"#d5d4d4","background":"#f8f6f5",
+                        "tertiary":"#5c5b5b","tertiary-container":"#ffffff","inverse-primary":"#fd7954"
+                    },
+                    fontFamily: { "headline":["Plus Jakarta Sans"],"body":["Be Vietnam Pro"],"label":["Plus Jakarta Sans"] },
+                    borderRadius: {"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","2xl":"1rem","3xl":"1.5rem","full":"9999px"},
+                }
             }
-        </div>
-        <div class="header-right">
-            <div class="lang-switch">TR</div>
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { min-height: 100dvh; }
+        /* Stitch modal styles (no Bootstrap needed) */
+        .stitch-modal-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            padding: 24px; opacity: 0; pointer-events: none; transition: opacity 0.25s;
+        }
+        .stitch-modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .stitch-modal-card {
+            background: white; border-radius: 1.5rem; max-width: 480px; width: 100%;
+            max-height: 85vh; overflow-y: auto; box-shadow: 0 24px 48px rgba(0,0,0,0.15);
+            transform: translateY(20px); transition: transform 0.25s;
+        }
+        .stitch-modal-overlay.active .stitch-modal-card { transform: translateY(0); }
+        .stitch-modal-card::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-background font-body text-on-background selection:bg-primary/20">
+
+    <!-- ═══ TOP APP BAR (Stitch — z-[60]) ═══ -->
+    <header class="fixed top-0 w-full z-[60] bg-white/80 backdrop-blur-md">
+        <div class="flex justify-between items-center px-6 py-4 w-full max-w-screen-xl mx-auto">
+            <div class="flex items-center gap-4">
+                <span class="material-symbols-outlined text-orange-800" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+                <h1 class="font-headline font-bold text-lg uppercase tracking-tight text-neutral-800">Kafe Menü</h1>
+                @if (Context.Items.ContainsKey("MasaId"))
+                {
+                    <span class="font-label text-sm font-semibold text-on-surface-variant bg-surface-container-low px-3 py-1.5 rounded-full">Masa @Context.Items["MasaId"]</span>
+                }
+            </div>
+            <div class="flex items-center gap-2">
+                <button class="p-2 hover:bg-neutral-100 transition-colors rounded-full" onclick="callWaiter()">
+                    <span class="material-symbols-outlined text-orange-800">notifications_active</span>
+                </button>
+            </div>
         </div>
     </header>
 
-    <!-- 2. KATEGORİ BUTONLARI (Yatay Kaydırma) -->
-    <div class="category-tabs-area">
-        <div class="category-tabs-scroll">
+    <main class="pt-[72px] pb-40 px-6 max-w-screen-xl mx-auto">
+
+
+
+        <!-- ═══ HERO SECTION ═══ -->
+        <section class="mb-6 mt-4">
+            <h2 class="font-headline text-4xl md:text-5xl font-extrabold text-on-surface leading-tight mb-4">
+                Kafe Menü<br/><span class="text-primary">Lezzetler</span>
+            </h2>
+            <p class="text-on-surface-variant max-w-md font-medium">Taze malzemeler, özenle hazırlanmış tarifler.</p>
+        </section>
+
+        <!-- ═══ CATEGORY TABS (Stitch — z-[55] so it stays ABOVE content but BELOW header z-[60]) ═══ -->
+        <nav class="flex gap-3 overflow-x-auto no-scrollbar pb-6 -mx-6 px-6 sticky top-[72px] z-[55] bg-background/95 backdrop-blur-sm pt-2">
             @for (var i = 0; i < kategoriler.Count; i++)
             {
                 var cat = kategoriler[i];
-                <button class="category-tab @(i == 0 ? "active" : "")" data-cat-id="@cat.Id">
+                <button class="category-tab px-6 py-2.5 rounded-full font-headline font-bold text-sm whitespace-nowrap transition-all active:scale-95 @(i == 0 ? "bg-primary text-on-primary shadow-lg shadow-primary/20" : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high")"
+                        data-cat-id="@cat.Id">
                     @cat.Ad
                 </button>
             }
-        </div>
-    </div>
+        </nav>
 
-    <!-- SİPARİŞ TAKİP STEPPER -->
-    <div id="orderTracker" style="display:none;"></div>
-
-    <!-- 3. ÜRÜN LİSTESİ -->
-    <div class="menu-content pb-5 mb-5">
+        <!-- ═══ MENU GRID (Stitch) ═══ -->
         @foreach (var kategori in kategoriler)
         {
             var urunler = Model.Where(u => u.KategoriId == kategori.Id).ToList();
-            if(!urunler.Any()) continue;
+            if (!urunler.Any()) continue;
 
-            <div class="category-section" id="cat-@kategori.Id">
-                <h2 class="category-title">@kategori.Ad</h2>
-                <div class="products-grid">
+            <div class="category-section mb-12" id="cat-@kategori.Id">
+                <h2 class="font-headline text-2xl font-extrabold text-on-surface mb-6">@kategori.Ad</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     @foreach (var urun in urunler)
                     {
                         var isSoldOut = !urun.AktifMi;
-                        <div class="product-card-horizontal @(isSoldOut ? "soldout" : "")">
-                            <div class="product-img-wrapper">
-                                @if (urun.PopulerMi)
-                                {
-                                    <span class="badge-populer"> Popüler</span>
-                                }
+                        var opsiyonList = urun.UrunOpsiyonlar?.OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new { id = uo.Opsiyon.Id, ad = uo.Opsiyon.Ad, grup = uo.Opsiyon.Grup, ekFiyat = uo.Opsiyon.EkFiyat, zorunlu = uo.Opsiyon.Zorunlu }).ToList() ?? new();
+                        var opsiyonJson = System.Text.Json.JsonSerializer.Serialize(opsiyonList);
+
+                        <div class="group relative bg-surface-container-lowest rounded-3xl overflow-hidden transition-all duration-300 hover:shadow-2xl @(isSoldOut ? "opacity-50 pointer-events-none" : "") cursor-pointer"
+                             @if(!isSoldOut){ <text>data-href="/Menu/Detay/@urun.Id"</text> }>
+                            <div class="aspect-[4/3] w-full overflow-hidden">
                                 @if (!string.IsNullOrEmpty(urun.GorselUrl))
                                 {
-                                    <img src="@urun.GorselUrl" alt="@urun.Ad" class="product-img" loading="lazy" />
+                                    <img alt="@urun.Ad" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="@urun.GorselUrl" />
                                 }
                                 else
                                 {
-                                    <div class="img-placeholder" data-kategori="@urun.Kategori?.Ad"></div>
+                                    <div class="w-full h-full bg-gradient-to-br from-surface-container-low to-surface-container flex items-center justify-center text-6xl">
+                                        @{
+                                            var emoji = "☕";
+                                            var katAd = urun.Kategori?.Ad ?? "";
+                                            if (katAd.Contains("Soğuk")) emoji = "🧊";
+                                            else if (katAd.Contains("Kahvaltı")) emoji = "🍳";
+                                            else if (katAd.Contains("Tost")) emoji = "🥪";
+                                            else if (katAd.Contains("Burger")) emoji = "🍔";
+                                            else if (katAd.Contains("Pizza")) emoji = "🍕";
+                                            else if (katAd.Contains("Makarna")) emoji = "🍝";
+                                            else if (katAd.Contains("Salata")) emoji = "🥗";
+                                            else if (katAd.Contains("Tatlı")) emoji = "🍰";
+                                        }
+                                        @emoji
+                                    </div>
                                 }
                             </div>
-                            <div class="product-details">
-                                <h3 class="p-title">@urun.Ad</h3>
-                                <p class="p-desc">@urun.Aciklama</p>
-                                <div class="p-bottom">
-                                    <span class="p-price">@urun.Fiyat.ToString("N2") TL</span>
+                            <div class="p-6">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h3 class="font-headline font-bold text-xl text-on-surface leading-tight">@urun.Ad</h3>
+                                    <span class="font-headline font-bold text-primary text-lg whitespace-nowrap ml-3">@urun.Fiyat.ToString("N2") ₺</span>
+                                </div>
+                                <p class="text-on-surface-variant text-sm line-clamp-2 mb-6">@urun.Aciklama</p>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-1">
+                                        @if (urun.PopulerMi)
+                                        {
+                                            <span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings:'FILL' 1;">local_fire_department</span>
+                                            <span class="text-xs font-bold text-on-surface">Popüler</span>
+                                        }
+                                        @if (isSoldOut)
+                                        {
+                                            <span class="text-xs font-bold text-error">Tükendi</span>
+                                        }
+                                    </div>
                                     @if (!isSoldOut)
                                     {
-                                        var opsiyonList = urun.UrunOpsiyonlar?.OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new { id = uo.Opsiyon.Id, ad = uo.Opsiyon.Ad, grup = uo.Opsiyon.Grup, ekFiyat = uo.Opsiyon.EkFiyat, zorunlu = uo.Opsiyon.Zorunlu }).ToList() ?? new();
-                                        var opsiyonJson = System.Text.Json.JsonSerializer.Serialize(opsiyonList);
-                                        <button class="btn-add"
+                                        <button class="btn-add flex items-center justify-center w-10 h-10 rounded-2xl bg-primary text-on-primary hover:bg-primary-dim active:scale-90 transition-all shadow-md shadow-primary/20"
                                                 data-urun-id="@urun.Id"
                                                 data-urun-ad="@urun.Ad"
                                                 data-fiyat="@urun.Fiyat.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
                                                 data-opsiyonlar='@Html.Raw(opsiyonJson)'>
-                                            <span class="btn-add-icon">+</span>
-                                            <span class="btn-add-text">Ekle</span>
+                                            <span class="material-symbols-outlined">add</span>
                                         </button>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-danger small fw-bold">Tükendi</span>
                                     }
                                 </div>
                             </div>
@@ -107,94 +186,76 @@
                 </div>
             </div>
         }
-    </div>
+    </main>
 
-    <!-- 4. YAPIŞKAN ALT BAR -->
-    <div class="sticky-bottom-bar" id="bottomBar">
-        <button class="btn-waiter" onclick="callWaiter()">
-            <span class="fs-4 d-block lh-1"></span>
-            <span class="small fw-semibold mt-1">Garson</span>
-        </button>
-        <button class="btn-view-cart" type="button" data-bs-toggle="offcanvas" data-bs-target="#cartOffcanvas" onclick="fetchCartDetails()">
-            <div class="d-flex align-items-center justify-content-center">
-                <span class="fw-bold fs-5 me-2">Sepeti Gör</span>
-                <span class="fw-bold fs-5 opacity-75">(<span id="bottomTotal">0.00</span> TL)</span>
+    <!-- ═══ BOTTOM NAVIGATION BAR (Stitch — 3 tabs) ═══ -->
+    <nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-3xl z-[60]">
+        <a class="flex flex-col items-center justify-center bg-orange-100 text-orange-900 rounded-xl px-3 py-1.5 transition-transform active:scale-90" href="/Menu/Index" style="text-decoration:none;">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">restaurant_menu</span>
+            <span class="font-body text-[11px] font-semibold mt-1">Menü</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/Sepet" style="text-decoration:none;">
+            <span class="material-symbols-outlined">shopping_cart</span>
+            <span class="font-body text-[11px] font-semibold mt-1">Sepet</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/siparislerim" style="text-decoration:none;">
+            <span class="material-symbols-outlined">receipt_long</span>
+            <span class="font-body text-[11px] font-semibold mt-1">Siparişlerim</span>
+        </a>
+    </nav>
+
+    <!-- ═══ OPSIYON MODALI (Custom, no Bootstrap) ═══ -->
+    <div class="stitch-modal-overlay" id="optionsModal">
+        <div class="stitch-modal-card">
+            <div class="px-6 pt-6 pb-2 flex justify-between items-center">
+                <h5 class="font-headline font-extrabold text-2xl text-on-surface" id="optionsModalTitle">Seçenekler</h5>
+                <button onclick="closeOptionsModal()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
             </div>
-        </button>
-    </div>
-
-    <!-- SEPET OFFCANVAS (Sağdan kayan pencere) -->
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="cartOffcanvas">
-        <div class="offcanvas-header bg-white shadow-sm z-1">
-            <h5 class="offcanvas-title fw-bold">Sepetim</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
-        </div>
-        <div class="offcanvas-body bg-light p-3" id="cartContent">
-            <!-- JS ile doldurulacak -->
-            <div class="text-center text-muted mt-5">Yükleniyor...</div>
-        </div>
-        <div class="offcanvas-footer bg-white border-top p-3 shadow-lg">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <span class="text-muted fw-semibold">Genel Toplam</span>
-                <span class="fs-4 fw-bold text-dark" id="cartOffcanvasTotal">0.00 TL</span>
-            </div>
-            <button class="btn btn-success w-100 py-3 rounded-4 fs-5 fw-bold" id="btnSiparisGonder" onclick="siparisGonder()">Siparişi Gönder</button>
-        </div>
-    </div>
-
-    <!-- OPSIYON MODALI -->
-    <div class="modal fade" id="optionsModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content rounded-4 border-0">
-                <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold fs-4" id="optionsModalTitle">Ürün Seçenekleri</h5>
-                    <button type="button" class="btn-close bg-light rounded-circle p-2" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body pt-3" id="optionsModalBody">
-                    <!-- Dinamik -->
-                </div>
-                <div class="modal-footer border-top-0 d-block px-3 pb-3">
-                    <div id="optionWarning" class="text-danger small fw-semibold text-center mb-2" style="display:none;">Lütfen tüm zorunlu seçenekleri belirleyin.</div>
-                    <button type="button" id="btnAddToCartModal" class="btn btn-dark w-100 py-3 rounded-4 fs-5 fw-bold d-flex justify-content-between align-items-center" onclick="submitOptionsForm()" disabled>
-                        <span>Sepete Ekle</span>
-                        <span id="modalTotalPrice" class="opacity-75">0.00 TL</span>
-                    </button>
-                </div>
+            <div class="px-6 pt-2 pb-4" id="optionsModalBody"></div>
+            <div class="px-6 pb-6">
+                <div id="optionWarning" class="text-error text-sm font-semibold text-center mb-3" style="display:none;">Lütfen tüm zorunlu seçenekleri belirleyin.</div>
+                <button type="button" id="btnAddToCartModal"
+                        class="w-full bg-gradient-to-r from-primary to-primary-container text-white h-14 rounded-2xl font-headline font-bold uppercase tracking-widest shadow-lg shadow-primary/20 transition-transform active:scale-[0.98] flex items-center justify-between px-6"
+                        onclick="submitOptionsForm()" disabled style="opacity:0.5; border:none; cursor:pointer;">
+                    <span>Sepete Ekle</span>
+                    <span id="modalTotalPrice" class="opacity-80">0.00 ₺</span>
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- SİPARİŞ ONAY MODALI -->
-    <div class="modal fade" id="siparisOnayModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content rounded-4 border-0 shadow">
-                <div class="modal-body text-center p-4">
-                    <div class="fs-1 mb-2">🍽️</div>
-                    <h5 class="fw-bold mb-2">Siparişi Onayla</h5>
-                    <p class="text-muted small mb-4">Siparişiniz mutfağa gönderilecek.</p>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-light flex-fill py-2 rounded-3 fw-semibold" data-bs-dismiss="modal">Vazgeç</button>
-                        <button class="btn btn-success flex-fill py-2 rounded-3 fw-semibold" id="btnOnaylaGonder" onclick="siparisGonderConfirmed()">Gönder</button>
-                    </div>
-                </div>
-            </div>
+    <!-- ═══ TOAST (Custom) ═══ -->
+    <div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none" id="toastContainer">
+        <div id="toastBildirim" class="bg-primary text-white px-6 py-3 rounded-2xl shadow-xl font-headline font-semibold text-sm flex items-center gap-2 opacity-0 transition-all duration-300 translate-y-4" style="pointer-events:auto;">
+            <span id="toastMesaj"></span>
         </div>
     </div>
 
-    <!-- TOAST BİLDİRİM -->
-    <div class="position-fixed bottom-0 start-50 translate-middle-x mb-4" style="z-index:9999">
-        <div id="toastBildirim" class="toast align-items-center border-0 rounded-4 shadow-lg" role="alert" data-bs-delay="3000">
-            <div class="d-flex">
-                <div class="toast-body fw-semibold" id="toastMesaj"></div>
-                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script>
-        // Kategori butonları — tıklama ve scroll takibi
+        // ===== UTILITY =====
+        function scrollToTracker() {
+            const el = document.getElementById('orderTracker');
+            if (el && el.style.display !== 'none') {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                alert('Henüz aktif bir siparişiniz yok.');
+            }
+        }
+
+        // ===== TOAST (Custom, no Bootstrap) =====
+        function showToast(msg, isError) {
+            const el = document.getElementById('toastBildirim');
+            el.className = 'px-6 py-3 rounded-2xl shadow-xl font-headline font-semibold text-sm flex items-center gap-2 transition-all duration-300 text-white ' + (isError ? 'bg-error' : 'bg-primary');
+            document.getElementById('toastMesaj').textContent = msg;
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+            setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(16px)'; }, 3000);
+        }
+
+        // ===== CATEGORY SCROLL =====
         let scrollObserver = null;
 
         function setupScrollObserver() {
@@ -206,10 +267,14 @@
                 entries.forEach(function(entry) {
                     if (entry.isIntersecting) {
                         var catId = entry.target.id.replace('cat-', '');
-                        tabs.forEach(function(t) { t.classList.remove('active'); });
+                        tabs.forEach(function(t) {
+                            t.classList.remove('bg-primary', 'text-on-primary', 'shadow-lg', 'shadow-primary/20');
+                            t.classList.add('bg-surface-container-low', 'text-on-surface-variant');
+                        });
                         var matchingTab = document.querySelector('.category-tab[data-cat-id="' + catId + '"]');
                         if (matchingTab) {
-                            matchingTab.classList.add('active');
+                            matchingTab.classList.remove('bg-surface-container-low', 'text-on-surface-variant');
+                            matchingTab.classList.add('bg-primary', 'text-on-primary', 'shadow-lg', 'shadow-primary/20');
                             matchingTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                         }
                     }
@@ -220,131 +285,133 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            const tabs = document.querySelectorAll('.category-tab');
-
-            // Tıklama: butona basınca o kategoriye kaydır
-            tabs.forEach(function(btn) {
+            document.querySelectorAll('.category-tab').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var catId = this.getAttribute('data-cat-id');
                     var section = document.getElementById('cat-' + catId);
                     if (!section) return;
-
-                    tabs.forEach(function(t) { t.classList.remove('active'); });
-                    this.classList.add('active');
-
-                    var offset = 130;
-                    var y = section.getBoundingClientRect().top + window.pageYOffset - offset;
+                    document.querySelectorAll('.category-tab').forEach(function(t) {
+                        t.classList.remove('bg-primary', 'text-on-primary', 'shadow-lg', 'shadow-primary/20');
+                        t.classList.add('bg-surface-container-low', 'text-on-surface-variant');
+                    });
+                    this.classList.remove('bg-surface-container-low', 'text-on-surface-variant');
+                    this.classList.add('bg-primary', 'text-on-primary', 'shadow-lg', 'shadow-primary/20');
+                    var y = section.getBoundingClientRect().top + window.pageYOffset - 140;
                     window.scrollTo({ top: y, behavior: 'smooth' });
                 });
             });
-
             setupScrollObserver();
         });
 
+        // ===== GARSON =====
         async function callWaiter() {
             try {
                 const res = await fetch('/siparis/garson-cagir', { method: 'POST' });
                 const data = await res.json();
-                if (data.success) {
-                    showToast('✅ Garson çağrıldı! Birazdan masanıza gelecek.');
-                } else {
-                    showToast('⚠️ ' + (data.message || 'Bir hata oluştu.'));
-                }
-            } catch(e) {
-                showToast('⚠️ Garson çağrılamadı, tekrar deneyin.');
-            }
+                if (data.success) showToast('✅ Garson çağrıldı!');
+                else showToast('⚠️ ' + (data.message || 'Hata.'), true);
+            } catch(e) { showToast('⚠️ Tekrar deneyin.', true); }
         }
 
-        let currentUrunId = 0;
-        let baseFiyat = 0;
-        let requiredGroups = [];
+        // ===== SEPETE EKLEME =====
+        let currentUrunId = 0, baseFiyat = 0, requiredGroups = [];
 
-        // data-* attribute'larından opsiyonları okuyarak addToCartClick çağır
-        document.addEventListener('click', function(e) {
-            const btn = e.target.closest('.btn-add');
-            if (!btn) return;
+        // Attach click handlers directly to each .btn-add button
+        function setupAddButtons() {
+            document.querySelectorAll('.btn-add').forEach(function(btn) {
+                btn.onclick = function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleAddClick(btn);
+                };
+            });
+        }
+
+        let lastClickedBtn = null;
+
+        function handleAddClick(btn) {
             const urunId = parseInt(btn.dataset.urunId);
             const urunAd = btn.dataset.urunAd;
             const fiyat = parseFloat(btn.dataset.fiyat);
             let opsiyonlar = [];
             try { opsiyonlar = JSON.parse(btn.dataset.opsiyonlar || '[]'); } catch(_) {}
-            addToCartClick(urunId, urunAd, fiyat, opsiyonlar);
-        });
 
-        function addToCartClick(urunId, urunAd, fiyat, opsiyonlar) {
             if (!opsiyonlar || opsiyonlar.length === 0) {
+                lastClickedBtn = btn;
                 postAddToCart(urunId, 1, []);
                 return;
             }
-            // Opsiyonlu akış
+
+            // Show options modal
             currentUrunId = urunId;
-            baseFiyat = parseFloat(fiyat);
+            baseFiyat = fiyat;
             document.getElementById('optionsModalTitle').textContent = urunAd;
             const body = document.getElementById('optionsModalBody');
             body.innerHTML = '';
 
             const gruplar = {};
-            opsiyonlar.forEach(o => {
-                if (!gruplar[o.grup]) gruplar[o.grup] = [];
-                gruplar[o.grup].push(o);
-            });
-
-            requiredGroups = []; // Zorunlu radio gruplarının isimleri (reset)
+            opsiyonlar.forEach(o => { if (!gruplar[o.grup]) gruplar[o.grup] = []; gruplar[o.grup].push(o); });
+            requiredGroups = [];
 
             for (const [grupAdi, opsList] of Object.entries(gruplar)) {
-                const groupDiv = document.createElement('div');
-                groupDiv.className = 'mb-4';
-                // Gruptaki ilk opsiyonun zorunlu alanına bak (aynı gruptaki tüm opsiyonlar aynı değere sahip)
                 const isZorunlu = opsList[0].zorunlu === true;
                 const isMulti = !isZorunlu;
-                const grupTag = isZorunlu
-                    ? ' <span class="text-danger small">(Zorunlu)</span>'
-                    : ' <span class="text-muted small">(Opsiyonel)</span>';
-                groupDiv.innerHTML = `<h6 class="mb-3 fw-bold text-dark">${grupAdi}${grupTag}</h6>`;
-
+                const barColor = isZorunlu ? 'bg-secondary' : 'bg-outline-variant';
+                const tag = isZorunlu ? '<span class="text-error text-xs font-bold">(Zorunlu)</span>' : '<span class="text-on-surface-variant text-xs">(Opsiyonel)</span>';
                 const nameAttr = isMulti ? '' : 'grup_' + grupAdi.replace(/\s+/g, '');
                 if (!isMulti) requiredGroups.push(nameAttr);
+
+                let html = `<div class="mb-6"><div class="flex items-center gap-3 mb-4"><span class="w-1 h-6 ${barColor} rounded-full"></span><h3 class="font-headline font-bold text-xl uppercase tracking-tighter">${grupAdi} ${tag}</h3></div><div class="grid gap-3">`;
 
                 opsList.forEach(ops => {
                     const id = 'ops_' + ops.id;
                     const inputType = isMulti ? 'checkbox' : 'radio';
                     const inputName = isMulti ? id : nameAttr;
-                    const ekFiyatStr = ops.ekFiyat > 0 ? `<span class="text-muted small">+${ops.ekFiyat.toFixed(2)} TL</span>` : '';
+                    const priceStr = ops.ekFiyat > 0
+                        ? `<span class="font-headline font-bold text-secondary">+${ops.ekFiyat.toFixed(2)} ₺</span>`
+                        : `<span class="font-label text-xs uppercase text-on-surface-variant font-bold">Dahil</span>`;
 
-                    groupDiv.innerHTML += `
-                        <label class="form-check custom-option-check p-3 mb-2 rounded-3 border d-flex align-items-center position-relative w-100" style="cursor:pointer;" for="${id}">
-                            <div class="flex-grow-1">
-                                <span class="d-block fw-semibold">${ops.ad}</span>
-                                ${ekFiyatStr}
+                    html += `<label class="flex items-center justify-between p-4 rounded-xl bg-surface-container-low cursor-pointer hover:bg-surface-container-high transition-colors" for="${id}">
+                        <div class="flex items-center gap-4">
+                            <div class="relative flex items-center">
+                                <input class="option-input peer h-6 w-6 rounded border-outline-variant text-primary focus:ring-primary/20 cursor-pointer appearance-none border-2 checked:bg-primary checked:border-primary" type="${inputType}" name="${inputName}" id="${id}" value="${ops.id}" data-price="${ops.ekFiyat}" onchange="updateModalPrice()">
+                                <span class="material-symbols-outlined absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none text-sm left-1" style="font-variation-settings:'wght' 700;">check</span>
                             </div>
-                            <div class="form-check-radio-wrap ms-2">
-                                <input class="form-check-input option-input m-0" type="${inputType}" name="${inputName}" id="${id}" value="${ops.id}" data-price="${ops.ekFiyat}" onchange="updateModalPrice()">
-                            </div>
-                        </label>
-                    `;
+                            <span class="font-semibold text-on-surface">${ops.ad}</span>
+                        </div>
+                        ${priceStr}
+                    </label>`;
                 });
-                body.appendChild(groupDiv);
+
+                html += '</div></div>';
+                body.innerHTML += html;
             }
             updateModalPrice();
-            new bootstrap.Modal(document.getElementById('optionsModal')).show();
+            document.getElementById('optionsModal').classList.add('active');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setupAddButtons();
+            // Card click → navigate to detail page
+            document.querySelectorAll('[data-href]').forEach(function(card) {
+                card.addEventListener('click', function() {
+                    window.location.href = card.dataset.href;
+                });
+            });
+        });
+
+        function closeOptionsModal() {
+            document.getElementById('optionsModal').classList.remove('active');
         }
 
         function updateModalPrice() {
             let toplam = baseFiyat;
-            document.querySelectorAll('.option-input:checked').forEach(input => {
-                toplam += parseFloat(input.dataset.price);
-            });
-            document.getElementById('modalTotalPrice').textContent = toplam.toFixed(2) + ' TL';
-
-            // Zorunlu grup kontrolü
+            document.querySelectorAll('.option-input:checked').forEach(input => { toplam += parseFloat(input.dataset.price); });
+            document.getElementById('modalTotalPrice').textContent = toplam.toFixed(2) + ' ₺';
             const btn = document.getElementById('btnAddToCartModal');
             const warning = document.getElementById('optionWarning');
             let allSelected = true;
-            requiredGroups.forEach(function(grpName) {
-                if (!document.querySelector('input[name="' + grpName + '"]:checked')) {
-                    allSelected = false;
-                }
-            });
+            requiredGroups.forEach(grpName => { if (!document.querySelector('input[name="' + grpName + '"]:checked')) allSelected = false; });
             btn.disabled = !allSelected;
             btn.style.opacity = allSelected ? '1' : '0.5';
             warning.style.display = allSelected ? 'none' : 'block';
@@ -352,15 +419,21 @@
 
         function submitOptionsForm() {
             const selectedOps = [];
-            document.querySelectorAll('.option-input:checked').forEach(input => {
-                selectedOps.push(parseInt(input.value));
-            });
+            document.querySelectorAll('.option-input:checked').forEach(input => { selectedOps.push(parseInt(input.value)); });
             postAddToCart(currentUrunId, 1, selectedOps);
-            var modal = bootstrap.Modal.getInstance(document.getElementById('optionsModal'));
-            if(modal) modal.hide();
+            closeOptionsModal();
         }
 
         async function postAddToCart(urunId, adet, opsiyonIds) {
+            // Show spinner on the + button
+            const btn = lastClickedBtn;
+            let origHTML = '';
+            if (btn) {
+                origHTML = btn.innerHTML;
+                btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-lg">progress_activity</span>';
+                btn.disabled = true;
+                btn.style.pointerEvents = 'none';
+            }
             try {
                 const response = await fetch('/sepet/ekle', {
                     method: 'POST',
@@ -369,323 +442,90 @@
                 });
                 const data = await response.json();
                 if (data.success) {
-                    updateBottomBar(data.urunSayisi, data.toplamTutar);
-                    // Update offcanvas if it's open
-                    var offcanvasElement = document.getElementById('cartOffcanvas');
-                    if (offcanvasElement.classList.contains('show')) {
-                        fetchCartDetails();
+                    // Checkmark animation
+                    if (btn) {
+                        btn.innerHTML = '<span class="material-symbols-outlined text-lg" style="font-variation-settings:\'FILL\' 1;">check</span>';
+                        btn.classList.remove('bg-primary'); btn.classList.add('bg-green-600');
+                        setTimeout(() => { btn.innerHTML = origHTML; btn.disabled = false; btn.style.pointerEvents = ''; btn.classList.remove('bg-green-600'); btn.classList.add('bg-primary'); }, 1200);
                     }
+                    showToast('✅ Sepete eklendi!');
                 } else {
-                    alert('Hata: ' + data.message);
+                    if (btn) { btn.innerHTML = origHTML; btn.disabled = false; btn.style.pointerEvents = ''; }
+                    showToast('❌ ' + (data.message || 'Hata oluştu.'), true);
                 }
             } catch (err) {
                 console.error(err);
+                if (btn) { btn.innerHTML = origHTML; btn.disabled = false; btn.style.pointerEvents = ''; }
+                showToast('❌ Bağlantı hatası.', true);
             }
+            lastClickedBtn = null;
         }
 
-        async function updateCartItem(detayId, adet) {
-            try {
-                const response = await fetch('/sepet/guncelle/' + detayId, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ Adet: adet })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    updateBottomBar(data.urunSayisi, data.toplamTutar);
-                    fetchCartDetails();
-                }
-            } catch (err) { console.error(err); }
-        }
-
-        async function removeCartItem(detayId) {
-            try {
-                const response = await fetch('/sepet/cikar/' + detayId, { method: 'POST' });
-                const data = await response.json();
-                if (data.success) {
-                    updateBottomBar(data.urunSayisi, data.toplamTutar);
-                    fetchCartDetails();
-                }
-            } catch (err) { console.error(err); }
-        }
-
-        function updateBottomBar(count, total) {
-            document.getElementById('bottomTotal').textContent = parseFloat(total).toFixed(2);
-            if (count <= 0) {
-                // Eğer sepet açıksa kapatalım
-                var bsOffcanvas = bootstrap.Offcanvas.getInstance(document.getElementById('cartOffcanvas'));
-                if(bsOffcanvas) bsOffcanvas.hide();
-            }
-        }
-
-        async function fetchCartDetails() {
-            try {
-                const response = await fetch('/sepet/detay-json');
-                const data = await response.json();
-                const container = document.getElementById('cartContent');
-                document.getElementById('cartOffcanvasTotal').textContent = parseFloat(data.toplamTutar).toFixed(2) + ' TL';
-
-                if (!data.items || data.items.length === 0) {
-                    container.innerHTML = '<div class="text-center text-muted mt-5"><div class="fs-1 mb-3"></div><h5>Sepetiniz Boş</h5></div>';
-                    return;
-                }
-
-                container.innerHTML = '';
-                data.items.forEach(item => {
-                    let opsHtml = '';
-                    if(item.opsiyonlar) {
-                        try {
-                            const parsed = JSON.parse(item.opsiyonlar);
-                            if(parsed.length > 0) {
-                                opsHtml = '<div class="small text-muted mt-1">' + parsed.map(p => p.Ad).join(', ') + '</div>';
-                            }
-                        } catch(e) {}
-                    }
-                    
-                    container.innerHTML += `
-                        <div class="cart-item bg-white p-3 rounded-4 mb-3 shadow-sm border-0 position-relative">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div>
-                                    <h6 class="fw-bold mb-0 text-dark">${item.urunAd}</h6>
-                                    ${opsHtml}
-                                    <div class="fw-bold text-success mt-1">${parseFloat(item.birimFiyat).toFixed(2)} TL <span class="text-muted small fw-normal">/ adet</span></div>
-                                </div>
-                                <button class="btn btn-sm text-danger p-0" onclick="removeCartItem(${item.detayId})">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                </button>
-                            </div>
-                            <div class="d-flex align-items-center justify-content-between mt-3">
-                                <div class="quantity-control bg-light rounded-pill px-2 py-1 border">
-                                    <button class="btn btn-sm btn-link text-decoration-none text-dark fw-bold" onclick="updateCartItem(${item.detayId}, ${item.adet - 1})">-</button>
-                                    <span class="mx-3 fw-bold">${item.adet}</span>
-                                    <button class="btn btn-sm btn-link text-decoration-none text-dark fw-bold" onclick="updateCartItem(${item.detayId}, ${item.adet + 1})">+</button>
-                                </div>
-                                <div class="fw-bold fs-6">${(item.adet * item.birimFiyat).toFixed(2)} TL</div>
-                            </div>
-                        </div>
-                    `;
-                });
-            } catch (err) {
-                console.error("Sepet detayı alınamadı", err);
-            }
-        }
-
-        // Sayfa açıldığında sepet tutarını getirip bottom bar'ı göster/gizle
-        async function fetchInitialBadge() {
-            try {
-                const response = await fetch('/sepet/bilgi');
-                const data = await response.json();
-                updateBottomBar(data.urunSayisi, data.toplamTutar);
-            } catch (err) { console.error(err); }
-        }
-        document.addEventListener('DOMContentLoaded', fetchInitialBadge);
-
-        // ============================================================
-        // SIGNALR — Gerçek zamanlı menü güncellemesi
-        // ============================================================
-        const menuConnection = new signalR.HubConnectionBuilder()
-            .withUrl('/hubs/menu')
-            .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-            .build();
+        // ===== SIGNALR =====
+        const menuConnection = new signalR.HubConnectionBuilder().withUrl('/hubs/menu').withAutomaticReconnect([0,2000,5000,10000,30000]).build();
 
         menuConnection.on('MenuGuncellendi', async function() {
-            try {
-                const res = await fetch('/menu/json');
-                const kategoriler = await res.json();
-                yenidenCiz(kategoriler);
-            } catch (e) {
-                console.error('Menü güncellenirken hata:', e);
-            }
+            try { const res = await fetch('/menu/json'); yenidenCiz(await res.json()); } catch(e) { console.error(e); }
         });
 
         function yenidenCiz(kategoriler) {
-            // Kategori tablarını güncelle
-            const tabScroll = document.querySelector('.category-tabs-scroll');
+            const tabScroll = document.querySelector('nav.sticky');
+            if (!tabScroll) return;
             tabScroll.innerHTML = '';
             kategoriler.forEach(function(kat, i) {
                 const btn = document.createElement('button');
-                btn.className = 'category-tab' + (i === 0 ? ' active' : '');
+                btn.className = 'category-tab px-6 py-2.5 rounded-full font-headline font-bold text-sm whitespace-nowrap transition-all active:scale-95 ' + (i === 0 ? 'bg-primary text-on-primary shadow-lg shadow-primary/20' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high');
                 btn.setAttribute('data-cat-id', kat.id);
                 btn.textContent = kat.ad;
                 btn.addEventListener('click', function() {
-                    document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
-                    btn.classList.add('active');
-                    const section = document.getElementById('cat-' + kat.id);
-                    if (section) {
-                        const y = section.getBoundingClientRect().top + window.pageYOffset - 130;
-                        window.scrollTo({ top: y, behavior: 'smooth' });
-                    }
+                    tabScroll.querySelectorAll('.category-tab').forEach(t => { t.classList.remove('bg-primary','text-on-primary','shadow-lg','shadow-primary/20'); t.classList.add('bg-surface-container-low','text-on-surface-variant'); });
+                    btn.classList.remove('bg-surface-container-low','text-on-surface-variant'); btn.classList.add('bg-primary','text-on-primary','shadow-lg','shadow-primary/20');
+                    const sec = document.getElementById('cat-' + kat.id);
+                    if (sec) window.scrollTo({ top: sec.getBoundingClientRect().top + window.pageYOffset - 140, behavior: 'smooth' });
                 });
                 tabScroll.appendChild(btn);
             });
 
-            // Ürün kartlarını güncelle
-            const menuContent = document.querySelector('.menu-content');
-            menuContent.innerHTML = '';
+            document.querySelectorAll('.category-section').forEach(el => el.remove());
+            const main = document.querySelector('main');
             kategoriler.forEach(function(kat) {
                 if (!kat.urunler || kat.urunler.length === 0) return;
-
                 const section = document.createElement('div');
-                section.className = 'category-section';
+                section.className = 'category-section mb-12';
                 section.id = 'cat-' + kat.id;
-
-                let html = '<h2 class="category-title">' + escapeHtml(kat.ad) + '</h2><div class="products-grid">';
+                let html = '<h2 class="font-headline text-2xl font-extrabold text-on-surface mb-6">' + escapeHtml(kat.ad) + '</h2><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">';
                 kat.urunler.forEach(function(urun) {
                     const isSoldOut = !urun.aktifMi;
-
                     const fiyatStr = urun.fiyat.toFixed(2);
-
-                    html += '<div class="product-card-horizontal ' + (isSoldOut ? 'soldout' : '') + '">';
-                    html += '<div class="product-img-wrapper">';
-                    if (urun.populerMi) {
-                        html += '<span class="badge-populer"> Popüler</span>';
-                    }
-                    if (urun.gorselUrl) {
-                        html += '<img src="' + escapeHtml(urun.gorselUrl) + '" alt="' + escapeHtml(urun.ad) + '" class="product-img" loading="lazy" />';
-                    } else {
-                        html += '<div class="img-placeholder" data-kategori="' + escapeHtml(kat.ad) + '"></div>';
-                    }
+                    const cardClick = isSoldOut ? '' : ` onclick="window.location.href='/Menu/Detay/${urun.id}'"`;
+                    html += `<div class="group relative bg-surface-container-lowest rounded-3xl overflow-hidden transition-all duration-300 hover:shadow-2xl ${isSoldOut ? 'opacity-50 pointer-events-none' : ''} cursor-pointer"${cardClick}>`;
+                    html += '<div class="aspect-[4/3] w-full overflow-hidden">';
+                    if (urun.gorselUrl) html += `<img alt="${escapeHtml(urun.ad)}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="${escapeHtml(urun.gorselUrl)}" />`;
+                    else html += '<div class="w-full h-full bg-gradient-to-br from-surface-container-low to-surface-container flex items-center justify-center text-6xl">☕</div>';
+                    html += '</div><div class="p-6">';
+                    html += `<div class="flex justify-between items-start mb-2"><h3 class="font-headline font-bold text-xl text-on-surface leading-tight">${escapeHtml(urun.ad)}</h3><span class="font-headline font-bold text-primary text-lg whitespace-nowrap ml-3">${fiyatStr} ₺</span></div>`;
+                    html += `<p class="text-on-surface-variant text-sm line-clamp-2 mb-6">${escapeHtml(urun.aciklama || '')}</p>`;
+                    html += '<div class="flex items-center justify-between"><div class="flex items-center gap-1">';
+                    if (urun.populerMi) html += '<span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings:\'FILL\' 1;">local_fire_department</span><span class="text-xs font-bold text-on-surface">Popüler</span>';
+                    if (isSoldOut) html += '<span class="text-xs font-bold text-error">Tükendi</span>';
                     html += '</div>';
-                    html += '<div class="product-details">';
-                    html += '<h3 class="p-title">' + escapeHtml(urun.ad) + '</h3>';
-                    html += '<p class="p-desc">' + escapeHtml(urun.aciklama || '') + '</p>';
-                    html += '<div class="p-bottom">';
-                    html += '<span class="p-price">' + fiyatStr + ' TL</span>';
                     if (!isSoldOut) {
-                        const opsAttr = JSON.stringify(urun.opsiyonlar || []);
-                        html += '<button class="btn-add" data-urun-id="' + urun.id + '" data-urun-ad="' + escapeHtml(urun.ad) + '" data-fiyat="' + fiyatStr + '" data-opsiyonlar=\'' + opsAttr.replace(/'/g, '&#39;') + '\'>';
-                        html += '<span class="btn-add-icon">+</span><span class="btn-add-text">Ekle</span></button>';
-                    } else {
-                        html += '<span class="text-danger small fw-bold">Tükendi</span>';
+                        const opsAttr = JSON.stringify(urun.opsiyonlar || []).replace(/'/g, '&#39;');
+                        html += `<button class="btn-add flex items-center justify-center w-10 h-10 rounded-2xl bg-primary text-on-primary hover:bg-primary-dim active:scale-90 transition-all shadow-md shadow-primary/20" data-urun-id="${urun.id}" data-urun-ad="${escapeHtml(urun.ad)}" data-fiyat="${fiyatStr}" data-opsiyonlar='${opsAttr}'><span class="material-symbols-outlined">add</span></button>`;
                     }
                     html += '</div></div></div>';
                 });
                 html += '</div>';
                 section.innerHTML = html;
-                menuContent.appendChild(section);
+                main.appendChild(section);
             });
-
-            // IntersectionObserver'ı yeniden bağla
             setupScrollObserver();
         }
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            const d = document.createElement('div');
-            d.textContent = str;
-            return d.innerHTML;
-        }
+        function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+        menuConnection.start().catch(err => console.error('SignalR:', err));
 
-        // SignalR bağlantısını başlat
-        menuConnection.start().catch(function(err) {
-            console.error('SignalR bağlantı hatası:', err);
-        });
 
-        // ===== SİPARİŞ TAKİP (Müşteri Stepper) =====
-        const stepDefs = [
-            { durum: 'Onaylandi', label: 'Onaylandı', icon: '✓' },
-            { durum: 'Hazirlaniyor', label: 'Hazırlanıyor', icon: '🔥' },
-            { durum: 'Hazir', label: 'Hazır', icon: '✅' },
-            { durum: 'TeslimEdildi', label: 'Teslim', icon: '🍽️' }
-        ];
-        const stepOrder = { Onaylandi: 1, Hazirlaniyor: 2, Hazir: 3, TeslimEdildi: 4 };
-
-        function renderOrderTracker(siparisler) {
-            const container = document.getElementById('orderTracker');
-            // Sadece aktif siparişleri göster (ödenmemiş, iptal/iade olmayan)
-            const aktif = siparisler.filter(s => stepOrder[s.durum] !== undefined);
-            if (aktif.length === 0) { container.style.display = 'none'; return; }
-
-            container.style.display = 'block';
-            container.innerHTML = aktif.map(s => {
-                const current = stepOrder[s.durum] || 0;
-                const isCancel = (s.durum === 'Iptal' || s.durum === 'Iade');
-                const stepsHtml = stepDefs.map((st, i) => {
-                    const stepNum = i + 1;
-                    let cls = '';
-                    if (isCancel) cls = 'cancelled';
-                    else if (stepNum < current) cls = 'done';
-                    else if (stepNum === current) cls = 'current';
-                    return `<div class="tracker-step ${cls}"><div class="tracker-dot">${st.icon}</div><div class="tracker-label">${st.label}</div></div>`;
-                }).join('');
-
-                return `<div class="order-tracker">
-                    <div class="order-tracker-title">
-                        <span>Sipariş Durumu</span>
-                        <span class="order-tracker-id">#${s.siparisId} · ${s.toplamTutar.toFixed(2)} TL</span>
-                    </div>
-                    <div class="tracker-steps">${stepsHtml}</div>
-                </div>`;
-            }).join('');
-        }
-
-        async function fetchOrderStatus() {
-            try {
-                const res = await fetch('/siparis/siparislerim');
-                if (!res.ok) return;
-                const data = await res.json();
-                if (data.success) renderOrderTracker(data.siparisler);
-            } catch(e) { console.error(e); }
-        }
-
-        // Sayfa açıldığında ve sipariş güncellemelerinde durum çek
-        document.addEventListener('DOMContentLoaded', fetchOrderStatus);
-
-        menuConnection.on('SiparisGuncellendi', fetchOrderStatus);
-
-        function siparisGonder() {
-            new bootstrap.Modal(document.getElementById('siparisOnayModal')).show();
-        }
-
-        function showToast(msg, isError) {
-            const el = document.getElementById('toastBildirim');
-            el.className = 'toast align-items-center border-0 rounded-4 shadow-lg text-white ' + (isError ? 'bg-danger' : 'bg-success');
-            document.getElementById('toastMesaj').textContent = msg;
-            bootstrap.Toast.getOrCreateInstance(el).show();
-        }
-
-        async function siparisGonderConfirmed() {
-            bootstrap.Modal.getInstance(document.getElementById('siparisOnayModal')).hide();
-
-            const btn = document.getElementById('btnSiparisGonder');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Gönderiliyor...';
-
-            try {
-                const res = await fetch('/siparis/olustur', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({})
-                });
-                if (!res.ok && res.status === 401) {
-                    showToast('Oturum süresi dolmuş. QR kodu tekrar okutun.', true);
-                    btn.disabled = false;
-                    btn.textContent = 'Siparişi Gönder';
-                    return;
-                }
-                const data = await res.json();
-                if(data.success) {
-                    showToast('Siparişiniz mutfağa iletildi!', false);
-                    // Sepeti sıfırla ve yeni sipariş için hazırla
-                    await fetchCartDetails();
-                    btn.disabled = false;
-                    btn.textContent = 'Siparişi Gönder';
-                    btn.classList.remove('btn-secondary');
-                    btn.classList.add('btn-success');
-                    updateBottomBar(0, 0);
-                    fetchOrderStatus();
-                } else {
-                    showToast(data.message, true);
-                    btn.disabled = false;
-                    btn.textContent = 'Siparişi Gönder';
-                }
-            } catch(e) {
-                console.error(e);
-                showToast('Bağlantı hatası, tekrar deneyin.', true);
-                btn.disabled = false;
-                btn.textContent = 'Siparişi Gönder';
-            }
-        }
     </script>
 </body>
 </html>

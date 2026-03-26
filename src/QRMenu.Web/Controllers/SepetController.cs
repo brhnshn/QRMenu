@@ -38,10 +38,34 @@ namespace QRMenu.Web.Controllers
         }
 
         /// <summary>
-        /// Sepet sayfası kaldırıldı — menüye yönlendir
+        /// Sepet sayfası
         /// </summary>
         [HttpGet("/sepet")]
-        public IActionResult Index() => Redirect("/Menu/Index");
+        public async Task<IActionResult> Index()
+        {
+            var oturumId = await GetOturumIdAsync();
+            if (oturumId == null) return Redirect("/Menu/Index");
+
+            var sepet = await _sepetService.GetSepetByOturumAsync(oturumId.Value);
+            if (sepet != null)
+            {
+                sepet = await _sepetService.GetSepetWithDetailsAsync(sepet.Id);
+            }
+
+            // MasaId'yi view'a aktar
+            var token = Request.Cookies["qrmenu_token"];
+            if (!string.IsNullOrEmpty(token))
+            {
+                var hash = _tokenService.HashToken(token);
+                var oturum = await _tokenService.ValidateTokenAsync(hash);
+                if (oturum != null)
+                {
+                    HttpContext.Items["MasaId"] = oturum.MasaId;
+                }
+            }
+
+            return View(sepet);
+        }
 
         /// <summary>
         /// Sepete ürün ekle: POST /sepet/ekle (AJAX)

@@ -56,6 +56,19 @@ namespace QRMenu.Web.Controllers
         }
 
         /// <summary>
+        /// Siparişlerim sayfası: GET /siparislerim
+        /// </summary>
+        [HttpGet("/siparislerim")]
+        public async Task<IActionResult> SiparislerimSayfa()
+        {
+            var bilgi = await GetOturumBilgiAsync();
+            if (bilgi == null) return Redirect("/Menu/Index");
+
+            HttpContext.Items["MasaId"] = bilgi.Value.masaNo;
+            return View("Siparislerim");
+        }
+
+        /// <summary>
         /// Garson çağır: POST /siparis/garson-cagir (AJAX)
         /// </summary>
         [HttpPost("/siparis/garson-cagir")]

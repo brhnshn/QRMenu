@@ -1,0 +1,312 @@
+@{
+    ViewData["Title"] = "Siparişlerim";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html class="light" lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Siparişlerim - QR Menü</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary-fixed-variant":"#581200","on-primary":"#ffefec","surface":"#f8f6f5",
+                        "on-tertiary-fixed-variant":"#6e6d6d","error-container":"#fb5151","primary":"#a23718",
+                        "secondary":"#765600","surface-container-lowest":"#ffffff","on-tertiary-container":"#636262",
+                        "on-secondary-container":"#5d4300","surface-tint":"#a23718","surface-variant":"#dedcdc",
+                        "surface-container-low":"#f2f0f0","primary-fixed-dim":"#ec6d49","surface-container":"#eae8e7",
+                        "outline":"#777776","secondary-container":"#ffca57","on-error":"#ffefee",
+                        "surface-bright":"#f8f6f5","on-secondary":"#fff1dc","primary-fixed":"#fd7954",
+                        "outline-variant":"#aeadac","on-tertiary":"#f5f2f1","on-surface":"#2e2f2f",
+                        "on-primary-container":"#480d00","on-primary-fixed":"#000000","error":"#b31b25",
+                        "surface-container-highest":"#dedcdc","inverse-surface":"#0e0e0e","primary-dim":"#922c0c",
+                        "on-background":"#2e2f2f","primary-container":"#fd7954","on-surface-variant":"#5c5b5b",
+                        "secondary-dim":"#674b00","secondary-fixed-dim":"#f6ba2d",
+                        "surface-container-high":"#e4e2e2","surface-dim":"#d5d4d4","background":"#f8f6f5",
+                        "tertiary":"#5c5b5b","tertiary-container":"#ffffff","inverse-primary":"#fd7954"
+                    },
+                    fontFamily: { "headline":["Plus Jakarta Sans"],"body":["Be Vietnam Pro"],"label":["Plus Jakarta Sans"] },
+                    borderRadius: {"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .step-active .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+        body { min-height: max(884px, 100dvh); }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased">
+
+    <!-- TopAppBar (Stitch) -->
+    <header class="fixed top-0 w-full z-[60] bg-white/80 backdrop-blur-md">
+        <div class="flex justify-between items-center px-6 py-4 w-full max-w-screen-xl mx-auto">
+            <div class="flex items-center gap-4">
+                <a href="/Menu/Index" class="p-2 hover:bg-neutral-100 transition-colors rounded-full" style="text-decoration:none;">
+                    <span class="material-symbols-outlined text-orange-800">arrow_back</span>
+                </a>
+                <h1 class="font-headline font-bold text-lg uppercase tracking-tight text-neutral-800">Siparişlerim</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                @if (Context.Items.ContainsKey("MasaId"))
+                {
+                    <span class="font-label text-sm font-semibold text-on-surface-variant bg-surface-container-low px-3 py-1.5 rounded-full">Masa @Context.Items["MasaId"]</span>
+                }
+            </div>
+        </div>
+    </header>
+
+    <main class="pt-24 pb-32 px-6 max-w-lg mx-auto min-h-screen">
+
+        <!-- Hero Visual Section (Stitch) -->
+        <section class="mb-10 text-center" id="heroSection">
+            <div class="relative inline-block mb-6">
+                <div class="absolute inset-0 bg-primary/10 rounded-full animate-ping opacity-25" id="heroRing"></div>
+                <div class="relative w-32 h-32 rounded-full overflow-hidden border-4 border-surface-container-lowest shadow-xl flex items-center justify-center bg-gradient-to-br from-primary-fixed to-primary text-5xl">
+                    🍽️
+                </div>
+            </div>
+            <h2 class="font-headline text-3xl font-extrabold text-on-surface mb-2 tracking-tight" id="heroTitle">Siparişleriniz yükleniyor...</h2>
+            <p class="text-on-surface-variant font-medium" id="heroSubtitle">Lütfen bekleyin.</p>
+        </section>
+
+        <!-- Orders Container (populated by JS) -->
+        <div id="ordersContainer"></div>
+
+        <!-- Help Button (Stitch) -->
+        <section class="flex flex-col gap-4 mt-10" id="helpSection" style="display:none;">
+            <button class="w-full bg-surface-container-high py-5 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 hover:bg-surface-container-highest border-0 cursor-pointer" onclick="callWaiter()">
+                <span class="material-symbols-outlined text-secondary">person_raised_hand</span>
+                <span class="font-headline font-bold text-on-surface">Garson Çağır</span>
+            </button>
+            <div class="flex justify-center mb-2">
+                <button class="flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full hover:bg-primary/20 transition-colors border-0 cursor-pointer" onclick="callWaiter()">
+                    <span class="material-symbols-outlined text-sm">notifications_active</span>
+                    <span class="text-xs font-bold uppercase tracking-wider">Hızlı Çağrı</span>
+                </button>
+            </div>
+            <p class="text-center text-xs text-on-surface-variant px-12" id="helpText">
+                Butona basarak garsonunuzu masanıza çağırabilirsiniz.
+            </p>
+        </section>
+
+        <!-- Empty State -->
+        <div id="emptyState" style="display:none;" class="text-center py-12">
+            <span class="material-symbols-outlined text-7xl opacity-20 block mb-4">receipt_long</span>
+            <h3 class="font-headline font-extrabold text-2xl text-on-surface mb-2">Henüz siparişiniz yok</h3>
+            <p class="text-on-surface-variant font-medium mb-8">Menüden sipariş vererek başlayabilirsiniz.</p>
+            <a href="/Menu/Index" class="inline-flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-headline font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform" style="text-decoration:none;">
+                <span class="material-symbols-outlined text-xl">restaurant_menu</span>
+                Menüye Dön
+            </a>
+        </div>
+    </main>
+
+    <!-- BottomNavBar (Stitch — same as other pages) -->
+    <nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-3xl z-[60]">
+        <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/Menu/Index" style="text-decoration:none;">
+            <span class="material-symbols-outlined">restaurant_menu</span>
+            <span class="font-body text-[11px] font-semibold mt-1">Menü</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/sepet" style="text-decoration:none;">
+            <span class="material-symbols-outlined">shopping_cart</span>
+            <span class="font-body text-[11px] font-semibold mt-1">Sepet</span>
+        </a>
+        <a class="flex flex-col items-center justify-center bg-orange-100 text-orange-900 rounded-xl px-3 py-1.5 transition-transform active:scale-90" href="/siparislerim" style="text-decoration:none;">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+            <span class="font-body text-[11px] font-semibold mt-1">Siparişlerim</span>
+        </a>
+    </nav>
+
+    <!-- Toast -->
+    <div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none">
+        <div id="toastBildirim" class="bg-primary text-white px-6 py-3 rounded-2xl shadow-xl font-headline font-semibold text-sm flex items-center gap-2 opacity-0 transition-all duration-300 translate-y-4" style="pointer-events:auto;">
+            <span id="toastMesaj"></span>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        const stepDefs = [
+            { durum: 'Onaylandi', label: 'Alındı', sublabel: 'Siparişiniz mutfağa ulaştı', icon: 'task_alt' },
+            { durum: 'Hazirlaniyor', label: 'Hazırlanıyor', sublabel: 'Mutfak ekibi yemeğinizi hazırlıyor', icon: 'restaurant' },
+            { durum: 'Hazir', label: 'Hazır', sublabel: 'Servis için hazırlanıyor', icon: 'doorbell' },
+            { durum: 'TeslimEdildi', label: 'Teslim Edildi', sublabel: 'Afiyet olsun!', icon: 'celebration' }
+        ];
+        const stepOrder = { Onaylandi: 1, Hazirlaniyor: 2, Hazir: 3, TeslimEdildi: 4 };
+
+        const heroMessages = {
+            1: { title: 'Siparişiniz alındı.', subtitle: 'Mutfak ekibimiz siparişinizi aldı.' },
+            2: { title: 'Yemekleriniz hazırlanıyor.', subtitle: 'Şeflerimiz lezzetli yemeklerinizi hazırlıyor.' },
+            3: { title: 'Siparişiniz hazır!', subtitle: 'Servis ekibi masanıza doğru yola çıktı.' },
+            4: { title: 'Afiyet olsun!', subtitle: 'Siparişiniz teslim edildi. Tekrar bekleriz!' }
+        };
+
+        function renderOrders(siparisler) {
+            const container = document.getElementById('ordersContainer');
+            const heroTitle = document.getElementById('heroTitle');
+            const heroSubtitle = document.getElementById('heroSubtitle');
+            const heroRing = document.getElementById('heroRing');
+            const helpSection = document.getElementById('helpSection');
+            const emptyState = document.getElementById('emptyState');
+            const heroSection = document.getElementById('heroSection');
+
+            // Filter active orders
+            const aktif = siparisler.filter(s => stepOrder[s.durum] !== undefined);
+
+            if (aktif.length === 0) {
+                heroSection.style.display = 'none';
+                helpSection.style.display = 'none';
+                container.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            heroSection.style.display = 'block';
+            helpSection.style.display = 'flex';
+
+            // Hero reflects the latest order
+            const latest = aktif[0];
+            const latestStep = stepOrder[latest.durum] || 1;
+            const msg = heroMessages[latestStep] || heroMessages[1];
+            heroTitle.textContent = msg.title;
+            heroSubtitle.textContent = msg.subtitle;
+
+            // Stop ping if delivered
+            if (latestStep === 4) {
+                heroRing.classList.remove('animate-ping');
+                heroRing.classList.add('opacity-0');
+            } else {
+                heroRing.classList.add('animate-ping');
+                heroRing.classList.remove('opacity-0');
+            }
+
+            // Update help text
+            const masaBadge = document.querySelector('.font-label');
+            const masaNo = masaBadge ? masaBadge.textContent.replace('Masa ', '') : '';
+            document.getElementById('helpText').textContent = `Butona basarak garsonunuzu Masa ${masaNo}'a çağırabilirsiniz.`;
+
+            // Render each order (Stitch Progress Tracker)
+            container.innerHTML = aktif.map(s => {
+                const current = stepOrder[s.durum] || 0;
+                const progressPercent = Math.max(0, ((current - 1) / (stepDefs.length - 1)) * 100);
+
+                // Time Remaining Card (Stitch)
+                let timeCard = '';
+                if (current < 4) {
+                    timeCard = `
+                        <section class="bg-surface-container-lowest rounded-3xl p-8 shadow-[0_4px_24px_rgba(0,0,0,0.04)] mb-10 text-center relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-1.5 h-full bg-primary"></div>
+                            <span class="text-xs font-label font-bold uppercase tracking-widest text-on-surface-variant block mb-2">Sipariş #${s.siparisId}</span>
+                            <div class="flex items-center justify-center gap-3">
+                                <span class="font-headline text-3xl font-extrabold text-primary">${s.toplamTutar.toFixed(2)}</span>
+                                <span class="font-headline text-lg font-bold text-on-surface mt-1">₺</span>
+                            </div>
+                            <p class="text-xs text-on-surface-variant mt-2">${s.olusturmaTarihi}</p>
+                        </section>`;
+                }
+
+                // Detail items
+                let detailsHtml = '';
+                if (s.detaylar && s.detaylar.length > 0) {
+                    detailsHtml = `<div class="mb-6 bg-surface-container-lowest rounded-2xl p-4">${s.detaylar.map(d =>
+                        `<div class="flex justify-between items-center py-2 ${s.detaylar.indexOf(d) > 0 ? 'border-t border-surface-container' : ''}">
+                            <span class="font-medium text-on-surface">${d.adet}x ${escapeHtml(d.urunAd)}</span>
+                            <span class="font-label font-bold text-on-surface-variant">${d.birimFiyat.toFixed(2)} ₺</span>
+                        </div>`
+                    ).join('')}</div>`;
+                }
+
+                // Progress Tracker (Stitch — exact copy)
+                const stepsHtml = stepDefs.map((st, i) => {
+                    const stepNum = i + 1;
+                    const isDone = stepNum < current;
+                    const isCurrent = stepNum === current;
+                    const dotBg = isDone || isCurrent
+                        ? 'bg-primary text-on-primary shadow-lg shadow-primary/20'
+                        : 'bg-surface-container-highest text-on-surface-variant';
+                    const opacityClass = (!isDone && !isCurrent) ? 'opacity-50' : '';
+                    const activeClass = isCurrent ? 'step-active' : '';
+                    const fillStyle = (isDone || isCurrent) ? "font-variation-settings: 'FILL' 1;" : '';
+
+                    return `<div class="flex items-start gap-6 group ${activeClass} ${opacityClass}">
+                        <div class="relative z-10 w-12 h-12 rounded-full ${dotBg} flex items-center justify-center">
+                            <span class="material-symbols-outlined" style="${fillStyle}">${st.icon}</span>
+                        </div>
+                        <div>
+                            <h4 class="font-headline font-bold text-on-surface">${st.label}</h4>
+                            <p class="text-sm text-on-surface-variant">${st.sublabel}</p>
+                        </div>
+                    </div>`;
+                }).join('');
+
+                return `
+                    ${timeCard}
+                    ${detailsHtml}
+                    <section class="mb-12">
+                        <div class="flex flex-col gap-8 relative">
+                            <!-- Vertical Line (Stitch) -->
+                            <div class="absolute left-[23px] top-4 bottom-4 w-0.5 bg-surface-container-highest"></div>
+                            <div class="absolute left-[23px] top-4 w-0.5 bg-primary" style="height:${progressPercent}%"></div>
+                            ${stepsHtml}
+                        </div>
+                    </section>`;
+            }).join('<hr class="border-surface-container my-6" />');
+        }
+
+        function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+        // Fetch orders
+        async function fetchOrders() {
+            try {
+                const res = await fetch('/siparis/siparislerim');
+                if (!res.ok) {
+                    document.getElementById('heroTitle').textContent = 'Oturum bulunamadı';
+                    document.getElementById('heroSubtitle').textContent = 'QR kodu tekrar okutun.';
+                    return;
+                }
+                const data = await res.json();
+                if (data.success) renderOrders(data.siparisler);
+            } catch(e) {
+                console.error(e);
+                document.getElementById('heroTitle').textContent = 'Bağlantı hatası';
+                document.getElementById('heroSubtitle').textContent = 'Sayfa yenilensin mi?';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchOrders);
+
+        // SignalR
+        const connection = new signalR.HubConnectionBuilder().withUrl('/hubs/menu').withAutomaticReconnect([0,2000,5000,10000,30000]).build();
+        connection.on('SiparisGuncellendi', fetchOrders);
+        connection.start().catch(err => console.error('SignalR:', err));
+
+        // Garson Çağır
+        async function callWaiter() {
+            try {
+                const res = await fetch('/siparis/garson-cagir', { method: 'POST' });
+                const data = await res.json();
+                showToast(data.success ? '✅ Garson çağrıldı!' : '⚠️ ' + (data.message || 'Hata.'), !data.success);
+            } catch(e) { showToast('⚠️ Tekrar deneyin.', true); }
+        }
+
+        function showToast(msg, isError) {
+            const el = document.getElementById('toastBildirim');
+            el.className = 'px-6 py-3 rounded-2xl shadow-xl font-headline font-semibold text-sm flex items-center gap-2 transition-all duration-300 text-white ' + (isError ? 'bg-error' : 'bg-primary');
+            document.getElementById('toastMesaj').textContent = msg;
+            el.style.opacity = '1'; el.style.transform = 'translateY(0)';
+            setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(16px)'; }, 3000);
+        }
+    </script>
+</body>
+</html>
