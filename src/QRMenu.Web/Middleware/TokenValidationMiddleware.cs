@@ -10,7 +10,8 @@ namespace QRMenu.Web.Middleware
         private static readonly string[] ExcludedPaths = new[]
         {
             "/qr",           // QR kod ile giriş
-            "/login",        // Personel giriş
+            "/auth",         // Personel giriş yolları (login, logout)
+            "/login",        // Uyumluluk
             "/css",          // Statik dosyalar
             "/js",
             "/lib",

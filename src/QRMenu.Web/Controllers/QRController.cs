@@ -68,7 +68,7 @@ namespace QRMenu.Web.Controllers
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = !_env.IsDevelopment(),
+                Secure = false, // Reverse proxy uyumluluğu için
                 SameSite = SameSiteMode.Lax,
                 Expires = DateTimeOffset.UtcNow.AddMinutes(90),
                 Path = "/"
