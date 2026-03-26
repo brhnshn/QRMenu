@@ -46,6 +46,13 @@ namespace QRMenu.Web.Middleware
                 return;
             }
 
+            // Personel girişi yapmış kullanıcı ise her yere (menü dahil) serbestçe girebilir
+            if (context.User.Identity != null && context.User.Identity.IsAuthenticated)
+            {
+                await _next(context);
+                return;
+            }
+
             // Müşteri tarafı — cookie'den token oku
             var rawToken = context.Request.Cookies["qrmenu_token"];
             if (string.IsNullOrEmpty(rawToken))
