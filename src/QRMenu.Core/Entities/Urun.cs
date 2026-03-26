@@ -13,6 +13,7 @@ namespace QRMenu.Core.Entities
         public bool AktifMi { get; set; } = true;
         public bool PopulerMi { get; set; } = false;
         public int SatisSayisi { get; set; } = 0;
+        public int? Kalori { get; set; }
 
         // Navigation Properties
         public Kategori Kategori { get; set; } = null!;
