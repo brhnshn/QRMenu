@@ -18,6 +18,7 @@ namespace QRMenu.Web.Middleware
             "/images",
             "/favicon.ico",
             "/health",
+            "/error",        // Hata sayfalarını maskelememek için
             "/hubs"          // SignalR hub bağlantıları
         };
 
