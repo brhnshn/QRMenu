@@ -92,7 +92,18 @@
             <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
                 <div class="flex justify-between items-start mb-4">
                     <h2 class="font-headline font-extrabold text-3xl md:text-4xl text-on-surface leading-tight">@Model.Ad</h2>
-                    <span class="font-headline font-bold text-2xl text-primary whitespace-nowrap ml-4">@Model.Fiyat.ToString("N2") ₺</span>
+                    @{
+                        var hh = ViewBag.HappyHour as (decimal IndirimOrani, int? UrunId)?;
+                        bool isHH = hh != null && (!hh.Value.UrunId.HasValue || hh.Value.UrunId == Model.Id);
+                        decimal unitPrice = isHH ? Math.Round(Model.Fiyat * (1 - hh.Value.IndirimOrani / 100m), 2) : Model.Fiyat;
+                    }
+                    <div class="flex flex-col items-end">
+                        <span class="font-headline font-bold text-2xl text-primary whitespace-nowrap ml-4">@unitPrice.ToString("N2") ₺</span>
+                        @if (isHH)
+                        {
+                            <span class="text-sm text-error font-bold line-through">@Model.Fiyat.ToString("N2") ₺</span>
+                        }
+                    </div>
                 </div>
 
                 <!-- Badges -->
@@ -217,7 +228,7 @@
     </nav>
 
     <script>
-        const BASE_PRICE = @Model.Fiyat.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+        const BASE_PRICE = @unitPrice.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
         const URUN_ID = @Model.Id;
         let detayQty = 1;
 

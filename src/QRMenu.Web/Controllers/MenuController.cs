@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using QRMenu.Core.Entities;
 using QRMenu.Core.Interfaces;
 
@@ -8,11 +9,13 @@ namespace QRMenu.Web.Controllers
     {
         private readonly IUrunService _urunService;
         private readonly ILogger<MenuController> _logger;
+        private readonly QRMenu.Data.Data.QRMenuDbContext _dbContext;
 
-        public MenuController(IUrunService urunService, ILogger<MenuController> logger)
+        public MenuController(IUrunService urunService, ILogger<MenuController> logger, QRMenu.Data.Data.QRMenuDbContext dbContext)
         {
             _urunService = urunService;
             _logger = logger;
+            _dbContext = dbContext;
         }
 
         /// <summary>
@@ -22,6 +25,8 @@ namespace QRMenu.Web.Controllers
         public async Task<IActionResult> Index()
         {
             var urunler = await _urunService.GetAllAsync();
+            var happyHour = await GetActiveHappyHourAsync();
+            ViewBag.HappyHour = happyHour;
             return View(urunler);
         }
 
@@ -33,6 +38,10 @@ namespace QRMenu.Web.Controllers
             var urunler = await _urunService.GetAllAsync();
             var urun = urunler.FirstOrDefault(u => u.Id == id);
             if (urun == null) return NotFound();
+
+            var happyHour = await GetActiveHappyHourAsync();
+            ViewBag.HappyHour = happyHour;
+
             return View(urun);
         }
 
@@ -73,7 +82,34 @@ namespace QRMenu.Web.Controllers
                     })
                 });
 
-            return Json(kategoriler);
+            var happyHour = await GetActiveHappyHourAsync();
+            
+            return Json(new {
+                kategoriler,
+                happyHour = happyHour != null ? new {
+                    indirimOrani = happyHour.Value.IndirimOrani,
+                    urunId = happyHour.Value.UrunId
+                } : null
+            });
+        }
+        
+        private async Task<(decimal IndirimOrani, int? UrunId)?> GetActiveHappyHourAsync()
+        {
+            var hh = await _dbContext.HappyHourlar.Where(h => h.AktifMi).FirstOrDefaultAsync();
+            if (hh == null) return null;
+
+            var turkey = TimeZoneInfo.FindSystemTimeZoneById(
+                OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
+            var simdiki = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, turkey).TimeOfDay;
+
+            bool aktif;
+            if (hh.BaslangicSaati <= hh.BitisSaati)
+                aktif = simdiki >= hh.BaslangicSaati && simdiki <= hh.BitisSaati;
+            else
+                aktif = simdiki >= hh.BaslangicSaati || simdiki <= hh.BitisSaati;
+
+            if (aktif) return (hh.IndirimOrani, hh.UrunId);
+            return null;
         }
     }
 }

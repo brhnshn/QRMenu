@@ -91,6 +91,7 @@ namespace QRMenu.Data.Services
                     .Include(s => s.SepetDetaylar)
                         .ThenInclude(sd => sd.Urun)
                     .Include(s => s.Oturum)
+                    .AsSplitQuery()
                     .FirstOrDefaultAsync(s => s.Id == sepetId);
 
                 if (sepet == null)
@@ -99,37 +100,71 @@ namespace QRMenu.Data.Services
                 if (!sepet.SepetDetaylar.Any())
                     throw new InvalidOperationException("Sepet boş, sipariş oluşturulamaz.");
 
-                // Sipariş oluştur
+                // Happy Hour kontrolü
+                var hh = await HappyHourBilgisiGetirAsync();
+
+                decimal tumTutar = 0;
+                string? hhNot = null;
+                var yeniDetaylar = new List<SiparisDetay>();
+
+                // Tutarı hesapla ve detay listesini hazırla
+                foreach (var detay in sepet.SepetDetaylar)
+                {
+                    // Sepette kullanıcıya ne gösterildiyse onu kullan.
+                    decimal birimFiyat = detay.BirimFiyat;
+
+                    // Sadece fişte "Happy Hour uygulandı" notunu göstermek için indirimi tespit et
+                    decimal purePrice = detay.Urun.Fiyat;
+                    try {
+                        if (!string.IsNullOrEmpty(detay.SeciliOpsiyonlar) && detay.SeciliOpsiyonlar != "[]") {
+                            var opsJson = System.Text.Json.JsonDocument.Parse(detay.SeciliOpsiyonlar);
+                            foreach(var ops in opsJson.RootElement.EnumerateArray()) {
+                                purePrice += ops.GetProperty("EkFiyat").GetDecimal();
+                            }
+                        }
+                    } catch {}
+
+                    if (birimFiyat < purePrice) 
+                    {
+                        var uygulananIndirim = Math.Round((1 - birimFiyat / purePrice) * 100, 0);
+                        if(hhNot == null) hhNot = $"🎉 Happy Hour -%{uygulananIndirim} uygulandı.";
+                    }
+
+                    tumTutar += (birimFiyat * detay.Adet);
+
+                    yeniDetaylar.Add(new SiparisDetay
+                    {
+                        UrunId = detay.UrunId,
+                        Adet = detay.Adet,
+                        BirimFiyat = birimFiyat, // İndirimli fiyatı yansıt
+                        SeciliOpsiyonlar = detay.SeciliOpsiyonlar,
+                        Durum = SiparisDurum.Onaylandi
+                    });
+                }
+
+                // Siparişi oluştur
                 var siparis = new Siparis
                 {
                     MasaId = sepet.Oturum.MasaId,
                     OturumId = sepet.OturumId,
                     Durum = SiparisDurum.Onaylandi,
                     OlusturmaTarihi = DateTime.UtcNow,
-                    ToplamTutar = sepet.SepetDetaylar.Sum(sd => sd.BirimFiyat * sd.Adet),
-                    Notlar = notlar,
+                    ToplamTutar = tumTutar,
+                    Notlar = hhNot != null ? $"{hhNot} {(notlar != null ? "| " + notlar : "")}" : notlar,
                     RowVersion = Guid.NewGuid().ToByteArray()
                 };
 
                 _context.Siparisler.Add(siparis);
                 await _context.SaveChangesAsync();
 
-                // SepetDetay → SiparisDetay kopyala
-                foreach (var detay in sepet.SepetDetaylar)
+                // Id aldıktan sonra detaylara ekle
+                foreach (var d in yeniDetaylar)
                 {
-                    var siparisDetay = new SiparisDetay
-                    {
-                        SiparisId = siparis.Id,
-                        UrunId = detay.UrunId,
-                        Adet = detay.Adet,
-                        BirimFiyat = detay.BirimFiyat,
-                        SeciliOpsiyonlar = detay.SeciliOpsiyonlar,
-                        Durum = SiparisDurum.Onaylandi
-                    };
-                    _context.SiparisDetaylar.Add(siparisDetay);
+                    d.SiparisId = siparis.Id;
+                    _context.SiparisDetaylar.Add(d);
                 }
 
-                // Sepet detaylarını temizle
+                // Sepeti temizle
                 _context.SepetDetaylar.RemoveRange(sepet.SepetDetaylar);
                 sepet.ToplamTutar = 0;
 
@@ -169,6 +204,9 @@ namespace QRMenu.Data.Services
                 decimal toplamTutar = 0;
                 var siparisDetaylar = new List<SiparisDetay>();
 
+                // Happy Hour kontrolü
+                var hh = await HappyHourBilgisiGetirAsync();
+
                 foreach (var item in urunler)
                 {
                     var urunDB = await _context.Urunler.FindAsync(item.UrunId);
@@ -188,6 +226,9 @@ namespace QRMenu.Data.Services
                         seciliOpsiyonlarJson = System.Text.Json.JsonSerializer.Serialize(opsiyonlar.Select(o => new { o.Id, o.Ad, o.EkFiyat }));
                     }
 
+                    if (hh.IndirimOrani > 0 && (hh.UrunId == null || hh.UrunId == item.UrunId))
+                        birimFiyat = Math.Round(birimFiyat * (1 - hh.IndirimOrani / 100m), 2);
+
                     toplamTutar += (birimFiyat * item.Adet);
 
                     siparisDetaylar.Add(new SiparisDetay
@@ -203,11 +244,13 @@ namespace QRMenu.Data.Services
                 var siparis = new Siparis
                 {
                     MasaId = masaId,
-                    OturumId = null, // Garson oluşturduğu için şu anki mantıkta zorunlu değil (Veritabanında nullable)
+                    OturumId = null,
                     Durum = SiparisDurum.Onaylandi,
                     OlusturmaTarihi = DateTime.UtcNow,
                     ToplamTutar = toplamTutar,
-                    Notlar = notlar,
+                    Notlar = hh.IndirimOrani > 0
+                        ? $"🎉 Happy Hour -%{hh.IndirimOrani} uygulandı. {(notlar != null ? "| " + notlar : "")}"
+                        : notlar,
                     RowVersion = Guid.NewGuid().ToByteArray()
                 };
 
@@ -308,6 +351,7 @@ namespace QRMenu.Data.Services
                 .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
                 .Include(s => s.Masa)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(s => s.Id == siparisId);
         }
 
@@ -319,6 +363,7 @@ namespace QRMenu.Data.Services
             return await _context.Siparisler
                 .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
+                .AsSplitQuery()
                 .Where(s => s.MasaId == masaId
                     && s.Durum != SiparisDurum.Iptal
                     && s.Durum != SiparisDurum.Iade)
@@ -345,6 +390,37 @@ namespace QRMenu.Data.Services
         public async Task<Siparis> IptalEtAsync(int siparisId)
         {
             return await DurumGuncelleAsync(siparisId, SiparisDurum.Iptal);
+        }
+
+        /// <summary>
+        /// Şu anda aktif bir Happy Hour varsa bilgilerini, yoksa boş döner.
+        /// </summary>
+        private async Task<(decimal IndirimOrani, int? UrunId)> HappyHourBilgisiGetirAsync()
+        {
+            var happyHour = await _context.HappyHourlar
+                .Where(h => h.AktifMi)
+                .FirstOrDefaultAsync();
+
+            if (happyHour == null)
+                return (0m, null);
+
+            var turkey = TimeZoneInfo.FindSystemTimeZoneById(
+                OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
+            var simdiki = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, turkey).TimeOfDay;
+
+            bool aktif;
+            if (happyHour.BaslangicSaati <= happyHour.BitisSaati)
+                aktif = simdiki >= happyHour.BaslangicSaati && simdiki <= happyHour.BitisSaati;
+            else
+                aktif = simdiki >= happyHour.BaslangicSaati || simdiki <= happyHour.BitisSaati;
+
+            if (aktif)
+            {
+                _logger.LogInformation("Happy Hour aktif! İndirim oranı: %{Oran}, UrunId: {UrunId}", happyHour.IndirimOrani, happyHour.UrunId);
+                return (happyHour.IndirimOrani, happyHour.UrunId);
+            }
+
+            return (0m, null);
         }
     }
 }

@@ -22,6 +22,7 @@ namespace QRMenu.Data.Data
         public DbSet<Odeme> Odemeler => Set<Odeme>();
         public DbSet<Kullanici> Kullanicilar => Set<Kullanici>();
         public DbSet<AuditLog> AuditLoglar => Set<AuditLog>();
+        public DbSet<HappyHour> HappyHourlar => Set<HappyHour>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -241,6 +242,19 @@ namespace QRMenu.Data.Data
                 entity.Property(e => e.Islem).IsRequired().HasMaxLength(20);
                 entity.Property(e => e.EskiDeger).HasColumnType("text");
                 entity.Property(e => e.YeniDeger).HasColumnType("text");
+            });
+
+            // ===== HAPPY HOUR =====
+            modelBuilder.Entity<HappyHour>(entity =>
+            {
+                entity.ToTable("HappyHour");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.IndirimOrani).HasPrecision(5, 2);
+
+                entity.HasOne(e => e.Urun)
+                      .WithMany()
+                      .HasForeignKey(e => e.UrunId)
+                      .OnDelete(DeleteBehavior.SetNull);
             });
 
             // ===== SEED DATA =====

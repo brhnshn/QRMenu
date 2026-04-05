@@ -167,6 +167,7 @@ namespace QRMenu.Web.Controllers
                 .Include(s => s.Masa)
                 .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
+                .AsSplitQuery()
                 .OrderByDescending(s => s.OlusturmaTarihi)
                 .ToListAsync();
 
@@ -230,6 +231,7 @@ namespace QRMenu.Web.Controllers
                 .Include(s => s.Masa)
                 .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
+                .AsSplitQuery()
                 .AsQueryable();
 
             if (!string.IsNullOrEmpty(durum) && Enum.TryParse<SiparisDurum>(durum, out var durumEnum))
@@ -273,6 +275,7 @@ namespace QRMenu.Web.Controllers
                 .Include(u => u.Kategori)
                 .Include(u => u.UrunOpsiyonlar)
                     .ThenInclude(uo => uo.Opsiyon)
+                .AsSplitQuery()
                 .OrderBy(u => u.Kategori.SiraNo)
                 .ThenBy(u => u.Ad)
                 .ToListAsync();
@@ -339,6 +342,7 @@ namespace QRMenu.Web.Controllers
         {
             var kategori = await _context.Kategoriler
                 .Include(k => k.Urunler)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(k => k.Id == id);
 
             if (kategori == null)
@@ -366,6 +370,7 @@ namespace QRMenu.Web.Controllers
                 .Include(u => u.Kategori)
                 .Include(u => u.UrunOpsiyonlar)
                     .ThenInclude(uo => uo.Opsiyon)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(u => u.Id == id);
 
             if (urun == null)
@@ -667,6 +672,243 @@ namespace QRMenu.Web.Controllers
                 return NotFound();
 
             return File(gorsel.Data, gorsel.ContentType);
+        }
+
+        // ============================================================
+        // HAPPY HOUR YÖNETİMİ
+        // ============================================================
+
+        [HttpGet("/admin/happy-hour")]
+        public async Task<IActionResult> HappyHour()
+        {
+            ViewData["ActivePage"] = "HappyHour";
+            ViewData["PageTitle"] = "Happy Hour Yönetimi";
+            ViewBag.Urunler = await _context.Urunler.Where(u => u.AktifMi).OrderBy(u => u.Ad).ToListAsync();
+            var happyHour = await _context.HappyHourlar.FirstOrDefaultAsync();
+            return View(happyHour);
+        }
+
+        [HttpGet("/admin/happy-hour-bilgi")]
+        public async Task<IActionResult> HappyHourBilgi()
+        {
+            var hh = await _context.HappyHourlar.FirstOrDefaultAsync();
+            if (hh == null)
+                return Json(new { aktifMi = false, indirimOrani = 0, baslaingicSaati = "", bitisSaati = "", urunId = (int?)null });
+
+            var turkey = TimeZoneInfo.FindSystemTimeZoneById(
+                OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
+            var simdiki = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, turkey).TimeOfDay;
+
+            bool suAnAktif = false;
+            if (hh.AktifMi)
+            {
+                if (hh.BaslangicSaati <= hh.BitisSaati)
+                    suAnAktif = simdiki >= hh.BaslangicSaati && simdiki <= hh.BitisSaati;
+                else
+                    suAnAktif = simdiki >= hh.BaslangicSaati || simdiki <= hh.BitisSaati;
+            }
+
+            return Json(new
+            {
+                id = hh.Id,
+                aktifMi = hh.AktifMi,
+                suAnAktif,
+                indirimOrani = hh.IndirimOrani,
+                baslaingicSaati = hh.BaslangicSaati.ToString(@"hh\:mm"),
+                bitisSaati = hh.BitisSaati.ToString(@"hh\:mm"),
+                urunId = hh.UrunId
+            });
+        }
+
+        [HttpPost("/admin/happy-hour-kaydet")]
+        public async Task<IActionResult> HappyHourKaydet([FromBody] HappyHourFormViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return Json(new { success = false, message = "Geçersiz veri." });
+
+            var hh = await _context.HappyHourlar.FirstOrDefaultAsync();
+            if (hh == null)
+            {
+                hh = new Core.Entities.HappyHour();
+                _context.HappyHourlar.Add(hh);
+            }
+
+            if (!TimeSpan.TryParseExact(model.BaslangicSaati, @"hh\:mm", null, out var baslaingicTs))
+                return Json(new { success = false, message = "Geçersiz başlangıç saati formatı. Örn: 14:00" });
+
+            if (!TimeSpan.TryParseExact(model.BitisSaati, @"hh\:mm", null, out var bitisTs))
+                return Json(new { success = false, message = "Geçersiz bitiş saati formatı. Örn: 17:00" });
+
+            hh.BaslangicSaati = baslaingicTs;
+            hh.BitisSaati = bitisTs;
+            hh.IndirimOrani = model.IndirimOrani;
+            hh.AktifMi = model.AktifMi;
+            hh.UrunId = model.UrunId;
+            hh.GuncellemeTarihi = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            
+            // SignalR ile canlı yayını (Müşteri ekranlarına gönder)
+            await _menuHub.Clients.All.SendAsync("HappyHourGuncellendi");
+            _logger.LogInformation("Happy Hour güncellendi. Aktif={Aktif}, Oran=%{Oran}, {Baslangic}-{Bitis}",
+                hh.AktifMi, hh.IndirimOrani, hh.BaslangicSaati, hh.BitisSaati);
+
+            return Json(new { success = true });
+        }
+
+        // ============================================================
+        // KULLANICI YÖNETİMİ
+        // ============================================================
+
+        [HttpGet("/admin/kullanicilar")]
+        public IActionResult Kullanicilar()
+        {
+            ViewData["ActivePage"] = "Kullanicilar";
+            ViewData["PageTitle"] = "Kullanıcı Yönetimi";
+            return View();
+        }
+
+        [HttpGet("/admin/kullanici-listesi")]
+        public async Task<IActionResult> KullaniciListesi()
+        {
+            var kullanicilar = await _context.Kullanicilar
+                .OrderBy(k => k.Rol)
+                .ThenBy(k => k.KullaniciAdi)
+                .Select(k => new { k.Id, k.KullaniciAdi, k.AdSoyad, Rol = k.Rol.ToString(), k.AktifMi })
+                .ToListAsync();
+
+            return Json(new { success = true, data = kullanicilar });
+        }
+
+        [HttpPost("/admin/kullanici-ekle")]
+        public async Task<IActionResult> KullaniciEkle([FromBody] KullaniciFormViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return Json(new { success = false, message = "Geçersiz veri." });
+
+            var mevcut = await _context.Kullanicilar
+                .AnyAsync(k => k.KullaniciAdi == model.KullaniciAdi);
+
+            if (mevcut)
+                return Json(new { success = false, message = "Bu kullanıcı adı zaten kullanılıyor." });
+
+            if (!Enum.TryParse<KullaniciRol>(model.Rol, out var rol))
+                return Json(new { success = false, message = "Geçersiz rol." });
+
+            var kullanici = new Kullanici
+            {
+                KullaniciAdi = model.KullaniciAdi,
+                AdSoyad = model.AdSoyad,
+                SifreHash = BCrypt.Net.BCrypt.HashPassword(model.Sifre),
+                Rol = rol,
+                AktifMi = true
+            };
+
+            _context.Kullanicilar.Add(kullanici);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Kullanıcı eklendi. Id={Id}, KullaniciAdi={Ad}, Rol={Rol}",
+                kullanici.Id, kullanici.KullaniciAdi, kullanici.Rol);
+
+            return Json(new { success = true, id = kullanici.Id });
+        }
+
+        [HttpPost("/admin/kullanici-guncelle/{id:int}")]
+        public async Task<IActionResult> KullaniciGuncelle(int id, [FromBody] KullaniciGuncelleViewModel model)
+        {
+            var kullanici = await _context.Kullanicilar.FindAsync(id);
+            if (kullanici == null)
+                return Json(new { success = false, message = "Kullanıcı bulunamadı." });
+
+            if (!Enum.TryParse<KullaniciRol>(model.Rol, out var rol))
+                return Json(new { success = false, message = "Geçersiz rol." });
+
+            // Son admin rolden düşürme kontrolü
+            if (kullanici.Rol == KullaniciRol.Admin && rol != KullaniciRol.Admin)
+            {
+                var adminSayisi = await _context.Kullanicilar
+                    .CountAsync(k => k.Rol == KullaniciRol.Admin && k.AktifMi);
+                if (adminSayisi <= 1)
+                    return Json(new { success = false, message = "Son admin rolden düşürülemez." });
+            }
+
+            kullanici.AdSoyad = model.AdSoyad;
+            kullanici.Rol = rol;
+            kullanici.AktifMi = model.AktifMi;
+
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Kullanıcı güncellendi. Id={Id}, Rol={Rol}, Aktif={Aktif}", id, rol, model.AktifMi);
+
+            return Json(new { success = true });
+        }
+
+        [HttpPost("/admin/kullanici-sifre/{id:int}")]
+        public async Task<IActionResult> KullaniciSifreDegistir(int id, [FromBody] SifreDegistirViewModel model)
+        {
+            if (string.IsNullOrWhiteSpace(model.YeniSifre) || model.YeniSifre.Length < 6)
+                return Json(new { success = false, message = "Şifre en az 6 karakter olmalıdır." });
+
+            var kullanici = await _context.Kullanicilar.FindAsync(id);
+            if (kullanici == null)
+                return Json(new { success = false, message = "Kullanıcı bulunamadı." });
+
+            kullanici.SifreHash = BCrypt.Net.BCrypt.HashPassword(model.YeniSifre);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Şifre değiştirildi. KullaniciId={Id}", id);
+            return Json(new { success = true });
+        }
+
+        [HttpPost("/admin/kullanici-sil/{id:int}")]
+        public async Task<IActionResult> KullaniciSil(int id)
+        {
+            var kullanici = await _context.Kullanicilar.FindAsync(id);
+            if (kullanici == null)
+                return Json(new { success = false, message = "Kullanıcı bulunamadı." });
+
+            // Kendini sileme kontrolü
+            var mevcutKullaniciId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (mevcutKullaniciId != null && int.TryParse(mevcutKullaniciId, out var mevcutId) && mevcutId == id)
+                return Json(new { success = false, message = "Kendinizi silemezsiniz." });
+
+            // Son admin kontrolü
+            if (kullanici.Rol == KullaniciRol.Admin)
+            {
+                var adminSayisi = await _context.Kullanicilar
+                    .CountAsync(k => k.Rol == KullaniciRol.Admin && k.AktifMi);
+                if (adminSayisi <= 1)
+                    return Json(new { success = false, message = "Son admin silinemez." });
+            }
+
+            // Hard delete
+            _context.Kullanicilar.Remove(kullanici);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Kullanıcı silindi. Id={Id}, KullaniciAdi={Ad}", id, kullanici.KullaniciAdi);
+            return Json(new { success = true });
+        }
+
+        [HttpPost("/admin/kullanici-toggle/{id:int}")]
+        public async Task<IActionResult> KullaniciToggle(int id)
+        {
+            var kullanici = await _context.Kullanicilar.FindAsync(id);
+            if (kullanici == null)
+                return Json(new { success = false, message = "Kullanıcı bulunamadı." });
+
+            // Son admin pasife alınamaz
+            if (kullanici.Rol == KullaniciRol.Admin && kullanici.AktifMi)
+            {
+                var adminSayisi = await _context.Kullanicilar
+                    .CountAsync(k => k.Rol == KullaniciRol.Admin && k.AktifMi);
+                if (adminSayisi <= 1)
+                    return Json(new { success = false, message = "Üzgünüz, sistemde sadece bir aktif Admin var ve bu kullanıcı pasife alınamaz." });
+            }
+
+            kullanici.AktifMi = !kullanici.AktifMi;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Kullanıcı durumu değiştirildi. Id={Id}, AktifMi={AktifMi}", id, kullanici.AktifMi);
+            return Json(new { success = true, aktifMi = kullanici.AktifMi });
         }
     }
 

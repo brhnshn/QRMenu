@@ -232,10 +232,15 @@
 
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:18px 28px; background:#f8f9fa; border-top:2px solid #2c3e50; font-size:1.3rem; font-weight:900; color:#2c3e50;">
                     <span>TOPLAM</span>
-                    <span>${data.toplamTutar.toFixed(2)} TL</span>
+                    <span style="display:flex; flex-direction:column; align-items:flex-end;">
+                        ${data.toplamTutar.toFixed(2)} TL
+                    </span>
                 </div>
+                
+                ${(data.notlar && data.notlar.includes('🎉 Happy Hour')) ? `<div style="padding:10px 28px; font-size:1rem; color:#856404; background:#fff3cd; font-weight:800; text-align:center; display:flex; justify-content:center; align-items:center; gap:8px;"><i class="bi bi-gift-fill"></i> ${escapeHtml(data.notlar.split('|')[0].trim())}</div>` : ''}
 
-                ${data.notlar ? `<div style="padding:14px 28px; font-size:0.9rem; color:#666; background:#fffbf0; border-top:1px solid #f0f0f0;"><i class="bi bi-chat-left-text" style="color:#e67e22; margin-right:6px;"></i> ${escapeHtml(data.notlar)}</div>` : ''}
+                ${data.notlar && !data.notlar.startsWith('🎉 Happy Hour') ? `<div style="padding:14px 28px; font-size:0.9rem; color:#666; background:#fffbf0; border-top:1px solid #f0f0f0;"><i class="bi bi-chat-left-text" style="color:#e67e22; margin-right:6px;"></i> ${escapeHtml(data.notlar)}</div>` : ''}
+                ${data.notlar && data.notlar.includes('|') ? `<div style="padding:14px 28px; font-size:0.9rem; color:#666; background:#fffbf0; border-top:1px solid #f0f0f0;"><i class="bi bi-chat-left-text" style="color:#e67e22; margin-right:6px;"></i> ${escapeHtml(data.notlar.split('|')[1].trim())}</div>` : ''}
                 <div class="receipt-zigzag"></div>
             </div>
 

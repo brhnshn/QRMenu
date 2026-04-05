@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using QRMenu.Data.Data;
@@ -11,9 +12,11 @@ using QRMenu.Data.Data;
 namespace QRMenu.Data.Migrations
 {
     [DbContext(typeof(QRMenuDbContext))]
-    partial class QRMenuDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260405105435_HappyHourTablosu")]
+    partial class HappyHourTablosu
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -84,12 +87,7 @@ namespace QRMenu.Data.Migrations
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
 
-                    b.Property<int?>("UrunId")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("UrunId");
 
                     b.ToTable("HappyHour", (string)null);
                 });
@@ -885,16 +883,6 @@ namespace QRMenu.Data.Migrations
                             UrunId = 5,
                             OpsiyonId = 5
                         });
-                });
-
-            modelBuilder.Entity("QRMenu.Core.Entities.HappyHour", b =>
-                {
-                    b.HasOne("QRMenu.Core.Entities.Urun", "Urun")
-                        .WithMany()
-                        .HasForeignKey("UrunId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Urun");
                 });
 
             modelBuilder.Entity("QRMenu.Core.Entities.Odeme", b =>

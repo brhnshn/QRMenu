@@ -1,0 +1,279 @@
+@model QRMenu.Core.Entities.HappyHour
+@{
+    ViewData["Title"] = "Happy Hour Yönetimi";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="admin-page-header">
+    <h1><span class="emoji">🎉</span> Happy Hour Yönetimi</h1>
+    <p class="subtitle">Belirli saat aralığında otomatik indirim uygulayın</p>
+</div>
+
+<!-- Canlı Durum Kartı -->
+<div class="status-card" id="statusCard">
+    <div class="status-indicator" id="statusIndicator">
+        <div class="pulse-dot" id="pulseDot"></div>
+        <span id="statusText">Durum kontrol ediliyor...</span>
+    </div>
+    <div class="status-details" id="statusDetails"></div>
+</div>
+
+<!-- Ayarlar Formu -->
+<div class="settings-panel">
+    <div class="panel-header">
+        <h2>⚙️ Happy Hour Ayarları</h2>
+    </div>
+    <div class="panel-body">
+        <form id="happyHourForm">
+            <div class="toggle-row">
+                <label class="toggle-label">Happy Hour Aktif</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="aktifMi" @(Model != null && Model.AktifMi ? "checked" : "")>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="baslaingicSaati">🕐 Başlangıç Saati</label>
+                    <input type="time" id="baslaingicSaati" class="form-control time-input"
+                           value="@(Model?.BaslangicSaati.ToString(@"hh\:mm") ?? "14:00")" required>
+                </div>
+                <div class="form-group">
+                    <label for="bitisSaati">🕓 Bitiş Saati</label>
+                    <input type="time" id="bitisSaati" class="form-control time-input"
+                           value="@(Model?.BitisSaati.ToString(@"hh\:mm") ?? "17:00")" required>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="urunId">🛍️ Hangi Üründe Geçerli? (Boş bırakılırsa tüm menüde geçerli olur)</label>
+                <select id="urunId" class="form-control">
+                    <option value="">-- Tüm Menüye Uygula --</option>
+                    @if (ViewBag.Urunler != null)
+                    {
+                        foreach (var urun in ViewBag.Urunler)
+                        {
+                            if (Model?.UrunId == @urun.Id)
+                            {
+                                <option value="@urun.Id" selected>@urun.Ad (₺@urun.Fiyat)</option>
+                            }
+                            else
+                            {
+                                <option value="@urun.Id">@urun.Ad (₺@urun.Fiyat)</option>
+                            }
+                        }
+                    }
+                </select>
+            </div>
+
+            <div class="form-group discount-group">
+                <label for="indirimOrani">💰 İndirim Oranı (%)</label>
+                <div class="discount-input-wrapper">
+                    <input type="number" id="indirimOrani" class="form-control"
+                           value="@(Model?.IndirimOrani ?? 10)" min="1" max="99" step="1" required>
+                    <span class="discount-preview" id="discountPreview">%10</span>
+                </div>
+                <div class="discount-slider-container">
+                    <input type="range" id="indirimSlider" min="1" max="99"
+                           value="@(Model?.IndirimOrani ?? 10)" class="discount-slider">
+                    <div class="slider-labels">
+                        <span>%1</span>
+                        <span>%50</span>
+                        <span>%99</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="preview-box">
+                <h3>🧮 Örnek Hesaplama</h3>
+                <div class="preview-row">
+                    <span>Orijinal Fiyat:</span>
+                    <span>₺100,00</span>
+                </div>
+                <div class="preview-row discount">
+                    <span>İndirim (<span class="oran-text">%10</span>):</span>
+                    <span class="indirim-miktar">-₺10,00</span>
+                </div>
+                <div class="preview-row total">
+                    <span>Happy Hour Fiyatı:</span>
+                    <span class="sonuc-fiyat">₺90,00</span>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-save" id="saveBtn">
+                <span class="btn-icon">💾</span> Kaydet
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Bilgi Kutusu -->
+<div class="info-box">
+    <h3>ℹ️ Nasıl Çalışır?</h3>
+    <ul>
+        <li>Happy Hour aktif olduğunda, sipariş oluşturulurken belirtilen saat aralığı Türkiye saatiyle kontrol edilir.</li>
+        <li>Saat aralığı içindeyse, toplam sipariş tutarına otomatik indirim uygulanır.</li>
+        <li>İndirim bilgisi siparişin notlar alanına kayıt edilir (🎉 Happy Hour -%X indirim uygulandı).</li>
+        <li>Gece yarısını geçen saat aralıkları da desteklenmektedir (örn. 22:00 - 02:00).</li>
+    </ul>
+</div>
+
+<style>
+    .admin-page-header { margin-bottom: 2rem; }
+    .admin-page-header h1 { font-size: 1.8rem; font-weight: 700; margin: 0; }
+    .admin-page-header .subtitle { color: var(--text-muted); margin: 0.3rem 0 0 0; }
+    .admin-page-header .emoji { margin-right: 0.5rem; }
+
+    .status-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+    .status-indicator { display: flex; align-items: center; gap: 0.8rem; font-size: 1.1rem; font-weight: 600; min-width: 200px; }
+    .pulse-dot { width: 14px; height: 14px; border-radius: 50%; background: #6c757d; transition: all 0.3s; }
+    .pulse-dot.active { background: #28a745; animation: pulse 1.5s infinite; }
+    .pulse-dot.inactive { background: #dc3545; }
+    .pulse-dot.waiting { background: #ffc107; }
+    @@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(40,167,69,0.4)} 50%{box-shadow:0 0 0 8px rgba(40,167,69,0)} }
+    .status-details { color: var(--text-muted); font-size: 0.9rem; }
+
+    .settings-panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 1.5rem; overflow: hidden; }
+    .panel-header { padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border); }
+    .panel-header h2 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+    .panel-body { padding: 1.5rem; }
+
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+    .toggle-label { font-weight: 600; font-size: 1rem; }
+    .toggle-switch { position: relative; display: inline-block; width: 60px; height: 30px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 30px; transition: 0.4s; }
+    .slider:before { content: ""; position: absolute; width: 22px; height: 22px; left: 4px; bottom: 4px; background: white; border-radius: 50%; transition: 0.4s; }
+    input:checked + .slider { background: #28a745; }
+    input:checked + .slider:before { transform: translateX(30px); }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    .form-group label { font-weight: 600; font-size: 0.9rem; }
+    .time-input { padding: 0.7rem 1rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1.1rem; background: var(--input-bg, #fff); }
+    .form-control { padding: 0.7rem 1rem; border: 1px solid var(--border); border-radius: 8px; background: var(--input-bg, #fff); }
+
+    .discount-group { margin-bottom: 1.5rem; }
+    .discount-input-wrapper { display: flex; align-items: center; gap: 1rem; }
+    .discount-input-wrapper .form-control { width: 100px; font-size: 1.2rem; font-weight: 700; text-align: center; }
+    .discount-preview { font-size: 1.4rem; font-weight: 800; color: #e44d26; background: rgba(228,77,38,0.1); padding: 0.4rem 1rem; border-radius: 8px; }
+    .discount-slider-container { margin-top: 0.8rem; }
+    .discount-slider { width: 100%; accent-color: #e44d26; }
+    .slider-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); }
+
+    .preview-box { background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; margin-bottom: 1.5rem; }
+    .preview-box h3 { margin: 0 0 1rem 0; font-size: 0.95rem; font-weight: 600; }
+    .preview-row { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+    .preview-row:last-child { border-bottom: none; }
+    .preview-row.discount { color: #dc3545; }
+    .preview-row.total { font-weight: 700; color: #28a745; font-size: 1.05rem; }
+
+    .btn-save { width: 100%; padding: 0.9rem; background: linear-gradient(135deg, #28a745, #218838); color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .btn-save:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(40,167,69,0.4); }
+
+    .info-box { background: rgba(23,162,184,0.1); border: 1px solid rgba(23,162,184,0.3); border-radius: 12px; padding: 1.2rem 1.5rem; }
+    .info-box h3 { margin: 0 0 0.8rem 0; font-size: 0.95rem; font-weight: 600; color: #17a2b8; }
+    .info-box ul { margin: 0; padding-left: 1.5rem; }
+    .info-box li { margin-bottom: 0.4rem; color: var(--text-muted); font-size: 0.9rem; }
+</style>
+
+<script>
+    // Canlı durum göster
+    async function durumGoster() {
+        try {
+            const r = await fetch('/admin/happy-hour-bilgi');
+            const d = await r.json();
+            const dot = document.getElementById('pulseDot');
+            const txt = document.getElementById('statusText');
+            const det = document.getElementById('statusDetails');
+
+            if (!d.aktifMi) {
+                dot.className = 'pulse-dot inactive';
+                txt.textContent = 'Happy Hour Pasif';
+                det.textContent = 'Herhangi bir indirim uygulanmıyor.';
+            } else if (d.suAnAktif) {
+                dot.className = 'pulse-dot active';
+                txt.textContent = `🎉 Happy Hour AKTIF — %${d.indirimOrani} İndirim!`;
+                
+                let urn = d.urunId ? `Belirli bir ürün için geçerli (ID: ${d.urunId})` : 'Tüm menüde geçerli';
+                det.textContent = `Saat aralığı: ${d.baslaingicSaati} - ${d.bitisSaati} | ${urn}`;
+            } else {
+                dot.className = 'pulse-dot waiting';
+                txt.textContent = `Happy Hour Aktif — Bekleniyor`;
+                let urn = d.urunId ? `Sadece seçili üründe geçerli` : 'Tüm menüde geçerli';
+                det.textContent = `Aktif saat aralığı: ${d.baslaingicSaati} - ${d.bitisSaati} | Şu an: %${d.indirimOrani} bekleniyor | ${urn}`;
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    durumGoster();
+    setInterval(durumGoster, 30000);
+
+    // Slider ↔ input sync
+    const oran = document.getElementById('indirimOrani');
+    const slider = document.getElementById('indirimSlider');
+    const preview = document.getElementById('discountPreview');
+    const oranText = document.querySelector('.oran-text');
+    const indirimMiktar = document.querySelector('.indirim-miktar');
+    const sonucFiyat = document.querySelector('.sonuc-fiyat');
+
+    function updatePreview(val) {
+        val = Math.min(99, Math.max(1, parseInt(val) || 1));
+        oran.value = val; slider.value = val;
+        preview.textContent = `%${val}`;
+        oranText.textContent = `%${val}`;
+        indirimMiktar.textContent = `-₺${val.toFixed(2)}`;
+        sonucFiyat.textContent = `₺${(100 - val).toFixed(2)}`;
+    }
+
+    oran.addEventListener('input', () => updatePreview(oran.value));
+    slider.addEventListener('input', () => updatePreview(slider.value));
+    updatePreview(oran.value);
+
+    // Form submit
+    document.getElementById('happyHourForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true; btn.innerHTML = '<span>⏳</span> Kaydediliyor...';
+
+        const payload = {
+            baslaingicSaati: document.getElementById('baslaingicSaati').value,
+            bitisSaati: document.getElementById('bitisSaati').value,
+            indirimOrani: parseFloat(document.getElementById('indirimOrani').value),
+            aktifMi: document.getElementById('aktifMi').checked,
+            urunId: document.getElementById('urunId').value ? parseInt(document.getElementById('urunId').value) : null
+        };
+
+        try {
+            const r = await fetch('/admin/happy-hour-kaydet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const d = await r.json();
+            if (d.success) {
+                btn.innerHTML = '<span>✅</span> Kaydedildi!';
+                setTimeout(() => { btn.disabled = false; btn.innerHTML = '<span class="btn-icon">💾</span> Kaydet'; }, 2000);
+                durumGoster();
+            } else {
+                btn.innerHTML = `<span>❌</span> Hata: ${d.message}`;
+                setTimeout(() => { btn.disabled = false; btn.innerHTML = '<span class="btn-icon">💾</span> Kaydet'; }, 3000);
+            }
+        } catch (err) {
+            btn.innerHTML = '<span>❌</span> Bağlantı hatası';
+            setTimeout(() => { btn.disabled = false; btn.innerHTML = '<span class="btn-icon">💾</span> Kaydet'; }, 2000);
+        }
+    });
+</script>

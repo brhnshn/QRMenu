@@ -3,6 +3,10 @@
     ViewData["Title"] = "Menü";
     Layout = null;
     var kategoriler = Model.Select(u => u.Kategori).DistinctBy(k => k.Id).OrderBy(k => k.SiraNo).ToList();
+    (decimal IndirimOrani, int? UrunId)? hhTuple = ViewBag.HappyHour as (decimal IndirimOrani, int? UrunId)?;
+    bool isHappyHour = hhTuple.HasValue && hhTuple.Value.IndirimOrani > 0;
+    decimal hhOran = isHappyHour ? hhTuple.Value.IndirimOrani : 0;
+    int? hhUrunId = isHappyHour ? hhTuple.Value.UrunId : null;
 }
 
 <!DOCTYPE html>
@@ -96,6 +100,14 @@
                 Kafe Menü<br/><span class="text-primary">Lezzetler</span>
             </h2>
             <p class="text-on-surface-variant max-w-md font-medium">Taze malzemeler, özenle hazırlanmış tarifler.</p>
+            
+            @if (isHappyHour)
+            {
+                <div class="mt-4 inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 rounded-2xl shadow-lg shadow-orange-500/30">
+                    <span class="material-symbols-outlined emoji animate-pulse" style="font-variation-settings:'FILL' 1;">celebration</span>
+                    <span class="font-headline font-bold">Happy Hour Aktif! -%@hhOran İndirim</span>
+                </div>
+            }
         </section>
 
         <!-- ═══ CATEGORY TABS (Stitch — z-[55] so it stays ABOVE content but BELOW header z-[60]) ═══ -->
@@ -154,7 +166,17 @@
                             <div class="p-6">
                                 <div class="flex justify-between items-start mb-2">
                                     <h3 class="font-headline font-bold text-xl text-on-surface leading-tight">@urun.Ad</h3>
-                                    <span class="font-headline font-bold text-primary text-lg whitespace-nowrap ml-3">@urun.Fiyat.ToString("N2") ₺</span>
+                                    @{
+                                        bool hhGecerli = isHappyHour && (!hhUrunId.HasValue || hhUrunId.Value == urun.Id);
+                                        decimal gorunenFiyat = hhGecerli ? Math.Round(urun.Fiyat * (1 - hhOran / 100m), 2) : urun.Fiyat;
+                                    }
+                                    <div class="flex flex-col items-end">
+                                        <span class="font-headline font-bold text-primary text-lg whitespace-nowrap ml-3">@gorunenFiyat.ToString("N2") ₺</span>
+                                        @if (hhGecerli)
+                                        {
+                                            <span class="text-xs text-error font-bold line-through">@urun.Fiyat.ToString("N2") ₺</span>
+                                        }
+                                    </div>
                                 </div>
                                 <p class="text-on-surface-variant text-sm line-clamp-2 mb-6">@urun.Aciklama</p>
                                 <div class="flex items-center justify-between">
@@ -178,7 +200,8 @@
                                         <button class="btn-add flex items-center justify-center w-10 h-10 rounded-2xl bg-primary text-on-primary hover:bg-primary-dim active:scale-90 transition-all shadow-md shadow-primary/20"
                                                 data-urun-id="@urun.Id"
                                                 data-urun-ad="@urun.Ad"
-                                                data-fiyat="@urun.Fiyat.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-fiyat="@gorunenFiyat.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-orig-fiyat="@urun.Fiyat.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
                                                 data-opsiyonlar='@Html.Raw(opsiyonJson)'>
                                             <span class="material-symbols-outlined">add</span>
                                         </button>
@@ -334,6 +357,7 @@
         let lastClickedBtn = null;
 
         function handleAddClick(btn) {
+            lastClickedBtn = btn;
             const urunId = parseInt(btn.dataset.urunId);
             const urunAd = btn.dataset.urunAd;
             const fiyat = parseFloat(btn.dataset.fiyat);
@@ -341,15 +365,18 @@
             try { opsiyonlar = JSON.parse(btn.dataset.opsiyonlar || '[]'); } catch(_) {}
 
             if (!opsiyonlar || opsiyonlar.length === 0) {
-                lastClickedBtn = btn;
                 postAddToCart(urunId, 1, []);
                 return;
             }
 
+            // Happy Hour check
+            const origFiyat = parseFloat(btn.getAttribute('data-orig-fiyat') || fiyat);
+            const isHH = fiyat < origFiyat;
+
             // Show options modal
             currentUrunId = urunId;
             baseFiyat = fiyat;
-            document.getElementById('optionsModalTitle').textContent = urunAd;
+            document.getElementById('optionsModalTitle').innerHTML = urunAd + (isHH ? ' <span class="text-xs bg-primary text-white px-2 py-0.5 rounded-full ml-2">İNDİRİMLİ</span>' : '');
             const body = document.getElementById('optionsModalBody');
             body.innerHTML = '';
 
@@ -409,8 +436,10 @@
         }
 
         function updateModalPrice() {
-            let toplam = baseFiyat;
-            document.querySelectorAll('.option-input:checked').forEach(input => { toplam += parseFloat(input.dataset.price); });
+            let toplam = baseFiyat; // baseFiyat zaten indirimli ürün fiyatı
+            document.querySelectorAll('.option-input:checked').forEach(input => { 
+                toplam += parseFloat(input.dataset.price); // Opsiyonları indirimsiz (tam fiyat) ekle
+            });
             document.getElementById('modalTotalPrice').textContent = toplam.toFixed(2) + ' ₺';
             const btn = document.getElementById('btnAddToCartModal');
             const warning = document.getElementById('optionWarning');
@@ -468,11 +497,19 @@
         // ===== SIGNALR =====
         const menuConnection = new signalR.HubConnectionBuilder().withUrl('/hubs/menu').withAutomaticReconnect([0,2000,5000,10000,30000]).build();
 
-        menuConnection.on('MenuGuncellendi', async function() {
-            try { const res = await fetch('/menu/json'); yenidenCiz(await res.json()); } catch(e) { console.error(e); }
+        menuConnection.on('HappyHourGuncellendi', async function() {
+            try { const res = await fetch('/menu/json'); triggerYenidenCiz(await res.json()); showToast("🎉 Mükemmel! İndirimler güncellendi!"); } catch(e) { console.error(e); }
         });
 
-        function yenidenCiz(kategoriler) {
+        menuConnection.on('MenuGuncellendi', async function() {
+            try { const res = await fetch('/menu/json'); triggerYenidenCiz(await res.json()); } catch(e) { console.error(e); }
+        });
+
+        function triggerYenidenCiz(data) {
+            yenidenCiz(data.kategoriler, data.happyHour);
+        }
+
+        function yenidenCiz(kategoriler, happyHour) {
             const tabScroll = document.querySelector('nav.sticky');
             if (!tabScroll) return;
             tabScroll.innerHTML = '';
@@ -500,14 +537,25 @@
                 let html = '<h2 class="font-headline text-2xl font-extrabold text-on-surface mb-6">' + escapeHtml(kat.ad) + '</h2><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">';
                 kat.urunler.forEach(function(urun) {
                     const isSoldOut = !urun.aktifMi;
+                    let bFiyat = urun.fiyat;
+                    let hhGecerli = happyHour != null && (!happyHour.urunId || happyHour.urunId == urun.id);
+                    if (hhGecerli) {
+                        bFiyat = Math.round(bFiyat * (1 - happyHour.indirimOrani / 100) * 100) / 100;
+                    }
                     const fiyatStr = urun.fiyat.toFixed(2);
+                    const gorunenFiyatStr = bFiyat.toFixed(2);
                     const cardClick = isSoldOut ? '' : ` onclick="window.location.href='/Menu/Detay/${urun.id}'"`;
                     html += `<div class="group relative bg-surface-container-lowest rounded-3xl overflow-hidden transition-all duration-300 hover:shadow-2xl ${isSoldOut ? 'opacity-50 pointer-events-none' : ''} cursor-pointer"${cardClick}>`;
                     html += '<div class="aspect-[4/3] w-full overflow-hidden">';
                     if (urun.gorselUrl) html += `<img alt="${escapeHtml(urun.ad)}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="${escapeHtml(urun.gorselUrl)}" />`;
                     else html += '<div class="w-full h-full bg-gradient-to-br from-surface-container-low to-surface-container flex items-center justify-center text-6xl">☕</div>';
                     html += '</div><div class="p-6">';
-                    html += `<div class="flex justify-between items-start mb-2"><h3 class="font-headline font-bold text-xl text-on-surface leading-tight">${escapeHtml(urun.ad)}</h3><span class="font-headline font-bold text-primary text-lg whitespace-nowrap ml-3">${fiyatStr} ₺</span></div>`;
+                    html += `<div class="flex justify-between items-start mb-2"><h3 class="font-headline font-bold text-xl text-on-surface leading-tight">${escapeHtml(urun.ad)}</h3>`;
+                    
+                    html += `<div class="flex flex-col items-end"><span class="font-headline font-bold text-primary text-lg whitespace-nowrap ml-3">${gorunenFiyatStr} ₺</span>`;
+                    if(hhGecerli) { html += `<span class="text-xs text-error font-bold line-through">${fiyatStr} ₺</span>`; }
+                    html += `</div></div>`;
+                    
                     html += `<p class="text-on-surface-variant text-sm line-clamp-2 mb-6">${escapeHtml(urun.aciklama || '')}</p>`;
                     html += '<div class="flex items-center justify-between"><div class="flex items-center gap-1">';
                     if (urun.populerMi) html += '<span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings:\'FILL\' 1;">local_fire_department</span><span class="text-xs font-bold text-on-surface">Popüler</span>';
@@ -516,7 +564,14 @@
                     html += '</div>';
                     if (!isSoldOut) {
                         const opsAttr = JSON.stringify(urun.opsiyonlar || []).replace(/'/g, '&#39;');
-                        html += `<button class="btn-add flex items-center justify-center w-10 h-10 rounded-2xl bg-primary text-on-primary hover:bg-primary-dim active:scale-90 transition-all shadow-md shadow-primary/20" data-urun-id="${urun.id}" data-urun-ad="${escapeHtml(urun.ad)}" data-fiyat="${fiyatStr}" data-opsiyonlar='${opsAttr}'><span class="material-symbols-outlined">add</span></button>`;
+                        html += `<button class="btn-add flex items-center justify-center w-10 h-10 rounded-2xl bg-primary text-on-primary hover:bg-primary-dim active:scale-90 transition-all shadow-md shadow-primary/20" 
+                                    data-urun-id="${urun.id}" 
+                                    data-urun-ad="${escapeHtml(urun.ad)}" 
+                                    data-fiyat="${gorunenFiyatStr}" 
+                                    data-orig-fiyat="${fiyatStr}"
+                                    data-opsiyonlar='${opsAttr}'>
+                                    <span class="material-symbols-outlined">add</span>
+                                 </button>`;
                     }
                     html += '</div></div></div>';
                 });
@@ -525,6 +580,7 @@
                 main.appendChild(section);
             });
             setupScrollObserver();
+            setupAddButtons();
         }
 
         function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }

@@ -43,6 +43,7 @@ namespace QRMenu.Data.Services
                 var cached = await _context.Sepetler
                     .Include(s => s.SepetDetaylar)
                         .ThenInclude(sd => sd.Urun)
+                    .AsSplitQuery()
                     .FirstOrDefaultAsync(s => s.Id == cachedSepetId);
                 if (cached != null) return cached;
             }
@@ -50,6 +51,7 @@ namespace QRMenu.Data.Services
             var sepet = await _context.Sepetler
                 .Include(s => s.SepetDetaylar)
                     .ThenInclude(sd => sd.Urun)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(s => s.OturumId == oturumId);
 
             if (sepet == null)
@@ -71,7 +73,7 @@ namespace QRMenu.Data.Services
         /// <summary>
         /// Sepete ürün ekle — aynı ürün+opsiyon varsa adet artır
         /// </summary>
-        public async Task<SepetDetay> AddItemAsync(int sepetId, int urunId, int adet, List<int>? opsiyonIds = null)
+        public async Task<SepetDetay> AddItemAsync(int sepetId, int urunId, int adet, List<int>? opsiyonIds = null, decimal? forceDiscountRate = null)
         {
             var urun = await _context.Urunler.FindAsync(urunId);
             if (urun == null || !urun.AktifMi)
@@ -93,6 +95,15 @@ namespace QRMenu.Data.Services
                 );
             }
 
+            // Birim fiyat hesapla
+            decimal basePrice = urun.Fiyat;
+            if (forceDiscountRate.HasValue && forceDiscountRate.Value > 0)
+            {
+                basePrice = Math.Round(basePrice * (1 - forceDiscountRate.Value / 100m), 2);
+            }
+            
+            decimal birimFiyat = basePrice + opsiyonEkFiyat;
+
             // Aynı ürün + aynı opsiyonlarla zaten sepette var mı?
             var mevcutDetay = await _context.SepetDetaylar
                 .FirstOrDefaultAsync(sd => sd.SepetId == sepetId
@@ -103,6 +114,8 @@ namespace QRMenu.Data.Services
             {
                 // Aynı ürün varsa adet artır
                 mevcutDetay.Adet += adet;
+                // Birim fiyatı güncelle (indirim oranları değişmiş olabilir)
+                mevcutDetay.BirimFiyat = birimFiyat;
                 _logger.LogInformation("Sepetteki ürün adedi artırıldı. DetayId={DetayId}, YeniAdet={Adet}", mevcutDetay.Id, mevcutDetay.Adet);
             }
             else
@@ -113,7 +126,7 @@ namespace QRMenu.Data.Services
                     SepetId = sepetId,
                     UrunId = urunId,
                     Adet = adet,
-                    BirimFiyat = urun.Fiyat + opsiyonEkFiyat,
+                    BirimFiyat = birimFiyat,
                     SeciliOpsiyonlar = opsiyonJson
                 };
                 _context.SepetDetaylar.Add(mevcutDetay);
@@ -124,6 +137,7 @@ namespace QRMenu.Data.Services
             // EF Core "Relationship Fix-up" sayesinde Include ile gelen listede yeni eklenen ürün zaten bulunur.
             var sepet = await _context.Sepetler
                 .Include(s => s.SepetDetaylar)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(s => s.Id == sepetId);
 
             if (sepet != null)
@@ -148,6 +162,7 @@ namespace QRMenu.Data.Services
             var sepetId = detay.SepetId;
             var sepet = await _context.Sepetler
                 .Include(s => s.SepetDetaylar)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(s => s.Id == sepetId);
 
             if (sepet != null)
@@ -179,6 +194,7 @@ namespace QRMenu.Data.Services
 
             var sepet = await _context.Sepetler
                 .Include(s => s.SepetDetaylar)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(s => s.Id == detay.SepetId);
 
             if (sepet != null)
@@ -223,6 +239,7 @@ namespace QRMenu.Data.Services
                 .Include(s => s.SepetDetaylar)
                     .ThenInclude(sd => sd.Urun)
                         .ThenInclude(u => u.Kategori)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(s => s.Id == sepetId);
         }
 
@@ -234,6 +251,7 @@ namespace QRMenu.Data.Services
             return await _context.Sepetler
                 .Include(s => s.SepetDetaylar)
                     .ThenInclude(sd => sd.Urun)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(s => s.OturumId == oturumId);
         }
 
@@ -244,6 +262,7 @@ namespace QRMenu.Data.Services
         {
             var sepet = await _context.Sepetler
                 .Include(s => s.SepetDetaylar)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(s => s.Id == sepetId);
 
             if (sepet != null)

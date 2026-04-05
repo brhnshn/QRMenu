@@ -38,6 +38,7 @@ namespace QRMenu.Web.Controllers
                 .Include(s => s.Masa)
                 .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
+                .AsSplitQuery()
                 .Where(s => s.OlusturmaTarihi >= sinirTarih 
                     && s.Durum != SiparisDurum.Iptal 
                     && s.Durum != SiparisDurum.Iade 
@@ -66,7 +67,7 @@ namespace QRMenu.Web.Controllers
                 if (durum == SiparisDurum.Hazir)
                 {
                     // MasaNo'yu alabilmek için tekrar çekmemiz gerekebilir (Service'den dönen siparişte masa yüklü olmalı)
-                    var sip = await _context.Siparisler.Include(s => s.Masa).FirstOrDefaultAsync(s => s.Id == siparisId);
+                    var sip = await _context.Siparisler.Include(s => s.Masa).AsSplitQuery().FirstOrDefaultAsync(s => s.Id == siparisId);
                     if (sip != null)
                     {
                         await _menuHub.Clients.All.SendAsync("SiparisHazir", sip.Masa.MasaNo);

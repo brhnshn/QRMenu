@@ -86,8 +86,16 @@
             {
                 odenecekVarMi = true;
                 <div class="mb-4">
-                    <h6 class="text-muted fw-bold mb-3 ms-2">Adisyon #@siparis.Id - @siparis.OlusturmaTarihi.ToString("HH:mm")</h6>
+                    <h6 class="text-muted fw-bold mb-2 ms-2">Adisyon #@siparis.Id - @siparis.OlusturmaTarihi.ToString("HH:mm")</h6>
                     
+                    @if (!string.IsNullOrEmpty(siparis.Notlar) && siparis.Notlar.Contains("🎉 Happy Hour"))
+                    {
+                        var hhNot = siparis.Notlar.Split('|')[0].Trim();
+                        <div style="background:#fff3cd; color:#856404; padding:8px 12px; border-radius:6px; margin:0 8px 12px 8px; font-weight:bold; font-size:0.9rem;">
+                            <i class="bi bi-gift-fill"></i> @hhNot
+                        </div>
+                    }
+
                     @foreach(var detay in bekleyenDetaylar)
                     {
                         var satirTutar = detay.Adet * detay.BirimFiyat;

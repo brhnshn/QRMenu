@@ -80,6 +80,19 @@
             <!-- Page Title (Stitch) -->
             <div class="mb-10">
                 <h2 class="font-headline text-4xl font-extrabold text-on-surface tracking-tight leading-none mb-2">Seçimlerinizi Gözden Geçirin</h2>
+                @{
+                    var hh = ViewBag.HappyHour as (decimal IndirimOrani, int? UrunId)?;
+                }
+                @if (hh != null)
+                {
+                    <div class="bg-primary/5 border border-primary/10 rounded-2xl p-4 flex items-center gap-3 mb-4">
+                        <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">card_giftcard</span>
+                        <div>
+                            <p class="text-primary font-bold text-sm">Mutlu Saatler Aktif! 🎉</p>
+                            <p class="text-primary/70 text-xs font-medium">Seçili ürünlerde % @hh.Value.IndirimOrani indirim sepetinize yansıdı.</p>
+                        </div>
+                    </div>
+                }
                 <p class="text-on-surface-variant font-medium">Onayınız alındığında taze olarak hazırlanacaktır.</p>
             </div>
 
@@ -91,7 +104,36 @@
                         <div class="flex-grow">
                             <div class="flex justify-between items-start">
                                 <h3 class="font-headline font-bold text-on-surface text-lg">@detay.Urun.Ad</h3>
-                                <span class="font-label font-bold text-on-surface">@detay.BirimFiyat.ToString("N2") ₺</span>
+                                <div class="flex flex-col items-end">
+                                    @{
+                                        bool isHHDetay = hh != null && (!hh.Value.UrunId.HasValue || hh.Value.UrunId == detay.UrunId);
+                                        
+                                        decimal pureFiyat = detay.Urun.Fiyat;
+                                        try {
+                                            if (!string.IsNullOrEmpty(detay.SeciliOpsiyonlar) && detay.SeciliOpsiyonlar != "[]") {
+                                                var opsJson = System.Text.Json.JsonDocument.Parse(detay.SeciliOpsiyonlar);
+                                                foreach(var ops in opsJson.RootElement.EnumerateArray()) {
+                                                    pureFiyat += ops.GetProperty("EkFiyat").GetDecimal();
+                                                }
+                                            }
+                                        } catch {}
+
+                                        bool indirimliMi = detay.BirimFiyat < pureFiyat;
+                                    }
+                                    
+                                    <div class="flex items-center gap-2">
+                                        @if (indirimliMi)
+                                        {
+                                            <span class="text-xs text-on-surface-variant font-medium line-through opacity-60">@pureFiyat.ToString("N2") ₺</span>
+                                        }
+                                        <span class="font-label font-bold text-on-surface text-lg">@detay.BirimFiyat.ToString("N2") ₺</span>
+                                    </div>
+
+                                    @if (indirimliMi || isHHDetay)
+                                    {
+                                        <span class="text-[10px] text-primary font-extrabold uppercase tracking-tighter bg-primary/10 px-2 py-0.5 rounded-md mt-1">İndirim Uygulandı</span>
+                                    }
+                                </div>
                             </div>
                             @if (!string.IsNullOrEmpty(detay.SeciliOpsiyonlar) && detay.SeciliOpsiyonlar != "[]")
                             {

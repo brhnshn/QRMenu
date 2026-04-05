@@ -12,7 +12,7 @@ namespace QRMenu.Core.Interfaces
         /// <summary>
         /// Sepete ürün ekle (aynı ürün+opsiyon varsa adet artır)
         /// </summary>
-        Task<SepetDetay> AddItemAsync(int sepetId, int urunId, int adet, List<int>? opsiyonIds = null);
+        Task<SepetDetay> AddItemAsync(int sepetId, int urunId, int adet, List<int>? opsiyonIds = null, decimal? forceDiscountRate = null);
 
         /// <summary>
         /// Sepetten ürün çıkar

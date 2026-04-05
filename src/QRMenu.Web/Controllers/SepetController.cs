@@ -64,7 +64,29 @@ namespace QRMenu.Web.Controllers
                 }
             }
 
+            var happyHour = await GetActiveHappyHourAsync();
+            ViewBag.HappyHour = happyHour;
+
             return View(sepet);
+        }
+
+        private async Task<(decimal IndirimOrani, int? UrunId)?> GetActiveHappyHourAsync()
+        {
+            var hh = await _context.HappyHourlar.Where(h => h.AktifMi).FirstOrDefaultAsync();
+            if (hh == null) return null;
+
+            var turkey = TimeZoneInfo.FindSystemTimeZoneById(
+                OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
+            var simdiki = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, turkey).TimeOfDay;
+
+            bool aktif;
+            if (hh.BaslangicSaati <= hh.BitisSaati)
+                aktif = simdiki >= hh.BaslangicSaati && simdiki <= hh.BitisSaati;
+            else
+                aktif = simdiki >= hh.BaslangicSaati || simdiki <= hh.BitisSaati;
+
+            if (aktif) return (hh.IndirimOrani, hh.UrunId);
+            return null;
         }
 
         /// <summary>
@@ -79,7 +101,15 @@ namespace QRMenu.Web.Controllers
             try
             {
                 var sepet = await _sepetService.GetOrCreateSepetAsync(oturumId.Value);
-                var detay = await _sepetService.AddItemAsync(sepet.Id, request.UrunId, request.Adet, request.OpsiyonIds);
+                
+                decimal? discountRate = null;
+                var hh = await GetActiveHappyHourAsync();
+                if (hh != null && (!hh.Value.UrunId.HasValue || hh.Value.UrunId == request.UrunId))
+                {
+                    discountRate = hh.Value.IndirimOrani;
+                }
+
+                var detay = await _sepetService.AddItemAsync(sepet.Id, request.UrunId, request.Adet, request.OpsiyonIds, discountRate);
 
                 // Güncel sepet bilgisini döndür
                 var guncelSepet = await _sepetService.GetSepetWithDetailsAsync(sepet.Id);

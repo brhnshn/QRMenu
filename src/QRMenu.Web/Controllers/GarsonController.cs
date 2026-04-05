@@ -43,6 +43,7 @@ namespace QRMenu.Web.Controllers
             var masalar = await _context.Masalar
                 .Include(m => m.Siparisler.Where(s => s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade))
                     .ThenInclude(s => s.SiparisDetaylar)
+                .AsSplitQuery()
                 .OrderBy(m => m.MasaNo)
                 .ToListAsync();
 
@@ -63,6 +64,7 @@ namespace QRMenu.Web.Controllers
             var aktifSiparisler = await _context.Siparisler
                 .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
+                .AsSplitQuery()
                 .Where(s => s.MasaId == id && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
                 .OrderByDescending(s => s.OlusturmaTarihi)
                 .ToListAsync();
@@ -74,6 +76,7 @@ namespace QRMenu.Web.Controllers
                 .Include(k => k.Urunler.Where(u => u.AktifMi))
                     .ThenInclude(u => u.UrunOpsiyonlar)
                         .ThenInclude(uo => uo.Opsiyon)
+                .AsSplitQuery()
                 .Where(k => k.AktifMi)
                 .OrderBy(k => k.SiraNo)
                 .ToListAsync();
@@ -118,6 +121,7 @@ namespace QRMenu.Web.Controllers
         {
             var detay = await _context.SiparisDetaylar
                 .Include(sd => sd.Siparis)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(sd => sd.Id == detayId);
 
             if (detay == null)

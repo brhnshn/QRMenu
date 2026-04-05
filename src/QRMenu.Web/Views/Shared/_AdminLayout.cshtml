@@ -39,9 +39,8 @@
             <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Siparisler" ? "active" : "")" href="/admin/siparisler">
                 <i class="bi bi-receipt"></i> Siparişler
             </a>
-            <a class="nav-item disabled" href="#">
+            <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Kullanicilar" ? "active" : "")" href="/admin/kullanicilar">
                 <i class="bi bi-people"></i> Personel
-                <span class="badge-soon">Yakında</span>
             </a>
 
             <div class="nav-label">Operasyon</div>
@@ -56,9 +55,8 @@
             </a>
 
             <div class="nav-label">Ayarlar</div>
-            <a class="nav-item disabled" href="#">
-                <i class="bi bi-gear"></i> Genel Ayarlar
-                <span class="badge-soon">Yakında</span>
+            <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "HappyHour" ? "active" : "")" href="/admin/happy-hour">
+                <i class="bi bi-stars"></i> Happy Hour
             </a>
         </nav>
     </aside>

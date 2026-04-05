@@ -33,9 +33,29 @@ namespace QRMenu.Web.Controllers
         {
             var user = await _context.Kullanicilar.FirstOrDefaultAsync(u => u.KullaniciAdi == username && u.AktifMi);
 
-            // Not: Prod ortamında MD5/SHA256 veya BCrypt hash kontrolü yapılmalıdır.
-            // QRMenu.Data tarafında kullanıcı eklenirken şifre nasıl hashleniyorsa öyle kontrol edilmeli.
-            if (user == null || user.SifreHash != password)
+            // BCrypt hash'li şifre kontrolü (bcrypt hash $2 ile başlar)
+            // Geriye dönük uyumluluk: eski düz metin hashler için de kontrol yap
+            bool sifreGecerli = false;
+            if (user != null)
+            {
+                if (user.SifreHash.StartsWith("$2"))
+                {
+                    // BCrypt hash
+                    sifreGecerli = BCrypt.Net.BCrypt.Verify(password, user.SifreHash);
+                }
+                else
+                {
+                    // Eski düz metin (geçiş dönemi) — geçerliyse BCrypt'e migrate et
+                    sifreGecerli = user.SifreHash == password;
+                    if (sifreGecerli)
+                    {
+                        user.SifreHash = BCrypt.Net.BCrypt.HashPassword(password);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+            }
+
+            if (user == null || !sifreGecerli)
             {
                 ViewBag.Error = "Geçersiz kullanıcı adı veya şifre.";
                 return View();
