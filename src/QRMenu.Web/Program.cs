@@ -172,42 +172,42 @@ using (var scope = app.Services.CreateScope())
     {
         db.Database.Migrate();
         Log.Information("Veritabanı migration başarılı.");
+
+        // ===== ROL SEED =====
+        string[] roller = ["Admin", "Garson", "Kasa", "Mutfak", "Barista"];
+        foreach (var rol in roller)
+        {
+            if (!await roleManager.RoleExistsAsync(rol))
+                await roleManager.CreateAsync(new IdentityRole(rol));
+        }
+
+        // ===== KULLANICI SEED =====
+        async Task SeedKullanici(string userName, string adSoyad, string sifre, QRMenu.Core.Enums.KullaniciRol rol)
+        {
+            if (await userManager.FindByNameAsync(userName) == null)
+            {
+                var kullanici = new Kullanici
+                {
+                    UserName = userName,
+                    AdSoyad = adSoyad,
+                    Rol = rol,
+                    AktifMi = true
+                };
+                var result = await userManager.CreateAsync(kullanici, sifre);
+                if (result.Succeeded)
+                    await userManager.AddToRoleAsync(kullanici, rol.ToString());
+            }
+        }
+
+        await SeedKullanici("admin",  "Sistem Yöneticisi", "Admin123!",  QRMenu.Core.Enums.KullaniciRol.Admin);
+        await SeedKullanici("garson", "Garson Test",       "Garson123!", QRMenu.Core.Enums.KullaniciRol.Garson);
+        await SeedKullanici("kasa",   "Kasa Test",         "Kasa1234!",  QRMenu.Core.Enums.KullaniciRol.Kasa);
+        await SeedKullanici("mutfak", "Mutfak Test",       "Mutfak123!", QRMenu.Core.Enums.KullaniciRol.Mutfak);
     }
     catch (Exception ex)
     {
-        Log.Error(ex, "Veritabanı migration hatası!");
+        Log.Error(ex, "Veritabanı migration veya Seed hatası! Hatalı migration uygulamanın çökmesine sebep oluyor.");
     }
-
-    // ===== ROL SEED =====
-    string[] roller = ["Admin", "Garson", "Kasa", "Mutfak", "Barista"];
-    foreach (var rol in roller)
-    {
-        if (!await roleManager.RoleExistsAsync(rol))
-            await roleManager.CreateAsync(new IdentityRole(rol));
-    }
-
-    // ===== KULLANICI SEED =====
-    async Task SeedKullanici(string userName, string adSoyad, string sifre, QRMenu.Core.Enums.KullaniciRol rol)
-    {
-        if (await userManager.FindByNameAsync(userName) == null)
-        {
-            var kullanici = new Kullanici
-            {
-                UserName = userName,
-                AdSoyad = adSoyad,
-                Rol = rol,
-                AktifMi = true
-            };
-            var result = await userManager.CreateAsync(kullanici, sifre);
-            if (result.Succeeded)
-                await userManager.AddToRoleAsync(kullanici, rol.ToString());
-        }
-    }
-
-    await SeedKullanici("admin",  "Sistem Yöneticisi", "Admin123!",  QRMenu.Core.Enums.KullaniciRol.Admin);
-    await SeedKullanici("garson", "Garson Test",       "Garson123!", QRMenu.Core.Enums.KullaniciRol.Garson);
-    await SeedKullanici("kasa",   "Kasa Test",         "Kasa1234!",  QRMenu.Core.Enums.KullaniciRol.Kasa);
-    await SeedKullanici("mutfak", "Mutfak Test",       "Mutfak123!", QRMenu.Core.Enums.KullaniciRol.Mutfak);
 }
 
 try
