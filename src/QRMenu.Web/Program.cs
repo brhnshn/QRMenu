@@ -181,28 +181,6 @@ using (var scope = app.Services.CreateScope())
                 await roleManager.CreateAsync(new IdentityRole(rol));
         }
 
-        // ===== KULLANICI SEED =====
-        async Task SeedKullanici(string userName, string adSoyad, string sifre, QRMenu.Core.Enums.KullaniciRol rol)
-        {
-            if (await userManager.FindByNameAsync(userName) == null)
-            {
-                var kullanici = new Kullanici
-                {
-                    UserName = userName,
-                    AdSoyad = adSoyad,
-                    Rol = rol,
-                    AktifMi = true
-                };
-                var result = await userManager.CreateAsync(kullanici, sifre);
-                if (result.Succeeded)
-                    await userManager.AddToRoleAsync(kullanici, rol.ToString());
-            }
-        }
-
-        await SeedKullanici("admin",  "Sistem Yöneticisi", "Admin123!",  QRMenu.Core.Enums.KullaniciRol.Admin);
-        await SeedKullanici("garson", "Garson Test",       "Garson123!", QRMenu.Core.Enums.KullaniciRol.Garson);
-        await SeedKullanici("kasa",   "Kasa Test",         "Kasa1234!",  QRMenu.Core.Enums.KullaniciRol.Kasa);
-        await SeedKullanici("mutfak", "Mutfak Test",       "Mutfak123!", QRMenu.Core.Enums.KullaniciRol.Mutfak);
     }
     catch (Exception ex)
     {

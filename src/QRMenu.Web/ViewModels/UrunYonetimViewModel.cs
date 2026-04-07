@@ -108,6 +108,10 @@ namespace QRMenu.Web.ViewModels
 
     public class KullaniciGuncelleViewModel
     {
+        [Required(ErrorMessage = "Kullanıcı adı zorunludur.")]
+        [MaxLength(50)]
+        public string KullaniciAdi { get; set; } = string.Empty;
+
         [Required(ErrorMessage = "Ad Soyad zorunludur.")]
         [MaxLength(100)]
         public string AdSoyad { get; set; } = string.Empty;

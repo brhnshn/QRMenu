@@ -21,6 +21,45 @@ namespace QRMenu.Web.Controllers
             _logger = logger;
         }
 
+        [HttpGet("/Auth/Register")]
+        public IActionResult Register()
+        {
+            if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                var role = User.FindFirst(ClaimTypes.Role)?.Value;
+                return RedirectToRole(role);
+            }
+            return View();
+        }
+
+        [HttpPost("/Auth/Register")]
+        public async Task<IActionResult> Register(string username, string password, string adSoyad, QRMenu.Core.Enums.KullaniciRol rol)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = new Kullanici { UserName = username, AdSoyad = adSoyad, Rol = rol, AktifMi = true };
+                var result = await _userManager.CreateAsync(user, password);
+                
+                if (result.Succeeded)
+                {
+                    // Rol ataması
+                    await _userManager.AddToRoleAsync(user, rol.ToString());
+                    
+                    _logger.LogInformation("Yeni kullanıcı kayıt oldu: {KullaniciAdi}", username);
+                    // Başarılı kayıttan sonra direkt giriş yap
+                    await _signInManager.SignInAsync(user, isPersistent: false);
+                    return RedirectToRole(user.Rol.ToString());
+                }
+                
+                foreach (var error in result.Errors)
+                {
+                    ModelState.AddModelError(string.Empty, error.Description);
+                    ViewBag.Error = error.Description;
+                }
+            }
+            return View();
+        }
+
         [HttpGet("/Auth/Login")]
         public IActionResult Login()
         {

@@ -102,8 +102,8 @@
             <form id="duzenleForm" onsubmit="kullaniciGuncelle(event)">
                 <input type="hidden" id="duz_id">
                 <div class="form-group">
-                    <label>Kullanıcı Adı</label>
-                    <input type="text" id="duz_kullaniciAdi" class="form-control" disabled>
+                    <label>Kullanıcı Adı *</label>
+                    <input type="text" id="duz_kullaniciAdi" class="form-control" required>
                 </div>
                 <div class="form-group">
                     <label>Ad Soyad *</label>
@@ -268,8 +268,8 @@
                 '<td><span class="status-badge ' + (k.aktifMi ? 'status-aktif' : 'status-pasif') + '">' + (k.aktifMi ? '✅ Aktif' : '❌ Pasif') + '</span></td>' +
                 '<td><div class="action-btns">' +
                 '<button class="btn-action btn-edit" onclick=\'duzenleAc(' + JSON.stringify(k) + ')\' title="Düzenle">✏️</button>' +
-                '<button class="btn-action btn-warning bg-opacity-25" style="border:1px solid #ffcc00; background:rgba(255, 193, 7, 0.1); color:#856404; transition:all 0.2s;" onmouseover="this.style.background=\'#ffc107\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'rgba(255, 193, 7, 0.1)\';this.style.color=\'#856404\'" onclick="kullaniciToggle(' + k.id + ')" title="Aktif/Pasif Yap">' + (k.aktifMi ? '⏸️' : '▶️') + '</button>' +
-                '<button class="btn-action btn-delete" onclick="kullaniciSil(' + k.id + ', \'' + k.kullaniciAdi + '\')" title="Kalıcı Olarak Sil">🗑️</button>' +
+                '<button class="btn-action btn-warning bg-opacity-25" style="border:1px solid #ffcc00; background:rgba(255, 193, 7, 0.1); color:#856404; transition:all 0.2s;" onmouseover="this.style.background=\'#ffc107\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'rgba(255, 193, 7, 0.1)\';this.style.color=\'#856404\'" onclick="kullaniciToggle(\'' + k.id + '\')" title="Aktif/Pasif Yap">' + (k.aktifMi ? '⏸️' : '▶️') + '</button>' +
+                '<button class="btn-action btn-delete" onclick="kullaniciSil(\'' + k.id + '\', \'' + k.kullaniciAdi + '\')" title="Kalıcı Olarak Sil">🗑️</button>' +
                 '</div></td>' +
                 '</tr>';
         }).join('');
@@ -329,6 +329,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                kullaniciAdi: document.getElementById('duz_kullaniciAdi').value,
                 adSoyad: document.getElementById('duz_adSoyad').value,
                 rol: document.getElementById('duz_rol').value,
                 aktifMi: document.getElementById('duz_aktifMi').checked

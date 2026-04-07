@@ -833,13 +833,10 @@ namespace QRMenu.Web.Controllers
             if (!Enum.TryParse<KullaniciRol>(model.Rol, out var rol))
                 return Json(new { success = false, message = "Geçersiz rol." });
 
-            // Son admin rolden düşürme kontrolü
+            // Admin rolden düşürme kontrolü (Koşulsuz yasak)
             if (kullanici.Rol == KullaniciRol.Admin && rol != KullaniciRol.Admin)
             {
-                var adminSayisi = await _userManager.Users
-                    .CountAsync(k => k.Rol == KullaniciRol.Admin && k.AktifMi);
-                if (adminSayisi <= 1)
-                    return Json(new { success = false, message = "Son admin rolünden düşürülemez." });
+                return Json(new { success = false, message = "Yönetici (Admin) rolü alt rollere düşürülemez!" });
             }
 
             // Rol değişmişse Identity rol tablosunu da güncelle
@@ -850,10 +847,17 @@ namespace QRMenu.Web.Controllers
                 await _userManager.AddToRoleAsync(kullanici, rol.ToString());
             }
 
+            kullanici.UserName = model.KullaniciAdi;
             kullanici.AdSoyad = model.AdSoyad;
             kullanici.Rol = rol;
             kullanici.AktifMi = model.AktifMi;
-            await _userManager.UpdateAsync(kullanici);
+            
+            var updateResult = await _userManager.UpdateAsync(kullanici);
+            if (!updateResult.Succeeded)
+            {
+                var hatalar = string.Join(", ", updateResult.Errors.Select(e => e.Description));
+                return Json(new { success = false, message = hatalar });
+            }
 
             _logger.LogInformation("Kullanıcı güncellendi. Id={Id}, Rol={Rol}, Aktif={Aktif}", id, rol, model.AktifMi);
             return Json(new { success = true });
