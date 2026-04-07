@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using System.Threading.RateLimiting;
 using Serilog;
 using QRMenu.Data.Data;
 using QRMenu.Core.Interfaces;
+using QRMenu.Core.Entities;
 using QRMenu.Data.Services;
 using QRMenu.Web.Middleware;
 using QRMenu.Web.Hubs;
@@ -53,17 +55,36 @@ builder.Services.AddScoped<IOdemeService, OdemeService>();
 // MVC
 builder.Services.AddControllersWithViews();
 
-// Authentication
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        options.LoginPath = "/Auth/Login";
-        options.LogoutPath = "/Auth/Logout";
-        options.AccessDeniedPath = "/Auth/Login";
-        options.Cookie.Name = "QRMenuAuth";
-        options.ExpireTimeSpan = TimeSpan.FromDays(7);
-        options.SlidingExpiration = true;
-    });
+// ASP.NET Identity
+builder.Services.AddIdentity<Kullanici, IdentityRole>(options =>
+{
+    // Parola gereksinimleri
+    options.Password.RequireDigit = true;
+    options.Password.RequiredLength = 6;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireLowercase = false;
+
+    // Hesap kilitleme
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+
+    // Kullanıcı adı uniq, email isteğe bağlı
+    options.User.RequireUniqueEmail = false;
+})
+.AddEntityFrameworkStores<QRMenuDbContext>()
+.AddDefaultTokenProviders();
+
+// Identity cookie ayarları
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/Auth/Login";
+    options.LogoutPath = "/Auth/Logout";
+    options.AccessDeniedPath = "/Auth/Login";
+    options.Cookie.Name = "QRMenuAuth";
+    options.ExpireTimeSpan = TimeSpan.FromDays(7);
+    options.SlidingExpiration = true;
+});
 
 // SignalR — Gerçek zamanlı menü güncellemeleri
 builder.Services.AddSignalR();
@@ -140,10 +161,13 @@ app.MapControllerRoute(
 // SignalR Hub endpoint
 app.MapHub<MenuHub>("/hubs/menu");
 
-// ===== VERİTABANI MIGRATION (Development) =====
+// ===== VERİTABANI MIGRATION + IDENTITY SEED =====
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<QRMenuDbContext>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<Kullanici>>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
     try
     {
         db.Database.Migrate();
@@ -153,6 +177,37 @@ using (var scope = app.Services.CreateScope())
     {
         Log.Error(ex, "Veritabanı migration hatası!");
     }
+
+    // ===== ROL SEED =====
+    string[] roller = ["Admin", "Garson", "Kasa", "Mutfak", "Barista"];
+    foreach (var rol in roller)
+    {
+        if (!await roleManager.RoleExistsAsync(rol))
+            await roleManager.CreateAsync(new IdentityRole(rol));
+    }
+
+    // ===== KULLANICI SEED =====
+    async Task SeedKullanici(string userName, string adSoyad, string sifre, QRMenu.Core.Enums.KullaniciRol rol)
+    {
+        if (await userManager.FindByNameAsync(userName) == null)
+        {
+            var kullanici = new Kullanici
+            {
+                UserName = userName,
+                AdSoyad = adSoyad,
+                Rol = rol,
+                AktifMi = true
+            };
+            var result = await userManager.CreateAsync(kullanici, sifre);
+            if (result.Succeeded)
+                await userManager.AddToRoleAsync(kullanici, rol.ToString());
+        }
+    }
+
+    await SeedKullanici("admin",  "Sistem Yöneticisi", "Admin123!",  QRMenu.Core.Enums.KullaniciRol.Admin);
+    await SeedKullanici("garson", "Garson Test",       "Garson123!", QRMenu.Core.Enums.KullaniciRol.Garson);
+    await SeedKullanici("kasa",   "Kasa Test",         "Kasa1234!",  QRMenu.Core.Enums.KullaniciRol.Kasa);
+    await SeedKullanici("mutfak", "Mutfak Test",       "Mutfak123!", QRMenu.Core.Enums.KullaniciRol.Mutfak);
 }
 
 try

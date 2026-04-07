@@ -1,13 +1,16 @@
+using Microsoft.AspNetCore.Identity;
 using QRMenu.Core.Enums;
 
 namespace QRMenu.Core.Entities
 {
-    public class Kullanici
+    /// <summary>
+    /// ASP.NET Identity tabanlı kullanıcı.
+    /// IdentityUser'ın Id (string), UserName, PasswordHash, Email alanlarını miras alır.
+    /// Özel alanlar: AdSoyad, Rol (enum), AktifMi.
+    /// </summary>
+    public class Kullanici : IdentityUser
     {
-        public int Id { get; set; }
-        public string KullaniciAdi { get; set; } = string.Empty;
         public string AdSoyad { get; set; } = string.Empty;
-        public string SifreHash { get; set; } = string.Empty;
         public KullaniciRol Rol { get; set; }
         public bool AktifMi { get; set; } = true;
     }

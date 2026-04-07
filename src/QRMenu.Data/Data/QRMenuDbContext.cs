@@ -1,9 +1,10 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using QRMenu.Core.Entities;
 
 namespace QRMenu.Data.Data
 {
-    public class QRMenuDbContext : DbContext
+    public class QRMenuDbContext : IdentityDbContext<Kullanici>
     {
         public QRMenuDbContext(DbContextOptions<QRMenuDbContext> options) : base(options) { }
 
@@ -20,7 +21,7 @@ namespace QRMenu.Data.Data
         public DbSet<Siparis> Siparisler => Set<Siparis>();
         public DbSet<SiparisDetay> SiparisDetaylar => Set<SiparisDetay>();
         public DbSet<Odeme> Odemeler => Set<Odeme>();
-        public DbSet<Kullanici> Kullanicilar => Set<Kullanici>();
+        // Kullanicilar artık Identity üzerinden yönetilmektedir (AspNetUsers tablosu)
         public DbSet<AuditLog> AuditLoglar => Set<AuditLog>();
         public DbSet<HappyHour> HappyHourlar => Set<HappyHour>();
 
@@ -222,15 +223,13 @@ namespace QRMenu.Data.Data
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // ===== KULLANICI =====
+            // ===== KULLANICI (ASP.NET Identity) =====
+            // Identity kendi tablolarını (AspNetUsers, AspNetRoles, vb.) otomatik yönetir.
+            // Sadece özel alanları yapılandırıyoruz.
             modelBuilder.Entity<Kullanici>(entity =>
             {
-                entity.ToTable("Kullanicilar");
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.KullaniciAdi).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.AdSoyad).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.SifreHash).IsRequired().HasMaxLength(256);
-                entity.HasIndex(e => e.KullaniciAdi).IsUnique();
+                // Rol ve AktifMi default değerleri EF ile yönetilir
             });
 
             // ===== AUDIT LOG =====

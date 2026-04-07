@@ -77,12 +77,8 @@ namespace QRMenu.Data.Data
             );
 
             // ===== KULLANICILAR =====
-            modelBuilder.Entity<Kullanici>().HasData(
-                new Kullanici { Id = 1, KullaniciAdi = "admin", AdSoyad = "Sistem Yöneticisi", SifreHash = "123456", Rol = KullaniciRol.Admin, AktifMi = true },
-                new Kullanici { Id = 2, KullaniciAdi = "garson", AdSoyad = "Garson Test", SifreHash = "123456", Rol = KullaniciRol.Garson, AktifMi = true },
-                new Kullanici { Id = 3, KullaniciAdi = "kasa", AdSoyad = "Kasa Test", SifreHash = "123456", Rol = KullaniciRol.Kasa, AktifMi = true },
-                new Kullanici { Id = 4, KullaniciAdi = "mutfak", AdSoyad = "Mutfak Test", SifreHash = "123456", Rol = KullaniciRol.Mutfak, AktifMi = true }
-            );
+            // Identity kullanıcı seed'i UserManager gerektirdiğinden Program.cs startup'ında yapılmaktadır.
+            // Bkz: IdentitySeedHelper.SeedKullanicilarAsync()
         }
     }
 }

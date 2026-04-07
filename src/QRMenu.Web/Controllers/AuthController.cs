@@ -1,19 +1,24 @@
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using QRMenu.Data.Data;
+using QRMenu.Core.Entities;
 using System.Security.Claims;
 
 namespace QRMenu.Web.Controllers
 {
     public class AuthController : Controller
     {
-        private readonly QRMenuDbContext _context;
+        private readonly SignInManager<Kullanici> _signInManager;
+        private readonly UserManager<Kullanici> _userManager;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(QRMenuDbContext context)
+        public AuthController(
+            SignInManager<Kullanici> signInManager,
+            UserManager<Kullanici> userManager,
+            ILogger<AuthController> logger)
         {
-            _context = context;
+            _signInManager = signInManager;
+            _userManager = userManager;
+            _logger = logger;
         }
 
         [HttpGet("/Auth/Login")]
@@ -31,56 +36,40 @@ namespace QRMenu.Web.Controllers
         [HttpPost("/Auth/Login")]
         public async Task<IActionResult> Login(string username, string password)
         {
-            var user = await _context.Kullanicilar.FirstOrDefaultAsync(u => u.KullaniciAdi == username && u.AktifMi);
+            // UserName ile kullanıcıyı bul
+            var user = await _userManager.FindByNameAsync(username);
 
-            // BCrypt hash'li şifre kontrolü (bcrypt hash $2 ile başlar)
-            // Geriye dönük uyumluluk: eski düz metin hashler için de kontrol yap
-            bool sifreGecerli = false;
-            if (user != null)
-            {
-                if (user.SifreHash.StartsWith("$2"))
-                {
-                    // BCrypt hash
-                    sifreGecerli = BCrypt.Net.BCrypt.Verify(password, user.SifreHash);
-                }
-                else
-                {
-                    // Eski düz metin (geçiş dönemi) — geçerliyse BCrypt'e migrate et
-                    sifreGecerli = user.SifreHash == password;
-                    if (sifreGecerli)
-                    {
-                        user.SifreHash = BCrypt.Net.BCrypt.HashPassword(password);
-                        await _context.SaveChangesAsync();
-                    }
-                }
-            }
-
-            if (user == null || !sifreGecerli)
+            if (user == null || !user.AktifMi)
             {
                 ViewBag.Error = "Geçersiz kullanıcı adı veya şifre.";
                 return View();
             }
 
-            var claims = new List<Claim>
+            // Identity SignInManager ile giriş yap (şifre hash doğrulaması otomatik)
+            var result = await _signInManager.PasswordSignInAsync(user, password,
+                isPersistent: true, lockoutOnFailure: true);
+
+            if (result.Succeeded)
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.KullaniciAdi),
-                new Claim(ClaimTypes.Role, user.Rol.ToString()),
-                new Claim("FullName", user.AdSoyad)
-            };
+                _logger.LogInformation("Kullanıcı giriş yaptı. KullaniciAdi={Ad}, Rol={Rol}", user.UserName, user.Rol);
+                return RedirectToRole(user.Rol.ToString());
+            }
 
-            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-            var principal = new ClaimsPrincipal(identity);
+            if (result.IsLockedOut)
+            {
+                _logger.LogWarning("Hesap kilitlendi. KullaniciAdi={Ad}", username);
+                ViewBag.Error = "Çok fazla hatalı giriş. Hesabınız 5 dakika kilitlendi.";
+                return View();
+            }
 
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
-
-            return RedirectToRole(user.Rol.ToString());
+            ViewBag.Error = "Geçersiz kullanıcı adı veya şifre.";
+            return View();
         }
 
         [HttpGet("/Auth/Logout")]
         public async Task<IActionResult> Logout()
         {
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            await _signInManager.SignOutAsync();
             return RedirectToAction("Login");
         }
 
@@ -88,11 +77,11 @@ namespace QRMenu.Web.Controllers
         {
             return role switch
             {
-                "Admin" => RedirectToAction("Index", "Admin"),
+                "Admin"  => RedirectToAction("Index", "Admin"),
                 "Garson" => RedirectToAction("Masalar", "Garson"),
-                "Kasa" => RedirectToAction("Masalar", "Kasa"),
+                "Kasa"   => RedirectToAction("Masalar", "Kasa"),
                 "Mutfak" => RedirectToAction("Panel", "Mutfak"),
-                _ => RedirectToAction("Login")
+                _        => RedirectToAction("Login")
             };
         }
     }

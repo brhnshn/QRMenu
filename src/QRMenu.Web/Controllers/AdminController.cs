@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using QRCoder;
 using QRMenu.Web.ViewModels;
@@ -27,14 +28,22 @@ namespace QRMenu.Web.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly ISiparisService _siparisService;
         private readonly IHubContext<MenuHub> _menuHub;
+        private readonly UserManager<Kullanici> _userManager;
 
-        public AdminController(QRMenuDbContext context, ILogger<AdminController> logger, IWebHostEnvironment env, ISiparisService siparisService, IHubContext<MenuHub> menuHub)
+        public AdminController(
+            QRMenuDbContext context,
+            ILogger<AdminController> logger,
+            IWebHostEnvironment env,
+            ISiparisService siparisService,
+            IHubContext<MenuHub> menuHub,
+            UserManager<Kullanici> userManager)
         {
             _context = context;
             _logger = logger;
             _env = env;
             _siparisService = siparisService;
             _menuHub = menuHub;
+            _userManager = userManager;
         }
 
         // Admin ana sayfa → masalara yönlendir
@@ -771,10 +780,10 @@ namespace QRMenu.Web.Controllers
         [HttpGet("/admin/kullanici-listesi")]
         public async Task<IActionResult> KullaniciListesi()
         {
-            var kullanicilar = await _context.Kullanicilar
+            var kullanicilar = await _userManager.Users
                 .OrderBy(k => k.Rol)
-                .ThenBy(k => k.KullaniciAdi)
-                .Select(k => new { k.Id, k.KullaniciAdi, k.AdSoyad, Rol = k.Rol.ToString(), k.AktifMi })
+                .ThenBy(k => k.UserName)
+                .Select(k => new { k.Id, KullaniciAdi = k.UserName, k.AdSoyad, Rol = k.Rol.ToString(), k.AktifMi })
                 .ToListAsync();
 
             return Json(new { success = true, data = kullanicilar });
@@ -786,37 +795,38 @@ namespace QRMenu.Web.Controllers
             if (!ModelState.IsValid)
                 return Json(new { success = false, message = "Geçersiz veri." });
 
-            var mevcut = await _context.Kullanicilar
-                .AnyAsync(k => k.KullaniciAdi == model.KullaniciAdi);
-
-            if (mevcut)
-                return Json(new { success = false, message = "Bu kullanıcı adı zaten kullanılıyor." });
-
             if (!Enum.TryParse<KullaniciRol>(model.Rol, out var rol))
                 return Json(new { success = false, message = "Geçersiz rol." });
 
             var kullanici = new Kullanici
             {
-                KullaniciAdi = model.KullaniciAdi,
+                UserName = model.KullaniciAdi,
                 AdSoyad = model.AdSoyad,
-                SifreHash = BCrypt.Net.BCrypt.HashPassword(model.Sifre),
                 Rol = rol,
                 AktifMi = true
             };
 
-            _context.Kullanicilar.Add(kullanici);
-            await _context.SaveChangesAsync();
+            // Identity şifre hash'leme ve validation
+            var result = await _userManager.CreateAsync(kullanici, model.Sifre);
+            if (!result.Succeeded)
+            {
+                var hatalar = string.Join(", ", result.Errors.Select(e => e.Description));
+                return Json(new { success = false, message = hatalar });
+            }
 
-            _logger.LogInformation("Kullanıcı eklendi. Id={Id}, KullaniciAdi={Ad}, Rol={Rol}",
-                kullanici.Id, kullanici.KullaniciAdi, kullanici.Rol);
+            // Role ekle (Identity rol sistemi)
+            await _userManager.AddToRoleAsync(kullanici, rol.ToString());
+
+            _logger.LogInformation("Kullanıcı eklendi. Id={Id}, UserName={Ad}, Rol={Rol}",
+                kullanici.Id, kullanici.UserName, kullanici.Rol);
 
             return Json(new { success = true, id = kullanici.Id });
         }
 
-        [HttpPost("/admin/kullanici-guncelle/{id:int}")]
-        public async Task<IActionResult> KullaniciGuncelle(int id, [FromBody] KullaniciGuncelleViewModel model)
+        [HttpPost("/admin/kullanici-guncelle/{id}")]
+        public async Task<IActionResult> KullaniciGuncelle(string id, [FromBody] KullaniciGuncelleViewModel model)
         {
-            var kullanici = await _context.Kullanicilar.FindAsync(id);
+            var kullanici = await _userManager.FindByIdAsync(id);
             if (kullanici == null)
                 return Json(new { success = false, message = "Kullanıcı bulunamadı." });
 
@@ -826,86 +836,101 @@ namespace QRMenu.Web.Controllers
             // Son admin rolden düşürme kontrolü
             if (kullanici.Rol == KullaniciRol.Admin && rol != KullaniciRol.Admin)
             {
-                var adminSayisi = await _context.Kullanicilar
+                var adminSayisi = await _userManager.Users
                     .CountAsync(k => k.Rol == KullaniciRol.Admin && k.AktifMi);
                 if (adminSayisi <= 1)
-                    return Json(new { success = false, message = "Son admin rolden düşürülemez." });
+                    return Json(new { success = false, message = "Son admin rolünden düşürülemez." });
+            }
+
+            // Rol değişmişse Identity rol tablosunu da güncelle
+            if (kullanici.Rol != rol)
+            {
+                var eskiRoller = await _userManager.GetRolesAsync(kullanici);
+                await _userManager.RemoveFromRolesAsync(kullanici, eskiRoller);
+                await _userManager.AddToRoleAsync(kullanici, rol.ToString());
             }
 
             kullanici.AdSoyad = model.AdSoyad;
             kullanici.Rol = rol;
             kullanici.AktifMi = model.AktifMi;
+            await _userManager.UpdateAsync(kullanici);
 
-            await _context.SaveChangesAsync();
             _logger.LogInformation("Kullanıcı güncellendi. Id={Id}, Rol={Rol}, Aktif={Aktif}", id, rol, model.AktifMi);
-
             return Json(new { success = true });
         }
 
-        [HttpPost("/admin/kullanici-sifre/{id:int}")]
-        public async Task<IActionResult> KullaniciSifreDegistir(int id, [FromBody] SifreDegistirViewModel model)
+        [HttpPost("/admin/kullanici-sifre/{id}")]
+        public async Task<IActionResult> KullaniciSifreDegistir(string id, [FromBody] SifreDegistirViewModel model)
         {
             if (string.IsNullOrWhiteSpace(model.YeniSifre) || model.YeniSifre.Length < 6)
                 return Json(new { success = false, message = "Şifre en az 6 karakter olmalıdır." });
 
-            var kullanici = await _context.Kullanicilar.FindAsync(id);
+            var kullanici = await _userManager.FindByIdAsync(id);
             if (kullanici == null)
                 return Json(new { success = false, message = "Kullanıcı bulunamadı." });
 
-            kullanici.SifreHash = BCrypt.Net.BCrypt.HashPassword(model.YeniSifre);
-            await _context.SaveChangesAsync();
+            // Identity ile şifre sıfırla (hash'leme otomatik)
+            var token = await _userManager.GeneratePasswordResetTokenAsync(kullanici);
+            var result = await _userManager.ResetPasswordAsync(kullanici, token, model.YeniSifre);
+
+            if (!result.Succeeded)
+            {
+                var hatalar = string.Join(", ", result.Errors.Select(e => e.Description));
+                return Json(new { success = false, message = hatalar });
+            }
 
             _logger.LogInformation("Şifre değiştirildi. KullaniciId={Id}", id);
             return Json(new { success = true });
         }
 
-        [HttpPost("/admin/kullanici-sil/{id:int}")]
-        public async Task<IActionResult> KullaniciSil(int id)
+        [HttpPost("/admin/kullanici-sil/{id}")]
+        public async Task<IActionResult> KullaniciSil(string id)
         {
-            var kullanici = await _context.Kullanicilar.FindAsync(id);
+            var kullanici = await _userManager.FindByIdAsync(id);
             if (kullanici == null)
                 return Json(new { success = false, message = "Kullanıcı bulunamadı." });
 
             // Kendini sileme kontrolü
-            var mevcutKullaniciId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (mevcutKullaniciId != null && int.TryParse(mevcutKullaniciId, out var mevcutId) && mevcutId == id)
+            var mevcutKullaniciId = _userManager.GetUserId(User);
+            if (mevcutKullaniciId == id)
                 return Json(new { success = false, message = "Kendinizi silemezsiniz." });
 
             // Son admin kontrolü
             if (kullanici.Rol == KullaniciRol.Admin)
             {
-                var adminSayisi = await _context.Kullanicilar
+                var adminSayisi = await _userManager.Users
                     .CountAsync(k => k.Rol == KullaniciRol.Admin && k.AktifMi);
                 if (adminSayisi <= 1)
                     return Json(new { success = false, message = "Son admin silinemez." });
             }
 
-            // Hard delete
-            _context.Kullanicilar.Remove(kullanici);
-            await _context.SaveChangesAsync();
+            // Hard delete (Identity)
+            var result = await _userManager.DeleteAsync(kullanici);
+            if (!result.Succeeded)
+                return Json(new { success = false, message = "Silme işlemi başarısız." });
 
-            _logger.LogInformation("Kullanıcı silindi. Id={Id}, KullaniciAdi={Ad}", id, kullanici.KullaniciAdi);
+            _logger.LogInformation("Kullanıcı silindi. Id={Id}, UserName={Ad}", id, kullanici.UserName);
             return Json(new { success = true });
         }
 
-        [HttpPost("/admin/kullanici-toggle/{id:int}")]
-        public async Task<IActionResult> KullaniciToggle(int id)
+        [HttpPost("/admin/kullanici-toggle/{id}")]
+        public async Task<IActionResult> KullaniciToggle(string id)
         {
-            var kullanici = await _context.Kullanicilar.FindAsync(id);
+            var kullanici = await _userManager.FindByIdAsync(id);
             if (kullanici == null)
                 return Json(new { success = false, message = "Kullanıcı bulunamadı." });
 
             // Son admin pasife alınamaz
             if (kullanici.Rol == KullaniciRol.Admin && kullanici.AktifMi)
             {
-                var adminSayisi = await _context.Kullanicilar
+                var adminSayisi = await _userManager.Users
                     .CountAsync(k => k.Rol == KullaniciRol.Admin && k.AktifMi);
                 if (adminSayisi <= 1)
                     return Json(new { success = false, message = "Üzgünüz, sistemde sadece bir aktif Admin var ve bu kullanıcı pasife alınamaz." });
             }
 
             kullanici.AktifMi = !kullanici.AktifMi;
-            await _context.SaveChangesAsync();
+            await _userManager.UpdateAsync(kullanici);
 
             _logger.LogInformation("Kullanıcı durumu değiştirildi. Id={Id}, AktifMi={AktifMi}", id, kullanici.AktifMi);
             return Json(new { success = true, aktifMi = kullanici.AktifMi });
