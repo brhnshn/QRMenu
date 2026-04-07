@@ -3,10 +3,16 @@
     ViewData["Title"] = "Menü";
     Layout = null;
     var kategoriler = Model.Select(u => u.Kategori).DistinctBy(k => k.Id).OrderBy(k => k.SiraNo).ToList();
-    (decimal IndirimOrani, int? UrunId)? hhTuple = ViewBag.HappyHour as (decimal IndirimOrani, int? UrunId)?;
-    bool isHappyHour = hhTuple.HasValue && hhTuple.Value.IndirimOrani > 0;
-    decimal hhOran = isHappyHour ? hhTuple.Value.IndirimOrani : 0;
-    int? hhUrunId = isHappyHour ? hhTuple.Value.UrunId : null;
+    (decimal IndirimOrani, List<int> UrunIds)? hhTuple = ViewBag.HappyHour as (decimal IndirimOrani, List<int> UrunIds)?;
+    bool isHappyHour = false;
+    decimal hhOran = 0;
+    var hhUrunIds = new HashSet<int>();
+    if (hhTuple is { } hhValue && hhValue.IndirimOrani > 0)
+    {
+        isHappyHour = true;
+        hhOran = hhValue.IndirimOrani;
+        hhUrunIds = hhValue.UrunIds?.ToHashSet() ?? new HashSet<int>();
+    }
 }
 
 <!DOCTYPE html>
@@ -167,7 +173,7 @@
                                 <div class="flex justify-between items-start mb-2">
                                     <h3 class="font-headline font-bold text-xl text-on-surface leading-tight">@urun.Ad</h3>
                                     @{
-                                        bool hhGecerli = isHappyHour && (!hhUrunId.HasValue || hhUrunId.Value == urun.Id);
+                                        bool hhGecerli = isHappyHour && (!hhUrunIds.Any() || hhUrunIds.Contains(urun.Id));
                                         decimal gorunenFiyat = hhGecerli ? Math.Round(urun.Fiyat * (1 - hhOran / 100m), 2) : urun.Fiyat;
                                     }
                                     <div class="flex flex-col items-end">
@@ -538,7 +544,8 @@
                 kat.urunler.forEach(function(urun) {
                     const isSoldOut = !urun.aktifMi;
                     let bFiyat = urun.fiyat;
-                    let hhGecerli = happyHour != null && (!happyHour.urunId || happyHour.urunId == urun.id);
+                    const hhUrunIds = (happyHour && Array.isArray(happyHour.urunIds)) ? happyHour.urunIds : [];
+                    let hhGecerli = happyHour != null && (hhUrunIds.length === 0 || hhUrunIds.includes(urun.id));
                     if (hhGecerli) {
                         bFiyat = Math.round(bFiyat * (1 - happyHour.indirimOrani / 100) * 100) / 100;
                     }

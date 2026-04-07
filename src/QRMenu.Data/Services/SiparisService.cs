@@ -203,6 +203,7 @@ namespace QRMenu.Data.Services
 
                 decimal toplamTutar = 0;
                 var siparisDetaylar = new List<SiparisDetay>();
+                var indirimUygulandi = false;
 
                 // Happy Hour kontrolü
                 var hh = await HappyHourBilgisiGetirAsync();
@@ -226,8 +227,11 @@ namespace QRMenu.Data.Services
                         seciliOpsiyonlarJson = System.Text.Json.JsonSerializer.Serialize(opsiyonlar.Select(o => new { o.Id, o.Ad, o.EkFiyat }));
                     }
 
-                    if (hh.IndirimOrani > 0 && (hh.UrunId == null || hh.UrunId == item.UrunId))
+                    if (hh.IndirimOrani > 0 && (!hh.UrunIds.Any() || hh.UrunIds.Contains(item.UrunId)))
+                    {
                         birimFiyat = Math.Round(birimFiyat * (1 - hh.IndirimOrani / 100m), 2);
+                        indirimUygulandi = true;
+                    }
 
                     toplamTutar += (birimFiyat * item.Adet);
 
@@ -248,7 +252,7 @@ namespace QRMenu.Data.Services
                     Durum = SiparisDurum.Onaylandi,
                     OlusturmaTarihi = DateTime.UtcNow,
                     ToplamTutar = toplamTutar,
-                    Notlar = hh.IndirimOrani > 0
+                    Notlar = indirimUygulandi
                         ? $"🎉 Happy Hour -%{hh.IndirimOrani} uygulandı. {(notlar != null ? "| " + notlar : "")}"
                         : notlar,
                     RowVersion = Guid.NewGuid().ToByteArray()
@@ -395,14 +399,15 @@ namespace QRMenu.Data.Services
         /// <summary>
         /// Şu anda aktif bir Happy Hour varsa bilgilerini, yoksa boş döner.
         /// </summary>
-        private async Task<(decimal IndirimOrani, int? UrunId)> HappyHourBilgisiGetirAsync()
+        private async Task<(decimal IndirimOrani, HashSet<int> UrunIds)> HappyHourBilgisiGetirAsync()
         {
             var happyHour = await _context.HappyHourlar
+                .Include(h => h.HappyHourUrunler)
                 .Where(h => h.AktifMi)
                 .FirstOrDefaultAsync();
 
             if (happyHour == null)
-                return (0m, null);
+                return (0m, new HashSet<int>());
 
             var turkey = TimeZoneInfo.FindSystemTimeZoneById(
                 OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
@@ -416,11 +421,12 @@ namespace QRMenu.Data.Services
 
             if (aktif)
             {
-                _logger.LogInformation("Happy Hour aktif! İndirim oranı: %{Oran}, UrunId: {UrunId}", happyHour.IndirimOrani, happyHour.UrunId);
-                return (happyHour.IndirimOrani, happyHour.UrunId);
+                var urunIds = happyHour.HappyHourUrunler.Select(x => x.UrunId).ToHashSet();
+                _logger.LogInformation("Happy Hour aktif! İndirim oranı: %{Oran}, UrunSayisi: {UrunSayisi}", happyHour.IndirimOrani, urunIds.Count);
+                return (happyHour.IndirimOrani, urunIds);
             }
 
-            return (0m, null);
+            return (0m, new HashSet<int>());
         }
     }
 }

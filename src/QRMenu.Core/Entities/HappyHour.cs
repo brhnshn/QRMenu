@@ -23,9 +23,14 @@ namespace QRMenu.Core.Entities
         /// <summary>Son güncelleme zamanı (audit için)</summary>
         public DateTime GuncellemeTarihi { get; set; } = DateTime.UtcNow;
 
-        /// <summary>Eğer null ise tüm ürünlerde geçerlidir. Dolu ise sadece o üründe geçerlidir.</summary>
+        /// <summary>
+        /// Geriye dönük uyumluluk için tutulur.
+        /// Yeni yapıda çoklu ürün desteği HappyHourUrunler üzerinden yönetilir.
+        /// </summary>
         public int? UrunId { get; set; }
 
         public virtual Urun? Urun { get; set; }
+
+        public ICollection<HappyHourUrun> HappyHourUrunler { get; set; } = new List<HappyHourUrun>();
     }
 }

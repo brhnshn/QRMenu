@@ -70,9 +70,12 @@ namespace QRMenu.Web.Controllers
             return View(sepet);
         }
 
-        private async Task<(decimal IndirimOrani, int? UrunId)?> GetActiveHappyHourAsync()
+        private async Task<(decimal IndirimOrani, List<int> UrunIds)?> GetActiveHappyHourAsync()
         {
-            var hh = await _context.HappyHourlar.Where(h => h.AktifMi).FirstOrDefaultAsync();
+            var hh = await _context.HappyHourlar
+                .Include(h => h.HappyHourUrunler)
+                .Where(h => h.AktifMi)
+                .FirstOrDefaultAsync();
             if (hh == null) return null;
 
             var turkey = TimeZoneInfo.FindSystemTimeZoneById(
@@ -85,7 +88,11 @@ namespace QRMenu.Web.Controllers
             else
                 aktif = simdiki >= hh.BaslangicSaati || simdiki <= hh.BitisSaati;
 
-            if (aktif) return (hh.IndirimOrani, hh.UrunId);
+            if (aktif)
+            {
+                var urunIds = hh.HappyHourUrunler.Select(x => x.UrunId).ToList();
+                return (hh.IndirimOrani, urunIds);
+            }
             return null;
         }
 
@@ -104,7 +111,7 @@ namespace QRMenu.Web.Controllers
                 
                 decimal? discountRate = null;
                 var hh = await GetActiveHappyHourAsync();
-                if (hh != null && (!hh.Value.UrunId.HasValue || hh.Value.UrunId == request.UrunId))
+                if (hh != null && (!hh.Value.UrunIds.Any() || hh.Value.UrunIds.Contains(request.UrunId)))
                 {
                     discountRate = hh.Value.IndirimOrani;
                 }

@@ -1,11 +1,12 @@
 @model QRMenu.Core.Entities.HappyHour
 @{
-    ViewData["Title"] = "Happy Hour Yönetimi";
+    ViewData["Title"] = "İndirim Saatleri";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    var seciliUrunIds = ViewBag.SeciliUrunIds as List<int> ?? new();
 }
 
 <div class="admin-page-header">
-    <h1><span class="emoji">🎉</span> Happy Hour Yönetimi</h1>
+    <h1><span class="emoji">🎉</span> İndirim Saatleri</h1>
     <p class="subtitle">Belirli saat aralığında otomatik indirim uygulayın</p>
 </div>
 
@@ -21,12 +22,12 @@
 <!-- Ayarlar Formu -->
 <div class="settings-panel">
     <div class="panel-header">
-        <h2>⚙️ Happy Hour Ayarları</h2>
+        <h2>⚙️ İndirim Saatleri Ayarları</h2>
     </div>
     <div class="panel-body">
         <form id="happyHourForm">
             <div class="toggle-row">
-                <label class="toggle-label">Happy Hour Aktif</label>
+                <label class="toggle-label">İndirim Saatleri Aktif</label>
                 <label class="toggle-switch">
                     <input type="checkbox" id="aktifMi" @(Model != null && Model.AktifMi ? "checked" : "")>
                     <span class="slider"></span>
@@ -36,32 +37,34 @@
             <div class="form-row">
                 <div class="form-group">
                     <label for="baslaingicSaati">🕐 Başlangıç Saati</label>
-                    <input type="time" id="baslaingicSaati" class="form-control time-input"
-                           value="@(Model?.BaslangicSaati.ToString(@"hh\:mm") ?? "14:00")" required>
+                      <input type="text" id="baslaingicSaati" class="form-control time-input"
+                          value="@(Model?.BaslangicSaati.ToString(@"hh\:mm") ?? "14:00")"
+                          placeholder="Örn: 00:00 veya 00.00" inputmode="numeric" required>
                 </div>
                 <div class="form-group">
                     <label for="bitisSaati">🕓 Bitiş Saati</label>
-                    <input type="time" id="bitisSaati" class="form-control time-input"
-                           value="@(Model?.BitisSaati.ToString(@"hh\:mm") ?? "17:00")" required>
+                      <input type="text" id="bitisSaati" class="form-control time-input"
+                          value="@(Model?.BitisSaati.ToString(@"hh\:mm") ?? "17:00")"
+                          placeholder="Örn: 00:50 veya 00.50" inputmode="numeric" required>
                 </div>
             </div>
 
             <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label for="urunId">🛍️ Hangi Üründe Geçerli? (Boş bırakılırsa tüm menüde geçerli olur)</label>
-                <select id="urunId" class="form-control">
-                    <option value="">-- Tüm Menüye Uygula --</option>
+                <label>🛍️ Hangi Ürünlerde Geçerli?</label>
+                <div id="urunSecimListesi" class="urun-secim-listesi"></div>
+                <div class="urun-secim-actions">
+                    <button type="button" class="btn-add-row" onclick="urunSatiriEkle()">+ Ürün Ekle</button>
+                    <button type="button" class="btn-clear-row" onclick="urunSecimleriniTemizle()">Tümünü Temizle (Tüm Menü)</button>
+                </div>
+                <div class="small text-muted">Hiç ürün seçilmezse indirim tüm menüde geçerli olur.</div>
+
+                <select id="urunSablonSecim" class="d-none">
+                    <option value="">-- Ürün Seçiniz --</option>
                     @if (ViewBag.Urunler != null)
                     {
                         foreach (var urun in ViewBag.Urunler)
                         {
-                            if (Model?.UrunId == @urun.Id)
-                            {
-                                <option value="@urun.Id" selected>@urun.Ad (₺@urun.Fiyat)</option>
-                            }
-                            else
-                            {
-                                <option value="@urun.Id">@urun.Ad (₺@urun.Fiyat)</option>
-                            }
+                            <option value="@urun.Id">@urun.Ad (₺@urun.Fiyat)</option>
                         }
                     }
                 </select>
@@ -96,7 +99,7 @@
                     <span class="indirim-miktar">-₺10,00</span>
                 </div>
                 <div class="preview-row total">
-                    <span>Happy Hour Fiyatı:</span>
+                    <span>İndirimli Fiyat:</span>
                     <span class="sonuc-fiyat">₺90,00</span>
                 </div>
             </div>
@@ -112,9 +115,9 @@
 <div class="info-box">
     <h3>ℹ️ Nasıl Çalışır?</h3>
     <ul>
-        <li>Happy Hour aktif olduğunda, sipariş oluşturulurken belirtilen saat aralığı Türkiye saatiyle kontrol edilir.</li>
+        <li>İndirim saatleri aktif olduğunda, sipariş oluşturulurken belirtilen saat aralığı Türkiye saatiyle kontrol edilir.</li>
         <li>Saat aralığı içindeyse, toplam sipariş tutarına otomatik indirim uygulanır.</li>
-        <li>İndirim bilgisi siparişin notlar alanına kayıt edilir (🎉 Happy Hour -%X indirim uygulandı).</li>
+        <li>İndirim bilgisi siparişin notlar alanına kayıt edilir (🎉 İndirim Saatleri -%X indirim uygulandı).</li>
         <li>Gece yarısını geçen saat aralıkları da desteklenmektedir (örn. 22:00 - 02:00).</li>
     </ul>
 </div>
@@ -171,6 +174,29 @@
     .discount-slider { width: 100%; accent-color: #e44d26; }
     .slider-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); }
 
+    .urun-secim-listesi { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 0.7rem; }
+    .urun-secim-row { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; align-items: center; }
+    .urun-secim-actions { display: flex; gap: 0.5rem; margin-bottom: 0.4rem; }
+    .btn-add-row, .btn-clear-row {
+        border: 1px solid var(--border);
+        background: var(--bg-secondary, #f8f9fa);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 0.45rem 0.75rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+    }
+    .btn-remove-row {
+        border: 1px solid #dc3545;
+        background: rgba(220,53,69,0.08);
+        color: #dc3545;
+        border-radius: 8px;
+        padding: 0.45rem 0.7rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
     .preview-box { background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; margin-bottom: 1.5rem; }
     .preview-box h3 { margin: 0 0 1rem 0; font-size: 0.95rem; font-weight: 600; }
     .preview-row { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
@@ -199,18 +225,20 @@
 
             if (!d.aktifMi) {
                 dot.className = 'pulse-dot inactive';
-                txt.textContent = 'Happy Hour Pasif';
+                txt.textContent = 'İndirim Saatleri Pasif';
                 det.textContent = 'Herhangi bir indirim uygulanmıyor.';
             } else if (d.suAnAktif) {
                 dot.className = 'pulse-dot active';
-                txt.textContent = `🎉 Happy Hour AKTIF — %${d.indirimOrani} İndirim!`;
-                
-                let urn = d.urunId ? `Belirli bir ürün için geçerli (ID: ${d.urunId})` : 'Tüm menüde geçerli';
+                txt.textContent = `🎉 İndirim Saatleri AKTİF — %${d.indirimOrani} İndirim!`;
+
+                const seciliUrunSayisi = Array.isArray(d.urunIds) ? d.urunIds.length : 0;
+                let urn = seciliUrunSayisi > 0 ? `${seciliUrunSayisi} üründe geçerli` : 'Tüm menüde geçerli';
                 det.textContent = `Saat aralığı: ${d.baslaingicSaati} - ${d.bitisSaati} | ${urn}`;
             } else {
                 dot.className = 'pulse-dot waiting';
-                txt.textContent = `Happy Hour Aktif — Bekleniyor`;
-                let urn = d.urunId ? `Sadece seçili üründe geçerli` : 'Tüm menüde geçerli';
+                txt.textContent = `İndirim Saatleri Aktif — Bekleniyor`;
+                const seciliUrunSayisi = Array.isArray(d.urunIds) ? d.urunIds.length : 0;
+                let urn = seciliUrunSayisi > 0 ? `${seciliUrunSayisi} üründe geçerli` : 'Tüm menüde geçerli';
                 det.textContent = `Aktif saat aralığı: ${d.baslaingicSaati} - ${d.bitisSaati} | Şu an: %${d.indirimOrani} bekleniyor | ${urn}`;
             }
         } catch (e) {
@@ -242,18 +270,73 @@
     slider.addEventListener('input', () => updatePreview(slider.value));
     updatePreview(oran.value);
 
+    function urunSatiriEkle(selectedValue = '') {
+        const list = document.getElementById('urunSecimListesi');
+        const template = document.getElementById('urunSablonSecim');
+
+        const row = document.createElement('div');
+        row.className = 'urun-secim-row';
+
+        const sel = document.createElement('select');
+        sel.className = 'form-control urun-secim';
+        sel.innerHTML = template.innerHTML;
+        sel.value = String(selectedValue || '');
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn-remove-row';
+        btn.textContent = 'Sil';
+        btn.onclick = () => {
+            row.remove();
+            document.getElementById('happyHourForm').requestSubmit();
+        };
+
+        row.appendChild(sel);
+        row.appendChild(btn);
+        list.appendChild(row);
+    }
+
+    function urunSecimleriniTemizle() {
+        document.getElementById('urunSecimListesi').innerHTML = '';
+    }
+
+    function seciliUrunIdleriTopla() {
+        const secimler = Array.from(document.querySelectorAll('.urun-secim'));
+        return secimler
+            .map(x => parseInt(x.value, 10))
+            .filter(x => !Number.isNaN(x) && x > 0)
+            .filter((v, i, a) => a.indexOf(v) === i);
+    }
+
+    (function baslangicUrunSecimleri() {
+        const secili = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(seciliUrunIds));
+        if (Array.isArray(secili) && secili.length > 0) {
+            secili.forEach(x => urunSatiriEkle(x));
+        }
+    })();
+
     // Form submit
     document.getElementById('happyHourForm').addEventListener('submit', async function (e) {
         e.preventDefault();
         const btn = document.getElementById('saveBtn');
         btn.disabled = true; btn.innerHTML = '<span>⏳</span> Kaydediliyor...';
 
+        const normalizeSaat = (raw) => (raw || '').trim().replace('.', ':');
+        const baslangic = normalizeSaat(document.getElementById('baslaingicSaati').value);
+        const bitis = normalizeSaat(document.getElementById('bitisSaati').value);
+
+        if (!/^\d{1,2}:\d{2}$/.test(baslangic) || !/^\d{1,2}:\d{2}$/.test(bitis)) {
+            btn.innerHTML = '<span>❌</span> Saat formatı hatalı';
+            setTimeout(() => { btn.disabled = false; btn.innerHTML = '<span class="btn-icon">💾</span> Kaydet'; }, 2200);
+            return;
+        }
+
         const payload = {
-            baslaingicSaati: document.getElementById('baslaingicSaati').value,
-            bitisSaati: document.getElementById('bitisSaati').value,
+            baslaingicSaati: baslangic,
+            bitisSaati: bitis,
             indirimOrani: parseFloat(document.getElementById('indirimOrani').value),
             aktifMi: document.getElementById('aktifMi').checked,
-            urunId: document.getElementById('urunId').value ? parseInt(document.getElementById('urunId').value) : null
+            urunIds: seciliUrunIdleriTopla()
         };
 
         try {

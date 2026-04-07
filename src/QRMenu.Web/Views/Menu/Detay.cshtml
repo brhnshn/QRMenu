@@ -93,9 +93,15 @@
                 <div class="flex justify-between items-start mb-4">
                     <h2 class="font-headline font-extrabold text-3xl md:text-4xl text-on-surface leading-tight">@Model.Ad</h2>
                     @{
-                        var hh = ViewBag.HappyHour as (decimal IndirimOrani, int? UrunId)?;
-                        bool isHH = hh != null && (!hh.Value.UrunId.HasValue || hh.Value.UrunId == Model.Id);
-                        decimal unitPrice = isHH ? Math.Round(Model.Fiyat * (1 - hh.Value.IndirimOrani / 100m), 2) : Model.Fiyat;
+                        var hh = ViewBag.HappyHour as (decimal IndirimOrani, List<int> UrunIds)?;
+                        bool isHH = false;
+                        decimal unitPrice = Model.Fiyat;
+
+                        if (hh is { } hhValue && (!hhValue.UrunIds.Any() || hhValue.UrunIds.Contains(Model.Id)))
+                        {
+                            isHH = true;
+                            unitPrice = Math.Round(Model.Fiyat * (1 - hhValue.IndirimOrani / 100m), 2);
+                        }
                     }
                     <div class="flex flex-col items-end">
                         <span class="font-headline font-bold text-2xl text-primary whitespace-nowrap ml-4">@unitPrice.ToString("N2") ₺</span>

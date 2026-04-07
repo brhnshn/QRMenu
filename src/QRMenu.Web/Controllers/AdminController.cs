@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using QRCoder;
 using QRMenu.Web.ViewModels;
 using QRMenu.Web.Hubs;
@@ -492,10 +493,11 @@ namespace QRMenu.Web.Controllers
             if (urun == null)
                 return Json(new { success = false, message = "Ürün bulunamadı." });
 
-            // Aktif (iptal/iade olmayan) siparişlerde bağlı detay varsa pasife çek
+            // Aktif (tamamlanmamış) siparişlerde bağlı detay varsa pasife çek
             var aktifSiparisVar = await _context.SiparisDetaylar
                 .AnyAsync(sd => sd.UrunId == id
                     && sd.Siparis.Durum != SiparisDurum.Iptal
+                    && sd.Siparis.Durum != SiparisDurum.TamOdendi
                     && sd.Siparis.Durum != SiparisDurum.Iade);
             if (aktifSiparisVar)
             {
@@ -691,18 +693,23 @@ namespace QRMenu.Web.Controllers
         public async Task<IActionResult> HappyHour()
         {
             ViewData["ActivePage"] = "HappyHour";
-            ViewData["PageTitle"] = "Happy Hour Yönetimi";
+            ViewData["PageTitle"] = "İndirim Saatleri";
             ViewBag.Urunler = await _context.Urunler.Where(u => u.AktifMi).OrderBy(u => u.Ad).ToListAsync();
-            var happyHour = await _context.HappyHourlar.FirstOrDefaultAsync();
+            var happyHour = await _context.HappyHourlar
+                .Include(h => h.HappyHourUrunler)
+                .FirstOrDefaultAsync();
+            ViewBag.SeciliUrunIds = happyHour?.HappyHourUrunler.Select(x => x.UrunId).ToList() ?? new List<int>();
             return View(happyHour);
         }
 
         [HttpGet("/admin/happy-hour-bilgi")]
         public async Task<IActionResult> HappyHourBilgi()
         {
-            var hh = await _context.HappyHourlar.FirstOrDefaultAsync();
+            var hh = await _context.HappyHourlar
+                .Include(h => h.HappyHourUrunler)
+                .FirstOrDefaultAsync();
             if (hh == null)
-                return Json(new { aktifMi = false, indirimOrani = 0, baslaingicSaati = "", bitisSaati = "", urunId = (int?)null });
+                return Json(new { aktifMi = false, indirimOrani = 0, baslaingicSaati = "", bitisSaati = "", urunIds = Array.Empty<int>() });
 
             var turkey = TimeZoneInfo.FindSystemTimeZoneById(
                 OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
@@ -725,7 +732,7 @@ namespace QRMenu.Web.Controllers
                 indirimOrani = hh.IndirimOrani,
                 baslaingicSaati = hh.BaslangicSaati.ToString(@"hh\:mm"),
                 bitisSaati = hh.BitisSaati.ToString(@"hh\:mm"),
-                urunId = hh.UrunId
+                urunIds = hh.HappyHourUrunler.Select(x => x.UrunId).ToArray()
             });
         }
 
@@ -735,32 +742,60 @@ namespace QRMenu.Web.Controllers
             if (!ModelState.IsValid)
                 return Json(new { success = false, message = "Geçersiz veri." });
 
-            var hh = await _context.HappyHourlar.FirstOrDefaultAsync();
+            var hh = await _context.HappyHourlar
+                .Include(h => h.HappyHourUrunler)
+                .FirstOrDefaultAsync();
             if (hh == null)
             {
                 hh = new Core.Entities.HappyHour();
                 _context.HappyHourlar.Add(hh);
             }
 
-            if (!TimeSpan.TryParseExact(model.BaslangicSaati, @"hh\:mm", null, out var baslaingicTs))
+                var baslangicRaw = (model.BaslangicSaati ?? string.Empty).Trim().Replace('.', ':');
+                var bitisRaw = (model.BitisSaati ?? string.Empty).Trim().Replace('.', ':');
+
+                if (!TimeSpan.TryParseExact(
+                    baslangicRaw,
+                    new[] { @"hh\:mm", @"h\:mm" },
+                    CultureInfo.InvariantCulture,
+                    out var baslaingicTs))
                 return Json(new { success = false, message = "Geçersiz başlangıç saati formatı. Örn: 14:00" });
 
-            if (!TimeSpan.TryParseExact(model.BitisSaati, @"hh\:mm", null, out var bitisTs))
+                if (!TimeSpan.TryParseExact(
+                    bitisRaw,
+                    new[] { @"hh\:mm", @"h\:mm" },
+                    CultureInfo.InvariantCulture,
+                    out var bitisTs))
                 return Json(new { success = false, message = "Geçersiz bitiş saati formatı. Örn: 17:00" });
 
             hh.BaslangicSaati = baslaingicTs;
             hh.BitisSaati = bitisTs;
             hh.IndirimOrani = model.IndirimOrani;
             hh.AktifMi = model.AktifMi;
-            hh.UrunId = model.UrunId;
+            hh.UrunId = null;
             hh.GuncellemeTarihi = DateTime.UtcNow;
+
+            var yeniUrunIds = (model.UrunIds ?? new List<int>())
+                .Where(x => x > 0)
+                .Distinct()
+                .ToList();
+
+            _context.HappyHourUrunler.RemoveRange(hh.HappyHourUrunler);
+            hh.HappyHourUrunler.Clear();
+            foreach (var urunId in yeniUrunIds)
+            {
+                hh.HappyHourUrunler.Add(new HappyHourUrun
+                {
+                    UrunId = urunId
+                });
+            }
 
             await _context.SaveChangesAsync();
             
             // SignalR ile canlı yayını (Müşteri ekranlarına gönder)
             await _menuHub.Clients.All.SendAsync("HappyHourGuncellendi");
-            _logger.LogInformation("Happy Hour güncellendi. Aktif={Aktif}, Oran=%{Oran}, {Baslangic}-{Bitis}",
-                hh.AktifMi, hh.IndirimOrani, hh.BaslangicSaati, hh.BitisSaati);
+            _logger.LogInformation("İndirim saatleri güncellendi. Aktif={Aktif}, Oran=%{Oran}, {Baslangic}-{Bitis}, UrunSayisi={UrunSayisi}",
+                hh.AktifMi, hh.IndirimOrani, hh.BaslangicSaati, hh.BitisSaati, yeniUrunIds.Count);
 
             return Json(new { success = true });
         }

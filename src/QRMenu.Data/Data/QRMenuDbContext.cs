@@ -24,6 +24,7 @@ namespace QRMenu.Data.Data
         // Kullanicilar artık Identity üzerinden yönetilmektedir (AspNetUsers tablosu)
         public DbSet<AuditLog> AuditLoglar => Set<AuditLog>();
         public DbSet<HappyHour> HappyHourlar => Set<HappyHour>();
+        public DbSet<HappyHourUrun> HappyHourUrunler => Set<HappyHourUrun>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -254,6 +255,24 @@ namespace QRMenu.Data.Data
                       .WithMany()
                       .HasForeignKey(e => e.UrunId)
                       .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<HappyHourUrun>(entity =>
+            {
+                entity.ToTable("HappyHourUrunler");
+                entity.HasKey(e => e.Id);
+
+                entity.HasIndex(e => new { e.HappyHourId, e.UrunId }).IsUnique();
+
+                entity.HasOne(e => e.HappyHour)
+                    .WithMany(h => h.HappyHourUrunler)
+                    .HasForeignKey(e => e.HappyHourId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Urun)
+                    .WithMany()
+                    .HasForeignKey(e => e.UrunId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // ===== SEED DATA =====

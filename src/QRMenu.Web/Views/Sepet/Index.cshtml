@@ -81,7 +81,7 @@
             <div class="mb-10">
                 <h2 class="font-headline text-4xl font-extrabold text-on-surface tracking-tight leading-none mb-2">Seçimlerinizi Gözden Geçirin</h2>
                 @{
-                    var hh = ViewBag.HappyHour as (decimal IndirimOrani, int? UrunId)?;
+                    var hh = ViewBag.HappyHour as (decimal IndirimOrani, List<int> UrunIds)?;
                 }
                 @if (hh != null)
                 {
@@ -106,7 +106,7 @@
                                 <h3 class="font-headline font-bold text-on-surface text-lg">@detay.Urun.Ad</h3>
                                 <div class="flex flex-col items-end">
                                     @{
-                                        bool isHHDetay = hh != null && (!hh.Value.UrunId.HasValue || hh.Value.UrunId == detay.UrunId);
+                                        bool isHHDetay = hh != null && (!hh.Value.UrunIds.Any() || hh.Value.UrunIds.Contains(detay.UrunId));
                                         
                                         decimal pureFiyat = detay.Urun.Fiyat;
                                         try {
