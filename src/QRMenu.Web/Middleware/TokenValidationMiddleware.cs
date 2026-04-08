@@ -104,26 +104,135 @@ namespace QRMenu.Web.Middleware
                 var html = $@"<!DOCTYPE html>
 <html lang=""tr"">
 <head>
-    <meta charset=""utf-8"">
-    <meta name=""viewport"" content=""width=device-width,initial-scale=1"">
-    <title>QR Menü — Oturum Gerekli</title>
-    <style>
-        *{{margin:0;padding:0;box-sizing:border-box}}
-        body{{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center}}
-        .card{{background:rgba(255,255,255,.07);backdrop-filter:blur(12px);border-radius:20px;padding:48px 36px;text-align:center;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3)}}
-        .icon{{font-size:4rem;margin-bottom:16px}}
-        h1{{font-size:1.4rem;margin-bottom:12px;color:#f9e2af}}
-        p{{font-size:.95rem;color:#cdd6f4;line-height:1.6;margin-bottom:24px}}
-        .badge{{display:inline-block;background:#e67e22;color:#fff;padding:8px 24px;border-radius:8px;font-weight:600;font-size:.9rem;text-decoration:none}}
-    </style>
+        <meta charset=""utf-8"" />
+        <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"" />
+        <title>QR Menü - Oturum Gerekli</title>
+        <script src=""https://cdn.tailwindcss.com?plugins=forms,container-queries""></script>
+        <link href=""https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@300;400;500&amp;display=swap"" rel=""stylesheet"" />
+        <link href=""https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"" rel=""stylesheet"" />
+        <script>
+            tailwind.config = {{
+                darkMode: ""class"",
+                theme: {{
+                    extend: {{
+                        colors: {{
+                            ""on-error-container"": ""#570008"",
+                            ""on-error"": ""#ffefee"",
+                            ""surface-variant"": ""#dedcdc"",
+                            ""on-secondary-fixed"": ""#453100"",
+                            ""on-primary-fixed-variant"": ""#581200"",
+                            ""on-background"": ""#2e2f2f"",
+                            ""primary-fixed"": ""#fd7954"",
+                            ""surface-container-highest"": ""#dedcdc"",
+                            ""error-dim"": ""#9f0519"",
+                            ""error"": ""#b31b25"",
+                            ""surface-dim"": ""#d5d4d4"",
+                            ""surface-container-lowest"": ""#ffffff"",
+                            ""surface"": ""#f8f6f5"",
+                            ""primary-container"": ""#fd7954"",
+                            ""outline-variant"": ""#aeadac"",
+                            ""tertiary-container"": ""#ffffff"",
+                            ""tertiary-dim"": ""#504f4f"",
+                            ""on-primary"": ""#ffefec"",
+                            ""tertiary"": ""#5c5b5b"",
+                            ""on-tertiary-fixed"": ""#505050"",
+                            ""inverse-surface"": ""#0e0e0e"",
+                            ""secondary-fixed-dim"": ""#f6ba2d"",
+                            ""on-secondary"": ""#fff1dc"",
+                            ""on-surface"": ""#2e2f2f"",
+                            ""on-tertiary"": ""#f5f2f1"",
+                            ""inverse-primary"": ""#fd7954"",
+                            ""inverse-on-surface"": ""#9e9d9c"",
+                            ""on-surface-variant"": ""#5c5b5b"",
+                            ""surface-tint"": ""#a23718"",
+                            ""on-tertiary-container"": ""#636262"",
+                            ""primary-fixed-dim"": ""#ec6d49"",
+                            ""primary"": ""#a23718"",
+                            ""on-secondary-fixed-variant"": ""#694c00"",
+                            ""tertiary-fixed-dim"": ""#f3f0f0"",
+                            ""on-tertiary-fixed-variant"": ""#6e6d6d"",
+                            ""on-primary-fixed"": ""#000000"",
+                            ""tertiary-fixed"": ""#ffffff"",
+                            ""surface-bright"": ""#f8f6f5"",
+                            ""on-primary-container"": ""#480d00"",
+                            ""on-secondary-container"": ""#5d4300"",
+                            ""secondary"": ""#765600"",
+                            ""surface-container"": ""#eae8e7"",
+                            ""surface-container-low"": ""#f2f0f0"",
+                            ""surface-container-high"": ""#e4e2e2"",
+                            ""outline"": ""#777776"",
+                            ""secondary-fixed"": ""#ffca57"",
+                            ""background"": ""#f8f6f5"",
+                            ""secondary-container"": ""#ffca57"",
+                            ""error-container"": ""#fb5151"",
+                            ""primary-dim"": ""#922c0c"",
+                            ""secondary-dim"": ""#674b00""
+                        }},
+                        fontFamily: {{
+                            ""headline"": [""Plus Jakarta Sans""],
+                            ""body"": [""Be Vietnam Pro""],
+                            ""label"": [""Plus Jakarta Sans""]
+                        }},
+                        borderRadius: {{ ""DEFAULT"": ""0.25rem"", ""lg"": ""0.5rem"", ""xl"": ""1.5rem"", ""full"": ""9999px"" }}
+                    }}
+                }}
+            }}
+        </script>
+        <style>
+            .material-symbols-outlined {{
+                font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            }}
+            .text-editorial {{
+                letter-spacing: -0.02em;
+            }}
+            .paper-lift {{
+                box-shadow: 0 12px 32px rgba(46, 47, 47, 0.04);
+            }}
+            body {{
+                min-height: max(884px, 100dvh);
+            }}
+        </style>
 </head>
-<body>
-    <div class=""card"">
-        <div class=""icon"">📱</div>
-        <h1>{System.Net.WebUtility.HtmlEncode(message)}</h1>
-        <p>Sipariş verebilmek için masanızdaki QR kodu telefonunuzla okutun.</p>
-        <span class=""badge"">QR Kodu Okutun</span>
-    </div>
+<body class=""bg-surface font-body text-on-surface antialiased min-h-screen flex flex-col"">
+    <header class=""fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl flex items-center justify-between px-6 h-16"">
+        <div class=""flex items-center gap-2"">
+            <span class=""material-symbols-outlined text-primary"">lock_clock</span>
+        </div>
+        <h1 class=""text-xl font-headline font-bold tracking-widest uppercase text-[#2e2f2f]"">QR Menü</h1>
+        <div class=""w-6""></div>
+    </header>
+
+    <main class=""flex-grow flex items-center justify-center px-6 pt-16 pb-12"">
+        <div class=""max-w-md w-full text-center space-y-10"">
+            <div class=""relative mx-auto w-48 h-48 flex items-center justify-center"">
+                <div class=""absolute inset-0 bg-surface-container rounded-full scale-110 opacity-50""></div>
+                <div class=""relative bg-surface-container-lowest p-8 rounded-xl paper-lift flex flex-col items-center justify-center"">
+                    <span class=""material-symbols-outlined text-6xl text-primary mb-2"">qr_code_2</span>
+                    <div class=""absolute -bottom-2 -right-2 bg-primary text-on-primary p-3 rounded-full shadow-lg"">
+                        <span class=""material-symbols-outlined text-2xl"">refresh</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class=""space-y-4"">
+                <h2 class=""text-3xl font-headline font-extrabold text-on-surface text-editorial leading-tight"">
+                    {System.Net.WebUtility.HtmlEncode(message)}
+                </h2>
+                <p class=""text-on-surface-variant font-body leading-relaxed max-w-[300px] mx-auto"">
+                    Güvenliğiniz ve güncel menüye erişiminiz için lütfen masanızdaki QR kodunu tekrar okutunuz.
+                </p>
+            </div>
+
+
+        </div>
+    </main>
+
+    <footer class=""w-full py-8 px-6 text-center opacity-40"">
+        <div class=""flex flex-col items-center gap-2"">
+            <div class=""w-12 h-[1px] bg-on-surface/20""></div>
+            <p class=""text-[10px] font-label tracking-[0.2em] uppercase text-on-surface"">QR Menü</p>
+        </div>
+    </footer>
 </body>
 </html>";
                 await context.Response.WriteAsync(html);
