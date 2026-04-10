@@ -24,7 +24,8 @@ namespace QRMenu.Web.Controllers
         /// </summary>
         public async Task<IActionResult> Index()
         {
-            var urunler = await _urunService.GetAktifAsync();
+            // Tükendi (AktifMi=false) rozetini göstermek için tüm ürünleri çekiyoruz
+            var urunler = await _urunService.GetAllAsync();
             var happyHour = await GetActiveHappyHourAsync();
             ViewBag.HappyHour = happyHour;
             return View(urunler);
@@ -35,7 +36,7 @@ namespace QRMenu.Web.Controllers
         /// </summary>
         public async Task<IActionResult> Detay(int id)
         {
-            var urunler = await _urunService.GetAktifAsync();
+            var urunler = await _urunService.GetAllAsync();
             var urun = urunler.FirstOrDefault(u => u.Id == id);
             if (urun == null) return NotFound();
 
@@ -51,7 +52,11 @@ namespace QRMenu.Web.Controllers
         [HttpGet("/menu/json")]
         public async Task<IActionResult> MenuJson()
         {
-            var urunler = await _urunService.GetAktifAsync();
+            var urunler = await _urunService.GetAllAsync();
+            var lang = Request.Cookies["lang"] ?? "tr";
+            bool isEn = lang == "en";
+
+            string L(string? tr, string? en) => (isEn && !string.IsNullOrEmpty(en)) ? en : (tr ?? "");
 
             var kategoriler = urunler
                 .Select(u => u.Kategori)
@@ -60,12 +65,12 @@ namespace QRMenu.Web.Controllers
                 .Select(k => new
                 {
                     k.Id,
-                    k.Ad,
+                    Ad = L(k.Ad, k.AdEN),
                     Urunler = urunler.Where(u => u.KategoriId == k.Id).Select(u => new
                     {
                         u.Id,
-                        u.Ad,
-                        u.Aciklama,
+                        Ad = L(u.Ad, u.AdEN),
+                        Aciklama = L(u.Aciklama, u.AciklamaEN),
                         u.Fiyat,
                         u.GorselUrl,
                         u.PopulerMi,

@@ -44,7 +44,11 @@ namespace QRMenu.Web.Controllers
         public async Task<IActionResult> Index()
         {
             var oturumId = await GetOturumIdAsync();
-            if (oturumId == null) return Redirect("/Menu/Index");
+            if (oturumId == null) 
+            {
+                // Return view with null model so the user sees an empty cart or "Session not found" rather than a confusing redirect.
+                return View((QRMenu.Core.Entities.Sepet?)null);
+            }
 
             var sepet = await _sepetService.GetSepetByOturumAsync(oturumId.Value);
             if (sepet != null)

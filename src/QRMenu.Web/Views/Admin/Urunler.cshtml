@@ -118,30 +118,36 @@
 
 <!-- ===== KATEGORİ MODAL ===== -->
 <div class="modal fade" id="kategoriModal" tabindex="-1">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h6 class="modal-title" id="kategoriModalTitle">Kategori Ekle</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem; overflow: hidden;">
+            <div class="modal-header border-0 bg-light pb-2 pt-4 px-4">
+                <h5 class="modal-title fw-bold flex-grow-1" id="kategoriModalTitle">
+                    <i class="bi bi-tags-fill me-2 text-primary"></i> Kategori Ekle
+                </h5>
+                <button type="button" class="btn-close bg-white rounded-circle shadow-sm" data-bs-dismiss="modal" style="width: 2.5rem; height: 2.5rem; background-image: none; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-x-lg text-dark"></i>
+                </button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body px-4 pt-3 pb-4 bg-light">
                 <input type="hidden" id="kategoriEditId" value="0" />
-                <div class="mb-3">
-                    <label class="form-label">Kategori Adı *</label>
-                    <input type="text" class="form-control" id="kategoriAd" maxlength="100" />
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">İngilizce Adı</label>
-                    <input type="text" class="form-control" id="kategoriAdEN" maxlength="100" />
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Sıra No</label>
-                    <input type="number" class="form-control" id="kategoriSiraNo" value="0" min="0" />
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted mb-1">Kategori Adı [TR] *</label>
+                        <input type="text" class="form-control bg-white shadow-sm border-0" id="kategoriAd" maxlength="100" style="border-radius: 0.5rem;" placeholder="Ör: Tatlılar" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted mb-1">Kategori Adı [EN]</label>
+                        <input type="text" class="form-control bg-white shadow-sm border-0" id="kategoriAdEN" maxlength="100" style="border-radius: 0.5rem;" placeholder="Ör: Desserts" />
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label small fw-bold text-muted mb-1">Sıra No</label>
+                        <input type="number" class="form-control bg-white shadow-sm border-0" id="kategoriSiraNo" value="0" min="0" style="border-radius: 0.5rem;" />
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">İptal</button>
-                <button type="button" class="btn btn-success btn-sm" onclick="kategoriKaydet()">Kaydet</button>
+            <div class="modal-footer border-0 bg-light px-4 pb-4 pt-0">
+                <button type="button" class="btn btn-light shadow-sm" data-bs-dismiss="modal" style="border-radius: 0.5rem;">İptal</button>
+                <button type="button" class="btn btn-success shadow-sm px-4" onclick="kategoriKaydet()" style="border-radius: 0.5rem;"><i class="bi bi-check-lg me-2"></i> Kaydet</button>
             </div>
         </div>
     </div>
@@ -149,38 +155,54 @@
 
 <!-- ===== ÜRÜN EKLE/DÜZENLE MODAL ===== -->
 <div class="modal fade" id="urunModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h6 class="modal-title" id="urunModalTitle">Yeni Ürün Ekle</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem; overflow: hidden;">
+            <div class="modal-header border-0 bg-light pb-2 pt-4 px-4">
+                <h5 class="modal-title fw-bold flex-grow-1" id="urunModalTitle">
+                    <i class="bi bi-box-seam-fill me-2 text-primary"></i> Yeni Ürün Ekle
+                </h5>
+                <button type="button" class="btn-close bg-white rounded-circle shadow-sm" data-bs-dismiss="modal" style="width: 2.5rem; height: 2.5rem; background-image: none; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-x-lg text-dark"></i>
+                </button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body px-4 pt-3 pb-4 bg-light">
                 <form id="urunForm" enctype="multipart/form-data">
                     <input type="hidden" id="urunEditId" value="0" />
 
-                    <img id="gorselPreview" class="gorsel-preview" alt="Önizleme" />
-
-                    <div class="row mb-3">
-                        <div class="col-8">
-                            <label class="form-label">Ürün Adı *</label>
-                            <input type="text" class="form-control" id="urunAd" name="Ad" maxlength="200" required />
-                        </div>
-                        <div class="col-4">
-                            <label class="form-label">Fiyat (TL) *</label>
-                            <input type="number" class="form-control" id="urunFiyat" name="Fiyat" step="0.01" min="0.01" required />
-                        </div>
+                    <div class="text-center mb-4">
+                        <img id="gorselPreview" class="gorsel-preview shadow-sm" alt="Önizleme" style="border-radius: 1rem; max-width: 150px; display: none; margin: 0 auto;" />
+                        <style>.gorsel-preview.active { display: block !important; margin-bottom: 1rem; }</style>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Açıklama</label>
-                        <textarea class="form-control" id="urunAciklama" name="Aciklama" rows="2" maxlength="500"></textarea>
-                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted mb-1">Ürün Adı [TR] *</label>
+                            <input type="text" class="form-control bg-white shadow-sm border-0" id="urunAd" name="Ad" maxlength="200" required style="border-radius: 0.5rem;" placeholder="Ör: Künefe" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted mb-1">Ürün Adı [EN]</label>
+                            <input type="text" class="form-control bg-white shadow-sm border-0" id="urunAdEN" name="AdEN" maxlength="200" style="border-radius: 0.5rem;" placeholder="Ör: Kunefe" />
+                        </div>
 
-                    <div class="row mb-3">
-                        <div class="col-6">
-                            <label class="form-label">Kategori *</label>
-                            <select class="form-select" id="urunKategori" name="KategoriId" required>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted mb-1">Açıklama [TR]</label>
+                            <textarea class="form-control bg-white shadow-sm border-0" id="urunAciklama" name="Aciklama" rows="3" maxlength="500" style="border-radius: 0.5rem; resize: none;" placeholder="Ürün içeriği..."></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted mb-1">Açıklama [EN]</label>
+                            <textarea class="form-control bg-white shadow-sm border-0" id="urunAciklamaEN" name="AciklamaEN" rows="3" maxlength="500" style="border-radius: 0.5rem; resize: none;" placeholder="Product ingredients..."></textarea>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted mb-1">Fiyat (₺) *</label>
+                            <div class="input-group bg-white shadow-sm" style="border-radius: 0.5rem; overflow: hidden;">
+                                <span class="input-group-text border-0 bg-transparent text-secondary">₺</span>
+                                <input type="number" class="form-control border-0 bg-transparent ps-0" id="urunFiyat" name="Fiyat" step="0.01" min="0.01" required placeholder="0.00" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted mb-1">Kategori *</label>
+                            <select class="form-select bg-white shadow-sm border-0" id="urunKategori" name="KategoriId" required style="border-radius: 0.5rem;">
                                 <option value="">Seçiniz</option>
                                 @foreach (var kat in kategoriler)
                                 {
@@ -188,46 +210,32 @@
                                 }
                             </select>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label">Görsel (max 2MB)</label>
-                            <input type="file" class="form-control" id="urunGorsel" name="Gorsel" accept=".jpg,.jpeg,.png,.webp" onchange="previewImage(this)" />
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted mb-1">Görsel (max 2MB)</label>
+                            <input type="file" class="form-control bg-white shadow-sm border-0" id="urunGorsel" name="Gorsel" accept=".jpg,.jpeg,.png,.webp" onchange="previewImage(this)" style="border-radius: 0.5rem;" />
                         </div>
-                    </div>
 
-                    <div class="row mb-3">
-                        <div class="col-6">
-                            <label class="form-label">İngilizce Ad</label>
-                            <input type="text" class="form-control" id="urunAdEN" name="AdEN" maxlength="200" />
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted mb-1">Kalori (kcal)</label>
+                            <input type="number" class="form-control bg-white shadow-sm border-0" id="urunKalori" name="Kalori" min="0" placeholder="Ör: 250" style="border-radius: 0.5rem;" />
                         </div>
-                        <div class="col-6">
-                            <label class="form-label">İngilizce Açıklama</label>
-                            <input type="text" class="form-control" id="urunAciklamaEN" name="AciklamaEN" maxlength="500" />
-                        </div>
-                    </div>
 
-                    <div class="row mb-3">
-                        <div class="col-4">
-                            <label class="form-label">Kalori (kcal)</label>
-                            <input type="number" class="form-control" id="urunKalori" name="Kalori" min="0" placeholder="Ör: 250" />
-                        </div>
-                        <div class="col-4 d-flex align-items-end">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="urunPopuler" name="PopulerMi" value="true" />
-                                <label class="form-check-label" for="urunPopuler">⭐ Popüler</label>
+                        <div class="col-md-8 d-flex align-items-center gap-4 mt-4">
+                            <div class="form-check form-switch p-0 d-flex align-items-center">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" id="urunPopuler" name="PopulerMi" value="true" style="transform: scale(1.3); cursor: pointer;" />
+                                <label class="form-check-label fw-bold text-warning" for="urunPopuler" style="cursor: pointer;"><i class="bi bi-star-fill text-warning me-1"></i> Popüler Ürün</label>
                             </div>
-                        </div>
-                        <div class="col-4 d-flex align-items-end">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="urunAktif" name="AktifMi" value="true" checked />
-                                <label class="form-check-label" for="urunAktif">Aktif</label>
+                            <div class="form-check form-switch p-0 d-flex align-items-center">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" id="urunAktif" name="AktifMi" value="true" checked style="transform: scale(1.3); cursor: pointer;" />
+                                <label class="form-check-label fw-bold text-success" for="urunAktif" style="cursor: pointer;">Aktif Satışta</label>
                             </div>
                         </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">İptal</button>
-                <button type="button" class="btn btn-success btn-sm" onclick="urunKaydet()">Kaydet</button>
+            <div class="modal-footer border-0 bg-light px-4 pb-4 pt-0">
+                <button type="button" class="btn btn-light shadow-sm" data-bs-dismiss="modal" style="border-radius: 0.5rem;">İptal</button>
+                <button type="button" class="btn btn-success shadow-sm px-4" onclick="urunKaydet()" style="border-radius: 0.5rem;"><i class="bi bi-check-lg me-2"></i> Kaydet</button>
             </div>
         </div>
     </div>
@@ -235,45 +243,128 @@
 
 <!-- ===== OPSİYON YÖNETİM MODAL ===== -->
 <div class="modal fade" id="opsiyonModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h6 class="modal-title" id="opsiyonModalTitle">Opsiyonlar</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem; overflow: hidden;">
+            <!-- Modern Header -->
+            <div class="modal-header border-0 bg-light pb-2 pt-4 px-4">
+                <h5 class="modal-title fw-bold flex-grow-1" id="opsiyonModalTitle">
+                    <i class="bi bi-ui-checks-grid me-2 text-primary"></i> Opsiyonlar
+                </h5>
+                <button type="button" class="btn-close bg-white rounded-circle shadow-sm" data-bs-dismiss="modal" style="width: 2.5rem; height: 2.5rem; background-image: none; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-x-lg text-dark"></i>
+                </button>
             </div>
-            <div class="modal-body">
+
+            <!-- Body -->
+            <div class="modal-body px-4 pt-2 pb-4 bg-light">
                 <input type="hidden" id="opsiyonUrunId" value="0" />
 
-                <!-- Mevcut opsiyonlar -->
-                <div id="opsiyonList" class="mb-3"></div>
+                <!-- Mevcut opsiyonlar listesi -->
+                <div id="opsiyonList" class="mb-4"></div>
 
-                <!-- Yeni opsiyon ekle -->
-                <hr />
-                <h6 class="small fw-bold mb-2">Yeni Opsiyon Ekle</h6>
-                <div class="row g-2 mb-2">
-                    <div class="col-4">
-                        <input type="text" class="form-control form-control-sm" id="yeniOpsiyonGrup" placeholder="Grup (ör: Boyut)" maxlength="50" />
-                    </div>
-                    <div class="col-3">
-                        <input type="text" class="form-control form-control-sm" id="yeniOpsiyonAd" placeholder="Ad (ör: Büyük)" maxlength="100" />
-                    </div>
-                    <div class="col-2">
-                        <input type="number" class="form-control form-control-sm" id="yeniOpsiyonFiyat" placeholder="0.00" step="any" min="0" value="0" />
-                    </div>
-                    <div class="col-1 d-flex align-items-center justify-content-center">
-                        <div class="form-check form-switch m-0" title="Zorunlu">
-                            <input class="form-check-input" type="checkbox" id="yeniOpsiyonZorunlu" checked />
+                <!-- Yeni opsiyon ekle paneli -->
+                <div class="card border-0 shadow-sm" style="border-radius: 1rem;">
+                    <div class="card-body p-4">
+                        <h6 class="fw-bold mb-3 d-flex align-items-center text-secondary">
+                            <i class="bi bi-plus-circle-fill me-2 text-success"></i> Yeni Seçenek Oluştur
+                        </h6>
+                        
+                        <div class="row g-3 config-row">
+                            <!-- Dropdown + Manuel Giriş (<datalist>) -->
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted mb-1">Grup (Kategori) [TR]</label>
+                                <input type="text" class="form-control form-control-sm bg-light" id="yeniOpsiyonGrup" list="dlGrup" placeholder="Seç veya yazın (ör: Boyut)" maxlength="50" style="border-radius: 0.5rem;" />
+                                <datalist id="dlGrup">
+                                    <option value="BOYUT"></option>
+                                    <option value="SEÇENEK"></option>
+                                    <option value="SOSLAR"></option>
+                                    <option value="EKSTRALAR"></option>
+                                    <option value="TÜRÜ"></option>
+                                    <option value="PİŞME DERECESİ"></option>
+                                    <option value="İÇECEKLER"></option>
+                                </datalist>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted mb-1">Grup (Kategori) [EN]</label>
+                                <input type="text" class="form-control form-control-sm bg-light" id="yeniOpsiyonGrupEN" placeholder="Opsiyonel (ör: Size)" maxlength="50" style="border-radius: 0.5rem;" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted mb-1">Seçenek Adı [TR]</label>
+                                <input type="text" class="form-control form-control-sm bg-light" id="yeniOpsiyonAd" list="dlAd" placeholder="Seç veya yazın (ör: Büyük)" maxlength="100" style="border-radius: 0.5rem;" />
+                                <datalist id="dlAd">
+                                    <option value="Küçük"></option>
+                                    <option value="Orta"></option>
+                                    <option value="Büyük"></option>
+                                    <option value="Buzlu"></option>
+                                    <option value="Az Buzlu"></option>
+                                    <option value="Ketçap"></option>
+                                    <option value="Mayonez"></option>
+                                    <option value="Az Pişmiş"></option>
+                                    <option value="İyi Pişmiş"></option>
+                                    <option value="Ranch Sos"></option>
+                                </datalist>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted mb-1">Seçenek Adı [EN]</label>
+                                <input type="text" class="form-control form-control-sm bg-light" id="yeniOpsiyonAdEN" placeholder="Opsiyonel (ör: Large)" maxlength="100" style="border-radius: 0.5rem;" />
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted mb-1">Fiyat Farkı (₺)</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-light border-end-0" style="border-radius: 0.5rem 0 0 0.5rem;">₺</span>
+                                    <input type="number" class="form-control bg-light border-start-0" id="yeniOpsiyonFiyat" placeholder="0.00" step="any" min="0" value="0" style="border-radius: 0 0.5rem 0.5rem 0;" />
+                                </div>
+                            </div>
+
+                            <!-- Modern Toggle (Zorunlu / Opsiyonel) -->
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold text-muted mb-1">Zorunluluk</label>
+                                <div class="d-flex bg-light p-1" style="border-radius: 0.5rem; border: 1px solid #dee2e6;">
+                                    <input type="radio" class="btn-check" name="btnZorunluRadio" id="zorunluToggleOn" autocomplete="off" checked>
+                                    <label class="btn w-50 border-0 transition-all text-dark py-1" for="zorunluToggleOn" style="font-size:0.8rem; font-weight:600; border-radius: 0.4rem;">Zorunlu</label>
+
+                                    <input type="radio" class="btn-check" name="btnZorunluRadio" id="zorunluToggleOff" autocomplete="off">
+                                    <label class="btn w-50 border-0 transition-all text-dark py-1" for="zorunluToggleOff" style="font-size:0.8rem; font-weight:600; border-radius: 0.4rem;">Opsiyonel</label>
+                                </div>
+                            </div>
+
+                            <!-- Ekle Butonu -->
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button class="btn btn-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-2 shadow-sm" onclick="opsiyonEkle()" style="border-radius: 0.5rem; height: 31px;">
+                                    <i class="bi bi-plus-lg"></i> <span class="d-none d-md-inline" style="font-size:0.85rem;">Ekle</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-2">
-                        <button class="btn btn-success btn-sm w-100" onclick="opsiyonEkle()"><i class="bi bi-plus"></i></button>
-                    </div>
                 </div>
-                <div class="small text-muted mb-1"><i class="bi bi-info-circle"></i> Switch açık = Zorunlu (müşteri seçmek zorunda)</div>
+
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    /* btn-check için özelleştirme */
+    .btn-check:checked + .btn[for="zorunluToggleOn"] { background: #fee2e2; color: #dc3545 !important; border:1px solid #f8d7da; }
+    .btn-check:checked + .btn[for="zorunluToggleOff"] { background: #e0f8e9; color: #198754 !important; border:1px solid #d1e7dd; }
+    
+    /* Opsiyon listesi özelleştirme Update */
+    #opsiyonList .opsiyon-list-item {
+        background: #fff;
+        border: 1px solid rgba(0,0,0,0.05);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }
+</style>
 
 <div id="mesaj"></div>
 
@@ -455,10 +546,16 @@
     // ===== OPSİYON =====
     async function opsiyonModal(urunId, urunAd) {
         document.getElementById('opsiyonUrunId').value = urunId;
-        document.getElementById('opsiyonModalTitle').textContent = 'Opsiyonlar — ' + urunAd;
+        
+        // Update Title with icon
+        document.getElementById('opsiyonModalTitle').innerHTML = '<i class="bi bi-ui-checks-grid me-2 text-primary"></i> Opsiyonlar — ' + urunAd;
+        
         document.getElementById('yeniOpsiyonGrup').value = '';
+        document.getElementById('yeniOpsiyonGrupEN').value = '';
         document.getElementById('yeniOpsiyonAd').value = '';
+        document.getElementById('yeniOpsiyonAdEN').value = '';
         document.getElementById('yeniOpsiyonFiyat').value = 0;
+        document.getElementById('zorunluToggleOn').checked = true;
 
         await opsiyonListeYenile(urunId);
         new bootstrap.Modal(document.getElementById('opsiyonModal')).show();
@@ -476,14 +573,14 @@
 
         var html = '';
         data.urun.opsiyonlar.forEach(function(o) {
-            html += '<div class="opsiyon-list-item">' +
-                '<div class="opsiyon-info">' +
-                    '<span class="opsiyon-tag">' + o.grup + '</span>' +
-                    '<span>' + o.ad + '</span>' +
-                    (o.ekFiyat > 0 ? '<span class="text-muted small">+' + o.ekFiyat.toFixed(2) + ' TL</span>' : '') +
-                    (o.zorunlu ? '<span class="badge bg-danger ms-1" style="font-size:0.65rem">Zorunlu</span>' : '<span class="badge bg-secondary ms-1" style="font-size:0.65rem">Opsiyonel</span>') +
+            html += '<div class="opsiyon-list-item d-flex align-items-center justify-content-between">' +
+                '<div class="opsiyon-info flex-grow-1">' +
+                    '<div class="mb-1"><span class="badge bg-secondary me-2">' + o.grup + (o.grupEN ? ' / ' + o.grupEN : '') + '</span>' +
+                    '<strong class="fs-6">' + o.ad + (o.adEN ? ' / <span class="text-muted">' + o.adEN + '</span>' : '') + '</strong>' +
+                    (o.ekFiyat > 0 ? '<span class="text-success ms-2 fw-bold">+' + o.ekFiyat.toFixed(2) + ' ₺</span>' : '') + '</div>' +
+                    (o.zorunlu ? '<span class="badge bg-danger rounded-pill px-2">Zorunlu</span>' : '<span class="badge bg-success rounded-pill px-2">Opsiyonel</span>') +
                 '</div>' +
-                '<button class="btn-opsiyon-sil" onclick="opsiyonSil(' + o.id + ')"><i class="bi bi-x-lg"></i></button>' +
+                '<button class="btn btn-outline-danger btn-sm rounded-circle ms-3" title="Opsiyonu Sil" onclick="opsiyonSil(' + o.id + ')" style="width:30px; height:30px; display:flex; align-items:center; justify-content:center;"><i class="bi bi-x-lg"></i></button>' +
             '</div>';
         });
         listDiv.innerHTML = html;
@@ -492,22 +589,34 @@
     async function opsiyonEkle() {
         var urunId = parseInt(document.getElementById('opsiyonUrunId').value);
         var grup = document.getElementById('yeniOpsiyonGrup').value.trim();
+        var grupEN = document.getElementById('yeniOpsiyonGrupEN').value.trim();
         var ad = document.getElementById('yeniOpsiyonAd').value.trim();
+        var adEN = document.getElementById('yeniOpsiyonAdEN').value.trim();
         var ekFiyat = parseFloat(document.getElementById('yeniOpsiyonFiyat').value) || 0;
-        var zorunlu = document.getElementById('yeniOpsiyonZorunlu').checked;
+        var zorunlu = document.getElementById('zorunluToggleOn').checked;
 
-        if (!grup || !ad) { mesaj('Grup ve Ad alanları zorunlu.', 'danger'); return; }
+        if (!grup || !ad) { mesaj('Türkçe Grup ve Ad alanları zorunlu.', 'danger'); return; }
 
         var res = await fetch('/admin/opsiyon-ekle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ urunId: urunId, ad: ad, grup: grup, ekFiyat: ekFiyat, zorunlu: zorunlu })
+            body: JSON.stringify({ 
+                urunId: urunId, 
+                ad: ad, 
+                adEN: adEN || null, 
+                grup: grup, 
+                grupEN: grupEN || null, 
+                ekFiyat: ekFiyat, 
+                zorunlu: zorunlu 
+            })
         });
         var data = await res.json();
         if (data.success) {
             mesaj('Opsiyon eklendi.', 'success');
             document.getElementById('yeniOpsiyonAd').value = '';
+            document.getElementById('yeniOpsiyonAdEN').value = '';
             document.getElementById('yeniOpsiyonFiyat').value = 0;
+            // Grubun aynı kalması ard arda eklerken kolaylık sağlar, o yüzden silmiyoruz.
             await opsiyonListeYenile(urunId);
         } else {
             mesaj(data.message, 'warning');
@@ -529,5 +638,77 @@
             mesaj(data.message, 'danger');
         }
     }
+
+    // ===== OTOMATİK ÇEVİRİ YARDIMCISI =====
+    async function otomatikCeviri(text) {
+        if (!text) return '';
+        try {
+            // Ücretsiz Google Translate API
+            var url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=tr&tl=en&dt=t&q=' + encodeURIComponent(text);
+            var response = await fetch(url);
+            var data = await response.json();
+            return data[0][0][0];
+        } catch (e) {
+            console.error("Çeviri hatası:", e);
+            return text;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Grup (Kategori) [TR] alanından çıkıldığında çevir
+        document.getElementById('yeniOpsiyonGrup').addEventListener('blur', async function() {
+            var trText = this.value.trim();
+            var enInput = document.getElementById('yeniOpsiyonGrupEN');
+            if (trText && !enInput.value.trim()) {
+                enInput.value = 'Çevriliyor...';
+                var translated = await otomatikCeviri(trText);
+                enInput.value = translated;
+            }
+        });
+
+        // Seçenek Adı [TR] alanından çıkıldığında çevir
+        document.getElementById('yeniOpsiyonAd').addEventListener('blur', async function() {
+            var trText = this.value.trim();
+            var enInput = document.getElementById('yeniOpsiyonAdEN');
+            if (trText && !enInput.value.trim()) {
+                enInput.value = 'Çevriliyor...';
+                var translated = await otomatikCeviri(trText);
+                enInput.value = translated;
+            }
+        });
+
+        // Ürün Adı [TR] alanından çıkıldığında çevir
+        document.getElementById('urunAd').addEventListener('blur', async function() {
+            var trText = this.value.trim();
+            var enInput = document.getElementById('urunAdEN');
+            if (trText && !enInput.value.trim()) {
+                enInput.value = 'Çevriliyor...';
+                var translated = await otomatikCeviri(trText);
+                enInput.value = translated;
+            }
+        });
+
+        // Ürün Açıklama [TR] alanından çıkıldığında çevir
+        document.getElementById('urunAciklama').addEventListener('blur', async function() {
+            var trText = this.value.trim();
+            var enInput = document.getElementById('urunAciklamaEN');
+            if (trText && !enInput.value.trim()) {
+                enInput.value = 'Çevriliyor...';
+                var translated = await otomatikCeviri(trText);
+                enInput.value = translated;
+            }
+        });
+
+        // Kategori Adı [TR] alanından çıkıldığında çevir (Bonus)
+        document.getElementById('kategoriAd').addEventListener('blur', async function() {
+            var trText = this.value.trim();
+            var enInput = document.getElementById('kategoriAdEN');
+            if (trText && !enInput.value.trim()) {
+                enInput.value = 'Çevriliyor...';
+                var translated = await otomatikCeviri(trText);
+                enInput.value = translated;
+            }
+        });
+    });
 </script>
 }

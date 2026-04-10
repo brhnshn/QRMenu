@@ -62,7 +62,11 @@ namespace QRMenu.Web.Controllers
         public async Task<IActionResult> SiparislerimSayfa()
         {
             var bilgi = await GetOturumBilgiAsync();
-            if (bilgi == null) return Redirect("/Menu/Index");
+            if (bilgi == null) 
+            {
+                // Just load the view without a session. The JS will handle the "Session not found" state beautifully!
+                return View("Siparislerim"); 
+            }
 
             HttpContext.Items["MasaId"] = bilgi.Value.masaNo;
             return View("Siparislerim");

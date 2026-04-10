@@ -60,9 +60,15 @@ namespace QRMenu.Web.ViewModels
         [MaxLength(100)]
         public string Ad { get; set; } = string.Empty;
 
+        [MaxLength(100)]
+        public string? AdEN { get; set; }
+
         [Required(ErrorMessage = "Grup adı zorunludur.")]
         [MaxLength(50)]
         public string Grup { get; set; } = string.Empty;
+
+        [MaxLength(50)]
+        public string? GrupEN { get; set; }
 
         [Range(0, 9999.99)]
         public decimal EkFiyat { get; set; }

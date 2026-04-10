@@ -11,7 +11,7 @@
 </div>
 
 <!-- Canlı Durum Kartı -->
-<div class="status-card" id="statusCard">
+<div class="status-card shadow-sm" id="statusCard">
     <div class="status-indicator" id="statusIndicator">
         <div class="pulse-dot" id="pulseDot"></div>
         <span id="statusText">Durum kontrol ediliyor...</span>
@@ -20,7 +20,7 @@
 </div>
 
 <!-- Ayarlar Formu -->
-<div class="settings-panel">
+<div class="settings-panel shadow-sm">
     <div class="panel-header">
         <h2>⚙️ İndirim Saatleri Ayarları</h2>
     </div>
@@ -36,38 +36,58 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="baslaingicSaati">🕐 Başlangıç Saati</label>
-                      <input type="text" id="baslaingicSaati" class="form-control time-input"
-                          value="@(Model?.BaslangicSaati.ToString(@"hh\:mm") ?? "14:00")"
-                          placeholder="Örn: 00:00 veya 00.00" inputmode="numeric" required>
+                    <label for="baslangicSaati">🕐 Başlangıç Saati</label>
+                      <input type="time" id="baslangicSaati" class="form-control time-input"
+                          value="@(Model?.BaslangicSaati.ToString(@"hh\:mm") ?? "14:00")" required>
                 </div>
                 <div class="form-group">
                     <label for="bitisSaati">🕓 Bitiş Saati</label>
-                      <input type="text" id="bitisSaati" class="form-control time-input"
-                          value="@(Model?.BitisSaati.ToString(@"hh\:mm") ?? "17:00")"
-                          placeholder="Örn: 00:50 veya 00.50" inputmode="numeric" required>
+                      <input type="time" id="bitisSaati" class="form-control time-input"
+                          value="@(Model?.BitisSaati.ToString(@"hh\:mm") ?? "17:00")" required>
                 </div>
             </div>
 
-            <div class="form-group" style="margin-bottom: 1.5rem;">
+            <div class="form-group" style="margin-bottom: 2rem;">
                 <label>🛍️ Hangi Ürünlerde Geçerli?</label>
-                <div id="urunSecimListesi" class="urun-secim-listesi"></div>
-                <div class="urun-secim-actions">
-                    <button type="button" class="btn-add-row" onclick="urunSatiriEkle()">+ Ürün Ekle</button>
-                    <button type="button" class="btn-clear-row" onclick="urunSecimleriniTemizle()">Tümünü Temizle (Tüm Menü)</button>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small text-muted">Hiçbiri seçilmezse indirim tüm menüde geçerlidir. Aksi halde sadece seçilenlerde uygulanır.</span>
+                    <button type="button" class="btn-clear-row" onclick="tumUrunleriTemizle()">Seçimleri Temizle</button>
                 </div>
-                <div class="small text-muted">Hiç ürün seçilmezse indirim tüm menüde geçerli olur.</div>
-
-                <select id="urunSablonSecim" class="d-none">
-                    <option value="">-- Ürün Seçiniz --</option>
+                
+                <!-- Modern Ürün Seçim Listesi (Kategorili) -->
+                <div class="kategori-container" style="max-height: 380px; overflow-y: auto; padding-right: 8px;">
                     @if (ViewBag.Urunler != null)
                     {
-                        foreach (var urun in ViewBag.Urunler)
+                        var urunlerList = (List<QRMenu.Core.Entities.Urun>)ViewBag.Urunler;
+                        var groupedUrunler = urunlerList.GroupBy(u => u.Kategori?.Ad ?? "Diğer");
+
+                        foreach (var group in groupedUrunler)
                         {
-                            <option value="@urun.Id">@urun.Ad (₺@urun.Fiyat)</option>
+                            <div class="kategori-section mb-4">
+                                <div class="d-flex align-items-center justify-content-between mb-2 p-2" style="background:#f1f5f9; border-radius:8px;">
+                                    <h6 class="m-0 fw-bold" style="color: #334155;">📌 @group.Key</h6>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" style="font-size:0.75rem; padding:0.2rem 0.5rem;" onclick="kategoriTumunuSec(this, '@group.Key')">Hepsini Seç</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem; padding:0.2rem 0.5rem;" onclick="kategoriTumunuKaldir(this, '@group.Key')">Kaldır</button>
+                                    </div>
+                                </div>
+                                <div class="urun-grid" data-category="@group.Key">
+                                    @foreach (var urun in group)
+                                    {
+                                        bool isChecked = seciliUrunIds.Contains(urun.Id);
+                                        <label class="urun-card @(isChecked ? "selected" : "")">
+                                            <input type="checkbox" name="urunSecim" value="@urun.Id" @(isChecked ? "checked" : "") onchange="this.parentElement.classList.toggle('selected', this.checked)">
+                                            <div class="urun-info">
+                                                <span class="urun-ad">@urun.Ad</span>
+                                                <span class="urun-fiyat">₺@urun.Fiyat</span>
+                                            </div>
+                                        </label>
+                                    }
+                                </div>
+                            </div>
                         }
                     }
-                </select>
+                </div>
             </div>
 
             <div class="form-group discount-group">
@@ -88,7 +108,7 @@
                 </div>
             </div>
 
-            <div class="preview-box">
+            <div class="preview-box shadow-sm">
                 <h3>🧮 Örnek Hesaplama</h3>
                 <div class="preview-row">
                     <span>Orijinal Fiyat:</span>
@@ -104,7 +124,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="btn-save" id="saveBtn">
+            <button type="submit" class="btn-save shadow" id="saveBtn">
                 <span class="btn-icon">💾</span> Kaydet
             </button>
         </form>
@@ -124,93 +144,124 @@
 
 <style>
     .admin-page-header { margin-bottom: 2rem; }
-    .admin-page-header h1 { font-size: 1.8rem; font-weight: 700; margin: 0; }
-    .admin-page-header .subtitle { color: var(--text-muted); margin: 0.3rem 0 0 0; }
+    .admin-page-header h1 { font-size: 1.8rem; font-weight: 800; margin: 0; color: #1e293b; }
+    .admin-page-header .subtitle { color: #64748b; margin: 0.3rem 0 0 0; font-size: 0.95rem; }
     .admin-page-header .emoji { margin-right: 0.5rem; }
 
     .status-card {
-        background: var(--card-bg);
-        border: 1px solid var(--border);
+        background: #ffffff;
+        border: 1px solid rgba(0,0,0,0.05);
         border-radius: 12px;
         padding: 1.5rem;
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
         display: flex;
         align-items: center;
         gap: 1.5rem;
+        transition: transform 0.2s ease;
     }
-    .status-indicator { display: flex; align-items: center; gap: 0.8rem; font-size: 1.1rem; font-weight: 600; min-width: 200px; }
+    .status-card:hover { transform: translateY(-2px); }
+    
+    .status-indicator { display: flex; align-items: center; gap: 0.8rem; font-size: 1.1rem; font-weight: 700; min-width: 220px; }
     .pulse-dot { width: 14px; height: 14px; border-radius: 50%; background: #6c757d; transition: all 0.3s; }
-    .pulse-dot.active { background: #28a745; animation: pulse 1.5s infinite; }
-    .pulse-dot.inactive { background: #dc3545; }
-    .pulse-dot.waiting { background: #ffc107; }
-    @@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(40,167,69,0.4)} 50%{box-shadow:0 0 0 8px rgba(40,167,69,0)} }
-    .status-details { color: var(--text-muted); font-size: 0.9rem; }
+    .pulse-dot.active { background: #10b981; animation: pulse 2s infinite; }
+    .pulse-dot.inactive { background: #ef4444; }
+    .pulse-dot.waiting { background: #f59e0b; }
+    @@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(16, 185, 129, 0.4)} 50%{box-shadow:0 0 0 10px rgba(16, 185, 129, 0)} }
+    .status-details { color: #64748b; font-size: 0.95rem; }
 
-    .settings-panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 1.5rem; overflow: hidden; }
-    .panel-header { padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border); }
-    .panel-header h2 { margin: 0; font-size: 1.1rem; font-weight: 600; }
-    .panel-body { padding: 1.5rem; }
+    .settings-panel { background: #ffffff; border: 1px solid rgba(0,0,0,0.05); border-radius: 16px; margin-bottom: 2rem; overflow: hidden; }
+    .panel-header { padding: 1.2rem 1.8rem; border-bottom: 1px solid #f1f5f9; background: #f8fafc; }
+    .panel-header h2 { margin: 0; font-size: 1.15rem; font-weight: 700; color: #334155; }
+    .panel-body { padding: 1.8rem; }
 
-    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
-    .toggle-label { font-weight: 600; font-size: 1rem; }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0 1.5rem 0; margin-bottom: 1.5rem; border-bottom: 1px solid #f1f5f9; }
+    .toggle-label { font-weight: 700; font-size: 1.05rem; color: #334155; }
     .toggle-switch { position: relative; display: inline-block; width: 60px; height: 30px; }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 30px; transition: 0.4s; }
-    .slider:before { content: ""; position: absolute; width: 22px; height: 22px; left: 4px; bottom: 4px; background: white; border-radius: 50%; transition: 0.4s; }
-    input:checked + .slider { background: #28a745; }
+    .slider { position: absolute; cursor: pointer; inset: 0; background: #cbd5e1; border-radius: 30px; transition: 0.3s; }
+    .slider:before { content: ""; position: absolute; width: 22px; height: 22px; left: 4px; bottom: 4px; background: white; border-radius: 50%; transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    input:checked + .slider { background: #10b981; }
     input:checked + .slider:before { transform: translateX(30px); }
 
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
-    .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
-    .form-group label { font-weight: 600; font-size: 0.9rem; }
-    .time-input { padding: 0.7rem 1rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1.1rem; background: var(--input-bg, #fff); }
-    .form-control { padding: 0.7rem 1rem; border: 1px solid var(--border); border-radius: 8px; background: var(--input-bg, #fff); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.6rem; }
+    .form-group label { font-weight: 600; font-size: 0.95rem; color: #475569; }
+    .time-input { padding: 0.8rem 1rem; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 1.1rem; background: #f8fafc; font-family: monospace; transition: all 0.2s;}
+    .time-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); background: #ffffff; }
+    .form-control { padding: 0.7rem 1rem; border: 1px solid #cbd5e1; border-radius: 10px; transition: border 0.2s; }
 
-    .discount-group { margin-bottom: 1.5rem; }
-    .discount-input-wrapper { display: flex; align-items: center; gap: 1rem; }
-    .discount-input-wrapper .form-control { width: 100px; font-size: 1.2rem; font-weight: 700; text-align: center; }
-    .discount-preview { font-size: 1.4rem; font-weight: 800; color: #e44d26; background: rgba(228,77,38,0.1); padding: 0.4rem 1rem; border-radius: 8px; }
-    .discount-slider-container { margin-top: 0.8rem; }
-    .discount-slider { width: 100%; accent-color: #e44d26; }
-    .slider-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); }
-
-    .urun-secim-listesi { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 0.7rem; }
-    .urun-secim-row { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; align-items: center; }
-    .urun-secim-actions { display: flex; gap: 0.5rem; margin-bottom: 0.4rem; }
-    .btn-add-row, .btn-clear-row {
-        border: 1px solid var(--border);
-        background: var(--bg-secondary, #f8f9fa);
-        color: var(--text);
+    /* Modern Checkbox Grid */
+    .urun-grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
+        gap: 0.8rem; 
+        padding: 0.5rem; 
+        border: 1px solid #e2e8f0; 
+        border-radius: 12px; 
+        background: #f8fafc;
+    }
+    .kategori-container::-webkit-scrollbar { width: 8px; }
+    .kategori-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .urun-card {
+        display: flex;
+        align-items: center;
+        padding: 0.7rem 1rem;
+        border: 1px solid #e2e8f0;
         border-radius: 8px;
-        padding: 0.45rem 0.75rem;
+        background: #ffffff;
+        cursor: pointer;
+        transition: all 0.2s;
+        user-select: none;
+    }
+    .urun-card:hover { border-color: #94a3b8; }
+    .urun-card.selected { border-color: #3b82f6; background: #eff6ff; }
+    .urun-card input { display: none; }
+    .urun-info { display: flex; flex-direction: column; }
+    .urun-ad { font-weight: 600; font-size: 0.9rem; color: #334155; line-height: 1.2; }
+    .urun-fiyat { font-size: 0.8rem; color: #10b981; font-weight: 700; margin-top: 0.2rem; }
+
+    .btn-clear-row {
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #64748b;
+        border-radius: 6px;
+        padding: 0.3rem 0.8rem;
+        font-size: 0.8rem;
         font-weight: 600;
-        font-size: 0.85rem;
         cursor: pointer;
+        transition: all 0.2s;
     }
-    .btn-remove-row {
-        border: 1px solid #dc3545;
-        background: rgba(220,53,69,0.08);
-        color: #dc3545;
-        border-radius: 8px;
-        padding: 0.45rem 0.7rem;
-        font-weight: 700;
-        cursor: pointer;
+    .btn-clear-row:hover { background: #f1f5f9; color: #334155; }
+
+    .discount-group { margin-bottom: 2rem; }
+    .discount-input-wrapper { display: flex; align-items: center; gap: 1.2rem; }
+    .discount-input-wrapper .form-control { width: 110px; font-size: 1.3rem; font-weight: 700; text-align: center; }
+    .discount-preview { font-size: 1.5rem; font-weight: 800; color: #f97316; background: #fff7ed; padding: 0.5rem 1.2rem; border-radius: 10px; border: 1px solid #fed7aa; }
+    .discount-slider-container { margin-top: 1.2rem; }
+    .discount-slider { width: 100%; height: 6px; border-radius: 3px; accent-color: #f97316; }
+    .slider-labels { display: flex; justify-content: space-between; font-size: 0.8rem; color: #94a3b8; margin-top: 0.4rem; font-weight: 600;}
+
+    .preview-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; }
+    .preview-box h3 { margin: 0 0 1.2rem 0; font-size: 1.05rem; font-weight: 700; color: #475569; }
+    .preview-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px dashed #cbd5e1; font-size: 0.95rem;}
+    .preview-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .preview-row.discount { color: #ef4444; font-weight: 600; }
+    .preview-row.total { font-weight: 800; color: #10b981; font-size: 1.15rem; margin-top: 0.5rem; }
+
+    .btn-save { 
+        width: 100%; 
+        padding: 1rem; 
+        background: linear-gradient(135deg, #10b981, #059669); 
+        color: white; border: none; border-radius: 12px; 
+        font-weight: 700; font-size: 1.1rem; cursor: pointer; transition: all 0.3s; 
+        display: flex; align-items: center; justify-content: center; gap: 0.6rem; 
     }
+    .btn-save:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(16, 185, 129, 0.3); }
 
-    .preview-box { background: var(--bg-secondary, #f8f9fa); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; margin-bottom: 1.5rem; }
-    .preview-box h3 { margin: 0 0 1rem 0; font-size: 0.95rem; font-weight: 600; }
-    .preview-row { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
-    .preview-row:last-child { border-bottom: none; }
-    .preview-row.discount { color: #dc3545; }
-    .preview-row.total { font-weight: 700; color: #28a745; font-size: 1.05rem; }
-
-    .btn-save { width: 100%; padding: 0.9rem; background: linear-gradient(135deg, #28a745, #218838); color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-    .btn-save:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(40,167,69,0.4); }
-
-    .info-box { background: rgba(23,162,184,0.1); border: 1px solid rgba(23,162,184,0.3); border-radius: 12px; padding: 1.2rem 1.5rem; }
-    .info-box h3 { margin: 0 0 0.8rem 0; font-size: 0.95rem; font-weight: 600; color: #17a2b8; }
+    .info-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 1.5rem; }
+    .info-box h3 { margin: 0 0 1rem 0; font-size: 1rem; font-weight: 700; color: #2563eb; }
     .info-box ul { margin: 0; padding-left: 1.5rem; }
-    .info-box li { margin-bottom: 0.4rem; color: var(--text-muted); font-size: 0.9rem; }
+    .info-box li { margin-bottom: 0.5rem; color: #475569; font-size: 0.95rem; }
 </style>
 
 <script>
@@ -232,14 +283,14 @@
                 txt.textContent = `🎉 İndirim Saatleri AKTİF — %${d.indirimOrani} İndirim!`;
 
                 const seciliUrunSayisi = Array.isArray(d.urunIds) ? d.urunIds.length : 0;
-                let urn = seciliUrunSayisi > 0 ? `${seciliUrunSayisi} üründe geçerli` : 'Tüm menüde geçerli';
-                det.textContent = `Saat aralığı: ${d.baslaingicSaati} - ${d.bitisSaati} | ${urn}`;
+                let urn = seciliUrunSayisi > 0 ? `${seciliUrunSayisi} özel üründe` : 'Tüm menüde geçerli';
+                det.textContent = `Saat aralığı: ${d.baslangicSaati} - ${d.bitisSaati} | ${urn}`;
             } else {
                 dot.className = 'pulse-dot waiting';
                 txt.textContent = `İndirim Saatleri Aktif — Bekleniyor`;
                 const seciliUrunSayisi = Array.isArray(d.urunIds) ? d.urunIds.length : 0;
-                let urn = seciliUrunSayisi > 0 ? `${seciliUrunSayisi} üründe geçerli` : 'Tüm menüde geçerli';
-                det.textContent = `Aktif saat aralığı: ${d.baslaingicSaati} - ${d.bitisSaati} | Şu an: %${d.indirimOrani} bekleniyor | ${urn}`;
+                let urn = seciliUrunSayisi > 0 ? `${seciliUrunSayisi} özel üründe` : 'Tüm menüde geçerli';
+                det.textContent = `Aktif saati: ${d.baslangicSaati} - ${d.bitisSaati} | Şu an özetle: %${d.indirimOrani} bekleniyor | ${urn}`;
             }
         } catch (e) {
             console.error(e);
@@ -270,73 +321,62 @@
     slider.addEventListener('input', () => updatePreview(slider.value));
     updatePreview(oran.value);
 
-    function urunSatiriEkle(selectedValue = '') {
-        const list = document.getElementById('urunSecimListesi');
-        const template = document.getElementById('urunSablonSecim');
-
-        const row = document.createElement('div');
-        row.className = 'urun-secim-row';
-
-        const sel = document.createElement('select');
-        sel.className = 'form-control urun-secim';
-        sel.innerHTML = template.innerHTML;
-        sel.value = String(selectedValue || '');
-
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'btn-remove-row';
-        btn.textContent = 'Sil';
-        btn.onclick = () => {
-            row.remove();
-            document.getElementById('happyHourForm').requestSubmit();
-        };
-
-        row.appendChild(sel);
-        row.appendChild(btn);
-        list.appendChild(row);
+    // Ürün Grid temizleme
+    function tumUrunleriTemizle() {
+        const checkboxes = document.querySelectorAll('input[name="urunSecim"]');
+        checkboxes.forEach(cb => {
+            cb.checked = false;
+            cb.parentElement.classList.remove('selected');
+        });
     }
 
-    function urunSecimleriniTemizle() {
-        document.getElementById('urunSecimListesi').innerHTML = '';
-    }
-
-    function seciliUrunIdleriTopla() {
-        const secimler = Array.from(document.querySelectorAll('.urun-secim'));
-        return secimler
-            .map(x => parseInt(x.value, 10))
-            .filter(x => !Number.isNaN(x) && x > 0)
-            .filter((v, i, a) => a.indexOf(v) === i);
-    }
-
-    (function baslangicUrunSecimleri() {
-        const secili = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(seciliUrunIds));
-        if (Array.isArray(secili) && secili.length > 0) {
-            secili.forEach(x => urunSatiriEkle(x));
+    // Kategoriye göre seç / kaldır
+    function kategoriTumunuSec(btn, kategoriName) {
+        const grid = document.querySelector(`.urun-grid[data-category="${kategoriName}"]`);
+        if(grid) {
+            const inputs = grid.querySelectorAll('input[type="checkbox"]');
+            inputs.forEach(i => {
+                i.checked = true;
+                i.parentElement.classList.add('selected');
+            });
         }
-    })();
+    }
 
-    // Form submit
+    function kategoriTumunuKaldir(btn, kategoriName) {
+        const grid = document.querySelector(`.urun-grid[data-category="${kategoriName}"]`);
+        if(grid) {
+            const inputs = grid.querySelectorAll('input[type="checkbox"]');
+            inputs.forEach(i => {
+                i.checked = false;
+                i.parentElement.classList.remove('selected');
+            });
+        }
+    }
+
+    // Form submit - Regex temizlendi
     document.getElementById('happyHourForm').addEventListener('submit', async function (e) {
         e.preventDefault();
         const btn = document.getElementById('saveBtn');
         btn.disabled = true; btn.innerHTML = '<span>⏳</span> Kaydediliyor...';
 
-        const normalizeSaat = (raw) => (raw || '').trim().replace('.', ':');
-        const baslangic = normalizeSaat(document.getElementById('baslaingicSaati').value);
-        const bitis = normalizeSaat(document.getElementById('bitisSaati').value);
+        const baslangic = document.getElementById('baslangicSaati').value;
+        const bitis = document.getElementById('bitisSaati').value;
+        
+        // Check edilenleri topla
+        const seciliUrunler = Array.from(document.querySelectorAll('input[name="urunSecim"]:checked')).map(cb => parseInt(cb.value));
 
-        if (!/^\d{1,2}:\d{2}$/.test(baslangic) || !/^\d{1,2}:\d{2}$/.test(bitis)) {
-            btn.innerHTML = '<span>❌</span> Saat formatı hatalı';
+        if (!baslangic || !bitis) {
+            btn.innerHTML = '<span>❌</span> Lütfen saat seçin!';
             setTimeout(() => { btn.disabled = false; btn.innerHTML = '<span class="btn-icon">💾</span> Kaydet'; }, 2200);
             return;
         }
 
         const payload = {
-            baslaingicSaati: baslangic,
+            baslangicSaati: baslangic, // düzeltildi
             bitisSaati: bitis,
             indirimOrani: parseFloat(document.getElementById('indirimOrani').value),
             aktifMi: document.getElementById('aktifMi').checked,
-            urunIds: seciliUrunIdleriTopla()
+            urunIds: seciliUrunler
         };
 
         try {
@@ -347,7 +387,7 @@
             });
             const d = await r.json();
             if (d.success) {
-                btn.innerHTML = '<span>✅</span> Kaydedildi!';
+                btn.innerHTML = '<span>✅</span> Başarıyla Kaydedildi!';
                 setTimeout(() => { btn.disabled = false; btn.innerHTML = '<span class="btn-icon">💾</span> Kaydet'; }, 2000);
                 durumGoster();
             } else {

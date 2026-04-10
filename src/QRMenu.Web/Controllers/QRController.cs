@@ -53,6 +53,15 @@ namespace QRMenu.Web.Controllers
 
                 if (existingOturum != null && existingOturum.MasaId == masaId)
                 {
+                    Response.Cookies.Append("masa_no", masaNo.ToString(), new CookieOptions
+                    {
+                        HttpOnly = false,
+                        Secure = false,
+                        SameSite = SameSiteMode.Lax,
+                        Path = "/",
+                        MaxAge = TimeSpan.FromDays(1)
+                    });
+
                     // Aynı masada geçerli oturumu var, direkt menüye
                     _logger.LogInformation("QR giriş: Mevcut oturum kullanılıyor. MasaNo={MasaNo}, MasaId={MasaId}", masaNo, masaId);
                     return RedirectToAction("Index", "Menu");
@@ -73,6 +82,14 @@ namespace QRMenu.Web.Controllers
                 Path = "/"
             };
             Response.Cookies.Append("qrmenu_token", rawToken, cookieOptions);
+            Response.Cookies.Append("masa_no", masaNo.ToString(), new CookieOptions
+            {
+                HttpOnly = false,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                MaxAge = TimeSpan.FromDays(1)
+            });
 
             _logger.LogInformation("QR giriş başarılı. MasaNo={MasaNo}, MasaId={MasaId}, OturumId={OturumId}", masaNo, masaId, oturum.Id);
 

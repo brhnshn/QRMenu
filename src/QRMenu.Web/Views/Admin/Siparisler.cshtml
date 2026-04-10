@@ -1,475 +1,412 @@
-@model List<QRMenu.Core.Entities.Siparis>
+﻿@model List<QRMenu.Core.Entities.Siparis>
 @{
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
-    ViewData["Title"] = "Siparişler";
+    ViewData["Title"] = "Sipariş Arşivi ve Raporlama";
     
     var turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(
         OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
     Func<DateTime, string> toTR = dt =>
-        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(dt, DateTimeKind.Utc), turkeyTz).ToString("dd.MM HH:mm");
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(dt, DateTimeKind.Utc), turkeyTz).ToString("dd.MM.yyyy HH:mm");
     
-    var bekleyen = Model.Count(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.Onaylandi);
-    var hazirlaniyor = Model.Count(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor);
-    var hazir = Model.Count(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir);
-    var teslim = Model.Count(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi);
+    var bugun = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, turkeyTz).Date;
+    
+    // İstatistikler (Bugüne özel)
+    var bugunSiparis = Model.Where(s => TimeZoneInfo.ConvertTimeFromUtc(s.OlusturmaTarihi, turkeyTz).Date == bugun).ToList();
+    var bugunToplamSayi = bugunSiparis.Count;
+    var bugunCiro = bugunSiparis.Where(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.TamOdendi).Sum(s => s.ToplamTutar);
+    
+    var iptalIadeSiparis = Model.Where(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.Iptal || s.Durum == QRMenu.Core.Enums.SiparisDurum.Iade).ToList();
+    var iptalIadeCiro = iptalIadeSiparis.Sum(s => s.ToplamTutar);
+    var iptalIadeSayi = iptalIadeSiparis.Count;
+    
     var masalar = Model.Select(s => s.Masa).Where(m => m != null).DistinctBy(m => m.Id).OrderBy(m => m.MasaNo).ToList();
 }
 
-@section Styles {
-    <link href="~/css/admin-siparisler.css" rel="stylesheet" />
-}
+<style>
+    /* Raporlama Kartları */
+    .report-card { background: white; border-radius: 1rem; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s; height: 100%; display: flex; align-items: center; padding: 1.5rem; }
+    .report-card:hover { transform: translateY(-3px); }
+    .report-icon { width: 3.5rem; height: 3.5rem; border-radius: 1rem; display: flex; justify-content: center; align-items: center; font-size: 1.5rem; margin-right: 1.25rem; }
+    .report-info h6 { font-size: 0.85rem; color: #6c757d; font-weight: 600; text-transform: uppercase; margin-bottom: 0.3rem; letter-spacing: 0.5px; }
+    .report-info h3 { font-size: 1.5rem; font-weight: 800; color: #212529; margin: 0; }
 
-<!-- PROGRESS STEPPER BAR -->
-<div class="stepper-wrapper" id="stepperBar">
-    <div class="stepper-item" data-step="1">
-        <div class="step-counter">1</div>
-        <div class="step-name">Onaylandı</div>
-    </div>
-    <div class="stepper-item" data-step="2">
-        <div class="step-counter">2</div>
-        <div class="step-name">Hazırlanıyor</div>
-    </div>
-    <div class="stepper-item" data-step="3">
-        <div class="step-counter">3</div>
-        <div class="step-name">Hazır</div>
-    </div>
-    <div class="stepper-item" data-step="4">
-        <div class="step-counter">4</div>
-        <div class="step-name">Teslim Edildi</div>
-    </div>
-    <div class="stepper-item" data-step="5">
-        <div class="step-counter">5</div>
-        <div class="step-name">Ödendi</div>
-    </div>
-</div>
+    /* İkon Renkleri */
+    .icon-primary { background: #e7f1ff; color: #0d6efd; }
+    .icon-success { background: #e0f8e9; color: #198754; }
+    .icon-danger { background: #fee2e2; color: #dc3545; }
 
-<!-- ÖZET SAYAÇLAR -->
-<div class="stats-mini">
-    <span class="stat-pill pill-bekleyen"><i class="bi bi-hourglass-split"></i> Bekleyen: <strong id="statBekleyen">@bekleyen</strong></span>
-    <span class="stat-pill pill-hazirlaniyor"><i class="bi bi-fire"></i> Hazırlanıyor: <strong id="statHazirlaniyor">@hazirlaniyor</strong></span>
-    <span class="stat-pill pill-hazir"><i class="bi bi-check-circle"></i> Hazır: <strong id="statHazir">@hazir</strong></span>
-    <span class="stat-pill pill-teslim"><i class="bi bi-bag-check"></i> Teslim: <strong id="statTeslim">@teslim</strong></span>
-    <span class="stat-pill pill-toplam"><i class="bi bi-list-ol"></i> Toplam: <strong id="statToplam">@Model.Count</strong></span>
-</div>
+    /* Filtre Barı Modern */
+    .filter-section { background: white; border-radius: 1rem; padding: 1.25rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 1.5rem; }
+    .filter-input { border: 1px solid #e9ecef; border-radius: 0.5rem; padding: 0.5rem 1rem; font-size: 0.9rem; color: #495057; outline: none; background: #fafafa; }
+    .filter-input:focus { border-color: #0d6efd; background: white; }
+    
+    /* Modern Tablo */
+    .table-card { background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+    .modern-table { width: 100%; border-collapse: separate; border-spacing: 0 0.5rem; }
+    .modern-table th { font-size: 0.85rem; color: #6c757d; text-transform: uppercase; font-weight: 600; padding: 0.75rem 1rem; border-bottom: 2px solid #f8f9fa; }
+    .modern-table td { padding: 1rem; background: #fff; vertical-align: middle; border-top: 1px solid rgba(0,0,0,0.02); border-bottom: 1px solid rgba(0,0,0,0.02); font-size: 0.95rem; }
+    .modern-table tr { box-shadow: 0 2px 5px rgba(0,0,0,0.01); transition: all 0.2s; }
+    .modern-table tr:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.04); background-color: #fafbfc; position: relative; z-index: 10; }
+    .modern-table td:first-child { border-left: 1px solid rgba(0,0,0,0.02); border-top-left-radius: 0.5rem; border-bottom-left-radius: 0.5rem; }
+    .modern-table td:last-child { border-right: 1px solid rgba(0,0,0,0.02); border-top-right-radius: 0.5rem; border-bottom-right-radius: 0.5rem; }
 
-<!-- FİLTRE BAR -->
-<div class="siparis-filter-bar">
-    <select id="filterDurum">
-        <option value="">Tüm Durumlar</option>
-        <option value="Onaylandi">Onaylandı</option>
-        <option value="Hazirlaniyor">Hazırlanıyor</option>
-        <option value="Hazir">Hazır</option>
-        <option value="TeslimEdildi">Teslim Edildi</option>
-        <option value="KismiOdendi">Kısmi Ödendi</option>
-        <option value="TamOdendi">Tam Ödendi</option>
-        <option value="Iptal">İptal</option>
-        <option value="Iade">İade</option>
-    </select>
-    <select id="filterMasa">
-        <option value="">Tüm Masalar</option>
-        @foreach(var m in masalar)
-        {
-            <option value="@m.Id">Masa @m.MasaNo</option>
-        }
-    </select>
-    <button class="filter-btn" onclick="filtrele()">
-        <i class="bi bi-funnel"></i> Filtrele
-    </button>
-    <button class="filter-btn" style="background:#6c757d" onclick="filtreTemizle()">
-        <i class="bi bi-x-circle"></i> Temizle
-    </button>
-</div>
+    /* Durum Badge'leri */
+    .badge-durum { padding: 0.4rem 0.8rem; border-radius: 50rem; font-weight: 600; font-size: 0.75rem; letter-spacing: 0.3px; display: inline-block; text-align: center; min-width: 90px; }
+    .bg-soft-primary { background-color: #e7f1ff; color: #0d6efd; border: 1px solid #cce5ff; }
+    .bg-soft-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    .bg-soft-info { background-color: #cff4fc; color: #055160; border: 1px solid #b6effb; }
+    .bg-soft-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+    .bg-soft-danger { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+    .bg-soft-secondary { background-color: #e2e3e5; color: #41464b; border: 1px solid #d3d6d8; }
 
-<!-- SİPARİŞ TABLOSU -->
-<div class="siparis-table-wrap">
-<table class="siparis-table">
-    <thead>
-        <tr>
-            <th>#</th>
-            <th>Masa</th>
-            <th>Ürünler</th>
-            <th>Tutar</th>
-            <th>Durum</th>
-            <th>Tarih</th>
-        </tr>
-    </thead>
-    <tbody id="siparisBody">
-        @if(!Model.Any())
-        {
-            <tr>
-                <td colspan="6">
-                    <div class="siparis-empty">
-                        <div class="icon">📋</div>
-                        <h5>Henüz sipariş yok</h5>
-                        <p>Müşteriler sipariş verdikçe burada görünecek.</p>
-                    </div>
-                </td>
-            </tr>
-        }
-        else
-        {
-            @foreach(var s in Model)
-            {
-                var detayOzet = string.Join(", ", s.SiparisDetaylar.Select(sd => $"{sd.Adet}x {sd.Urun.Ad}"));
-                <tr id="row-@s.Id" data-durum="@s.Durum" data-id="@s.Id" onclick="siparisDetayAc(@s.Id); highlightProgress(this);" style="cursor:pointer;">
-                    <td><strong>#@s.Id</strong></td>
-                    <td><span class="badge bg-dark rounded-pill">Masa @s.Masa?.MasaNo</span></td>
-                    <td class="text-truncate" style="max-width:260px;" title="@detayOzet">@detayOzet</td>
-                    <td><strong>@s.ToplamTutar.ToString("N2") TL</strong></td>
-                    <td><span class="durum-badge durum-@s.Durum">@DurumText(s.Durum)</span></td>
-                    <td>@toTR(s.OlusturmaTarihi)</td>
-                </tr>
-            }
-        }
-    </tbody>
-</table>
-</div>
+    .btn-detay { background: transparent; color: #0d6efd; border: 1px solid #0d6efd; border-radius: 50rem; padding: 0.3rem 1rem; font-size: 0.8rem; font-weight: 600; transition: 0.2s; cursor: pointer; }
+    .btn-detay:hover { background: #0d6efd; color: white; }
+</style>
 
-<!-- SİPARİŞ DETAY OVERLAY (Fiş + Büyük Aksiyon Butonları) -->
-<div id="fisOverlay" style="display:none; position:fixed; inset:0; z-index:99998; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; cursor:pointer;" onclick="if(event.target===this)fisKapat()">
-    <div class="detay-panel" onclick="event.stopPropagation()">
-        <button class="detay-kapat" onclick="fisKapat()">&times;</button>
-        <div id="fisContent" style="width:100%; display:flex; flex-direction:inherit;">
-            <div style="text-align:center; color:#aaa; padding:3rem 2rem; width:100%;">Yükleniyor...</div>
+<!-- İSTATİSTİK KARTLARI -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="report-card">
+            <div class="report-icon icon-primary"><i class="bi bi-basket"></i></div>
+            <div class="report-info">
+                <h6>BUGÜN GELEN SİPARİŞ</h6>
+                <h3>@bugunToplamSayi <span style="font-size:1rem;color:#adb5bd;font-weight:500;">Adet</span></h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="report-card">
+            <div class="report-icon icon-success"><i class="bi bi-wallet2"></i></div>
+            <div class="report-info">
+                <h6>GÜNLÜK NET CİRO (ÖDENMİŞ)</h6>
+                <h3>@bugunCiro.ToString("N2") ₺</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="report-card">
+            <div class="report-icon icon-danger"><i class="bi bi-x-octagon"></i></div>
+            <div class="report-info">
+                <h6>TÜM ZAMANLAR İPTAL/İADE</h6>
+                <h3>@iptalIadeSayi <span style="font-size:1rem;color:#adb5bd;font-weight:500;">İşlem (@iptalIadeCiro.ToString("N0") ₺)</span></h3>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- BİLDİRİM SESLERİ -->
-<audio id="notifSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+<!-- FİLTRE BARI -->
+<div class="filter-section d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+        <div>
+            <label class="form-label small fw-bold text-muted mb-1 d-block"><i class="bi bi-calendar"></i> Tarih Filtresi</label>
+            <select class="filter-input" id="filterTarih" onchange="filtreleTablo()">
+                <option value="all">Tüm Zamanlar</option>
+                <option value="today" selected>Sadece Bugün</option>
+                <option value="yesterday">Dün</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-muted mb-1 d-block"><i class="bi bi-tag"></i> Durum Filtresi</label>
+            <select class="filter-input" id="filterDurum" onchange="filtreleTablo()">
+                <option value="all">Tüm Durumlar</option>
+                <option value="bekleyen">Aktif / Tamamlanmamış</option>
+                <option value="TamOdendi">Tam Ödenenler</option>
+                <option value="Iptal">İptal Edilenler</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-bold text-muted mb-1 d-block"><i class="bi bi-grid"></i> Masa Filtresi</label>
+            <select class="filter-input" id="filterMasa" onchange="filtreleTablo()">
+                <option value="all">Tüm Masalar</option>
+                @foreach (var m in masalar)
+                {
+                    <option value="@m.Id">Masa @m.MasaNo</option>
+                }
+            </select>
+        </div>
+    </div>
+    <div class="ms-auto mt-3 mt-md-0">
+        <button class="btn btn-outline-secondary me-2" onclick="window.location.reload()"><i class="bi bi-arrow-clockwise"></i> Yenile</button>
+        <div class="input-group d-inline-flex" style="width: 250px;">
+            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+            <input type="text" id="filterArama" onkeyup="filtreleTablo()" class="form-control border-start-0 ps-0" placeholder="Sipariş No (Örn: 123)" style="background:#fafafa;">
+        </div>
+    </div>
+</div>
 
-@functions {
-    string DurumText(QRMenu.Core.Enums.SiparisDurum d) => d switch
-    {
-        QRMenu.Core.Enums.SiparisDurum.Sepette => "Sepette",
-        QRMenu.Core.Enums.SiparisDurum.Onaylandi => "Onaylandı",
-        QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor => "Hazırlanıyor",
-        QRMenu.Core.Enums.SiparisDurum.Hazir => "Hazır",
-        QRMenu.Core.Enums.SiparisDurum.TeslimEdildi => "Teslim Edildi",
-        QRMenu.Core.Enums.SiparisDurum.KismiOdendi => "Kısmi Ödendi",
-        QRMenu.Core.Enums.SiparisDurum.TamOdendi => "Tam Ödendi",
-        QRMenu.Core.Enums.SiparisDurum.Iptal => "İptal",
-        QRMenu.Core.Enums.SiparisDurum.Iade => "İade",
-        _ => d.ToString()
-    };
-}
+<!-- VERİ TABLOSU -->
+<div class="table-card">
+    <h5 class="fw-bold mb-3"><i class="bi bi-list-columns-reverse text-primary me-2"></i> Sipariş Arşivi</h5>
+    <div class="table-responsive" style="min-height: 300px;">
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th>Sipariş No</th>
+                    <th>Tarih & Saat</th>
+                    <th>Masa Bilgisi</th>
+                    <th>Tutar</th>
+                    <th>Ödeme</th>
+                    <th>Durum</th>
+                    <th class="text-end">İşlem</th>
+                </tr>
+            </thead>
+            <tbody id="siparisTbody">
+                @foreach (var siparis in Model.OrderByDescending(s => s.OlusturmaTarihi))
+                {
+                    string durumClass = "bg-soft-secondary";
+                    string durumText = siparis.Durum.ToString();
+                    bool isBekleyen = false;
 
-@section Scripts {
-<script>
-    let acikSiparisId = null;
-
-    async function siparisDetayAc(id) {
-        acikSiparisId = id;
-        document.getElementById('fisContent').innerHTML = '<div style="text-align:center; color:#aaa; padding:3rem 2rem;">Yükleniyor...</div>';
-        document.getElementById('fisOverlay').style.display = 'flex';
-
-        try {
-            const res = await fetch(`/admin/siparis-detay/${id}`);
-            const data = await res.json();
-            if (!data.success) {
-                document.getElementById('fisContent').innerHTML = `<div style="text-align:center; color:#e74c3c; padding:3rem 2rem;">${data.message}</div>`;
-                return;
-            }
-            renderFis(data);
-        } catch (e) {
-            console.error(e);
-            document.getElementById('fisContent').innerHTML = '<div style="text-align:center; color:#e74c3c; padding:3rem 2rem;">Detay yüklenemedi.</div>';
-        }
-    }
-
-    function renderFis(data) {
-        let urunlerHtml = '';
-        data.detaylar.forEach(d => {
-            let opsHtml = '';
-            if (d.opsiyonlar) {
-                try {
-                    const parsed = JSON.parse(d.opsiyonlar);
-                    if (parsed.length > 0) {
-                        opsHtml = `<div style="font-size:0.85rem; color:#888; padding-left:1.5rem;">${parsed.map(p => p.Ad).join(', ')}</div>`;
+                    switch (siparis.Durum)
+                    {
+                        case QRMenu.Core.Enums.SiparisDurum.Onaylandi: durumClass = "bg-soft-primary"; durumText = "Yeni Alındı"; isBekleyen = true; break;
+                        case QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor: durumClass = "bg-soft-warning"; durumText = "Hazırlanıyor"; isBekleyen = true; break;
+                        case QRMenu.Core.Enums.SiparisDurum.Hazir: durumClass = "bg-soft-info"; durumText = "Servise Hazır"; isBekleyen = true; break;
+                        case QRMenu.Core.Enums.SiparisDurum.TeslimEdildi: durumClass = "bg-soft-success"; durumText = "Masaya Bırakıldı"; isBekleyen = true; break;
+                        case QRMenu.Core.Enums.SiparisDurum.KismiOdendi: durumClass = "bg-soft-warning"; durumText = "Kısmi Ödendi"; isBekleyen = true; break;
+                        case QRMenu.Core.Enums.SiparisDurum.TamOdendi: durumClass = "bg-soft-success"; durumText = "Tamamlandı"; break;
+                        case QRMenu.Core.Enums.SiparisDurum.Iptal: durumClass = "bg-soft-danger"; durumText = "İptal Edildi"; break;
+                        case QRMenu.Core.Enums.SiparisDurum.Iade: durumClass = "bg-soft-secondary"; durumText = "İade Edildi"; break;
+                        case QRMenu.Core.Enums.SiparisDurum.Sepette: durumClass = "bg-soft-secondary"; durumText = "Sepette"; break;
                     }
-                } catch(e) {}
-            }
-            urunlerHtml += `
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; padding:12px 0; border-bottom:1px dashed #ddd;">
-                    <div>
-                        <span style="font-weight:700; font-size:1.1rem;">${d.adet}x ${escapeHtml(d.urunAd)}</span>
-                        ${opsHtml}
-                    </div>
-                    <span style="font-weight:800; font-size:1.1rem; white-space:nowrap;">${(d.adet * d.birimFiyat).toFixed(2)} TL</span>
-                </div>`;
-        });
 
-        const transitions = getTransitions(data.durum);
-        let actionsHtml = '';
-        if (transitions.length > 0) {
-            transitions.forEach(t => {
-                actionsHtml += `<button class="detay-action-btn ${t.cls}" onclick="event.stopPropagation(); overlayDurumGuncelle(${data.id}, '${t.durum}')">
-                    <i class="bi ${t.icon}"></i> ${t.text}
-                </button>`;
-            });
-        } else {
-            actionsHtml = '<div style="color:#aaa; text-align:center; font-size:0.9rem; padding:20px 0;">İşlem yok</div>';
-        }
+                    var siparisTarihLocal = TimeZoneInfo.ConvertTimeFromUtc(siparis.OlusturmaTarihi, turkeyTz);
+                    var isToday = siparisTarihLocal.Date == bugun;
+                    var isYesterday = siparisTarihLocal.Date == bugun.AddDays(-1);
+                    var dateCat = isToday ? "today" : (isYesterday ? "yesterday" : "old");
+                    var durumCat = siparis.Durum.ToString();
+                    var searchData = siparis.Id.ToString();
+                    var masaId = siparis.MasaId.ToString();
+                    var masaNo = siparis.Masa?.MasaNo ?? 0;
 
-        document.getElementById('fisContent').innerHTML = `
-            <div class="real-receipt">
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:24px 28px 16px; border-bottom:1px solid #f0f0f0;">
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <span style="font-size:1.5rem; font-weight:800; color:#2c3e50;">#${data.id}</span>
-                        <span class="durum-badge durum-${data.durum}" style="font-size:0.85rem; padding:5px 14px;">${durumLabel(data.durum)}</span>
-                    </div>
-                    <span style="background:#2c3e50; color:#fff; padding:6px 16px; border-radius:20px; font-size:0.9rem; font-weight:700;">Masa ${data.masaNo || '-'}</span>
-                </div>
+                    <tr class="siparis-row" data-date="@dateCat" data-durum="@durumCat" data-isbekleyen="@(isBekleyen?"true":"false")" data-masa="@masaId" data-search="@searchData">
+                        <td><strong class="text-dark">#@siparis.Id</strong></td>
+                        <td>
+                            <div class="fw-bold text-dark">@toTR(siparis.OlusturmaTarihi)</div>
+                            <small class="text-muted">@(isToday ? "Bugün" : (isYesterday ? "Dün" : "Geçmiş"))</small>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2" style="width:32px; height:32px;">
+                                    <i class="bi bi-geo-alt-fill text-muted" style="font-size:0.85rem;"></i>
+                                </div>
+                                <div>
+                                    <strong class="d-block text-dark">Masa @masaNo</strong>
+                                    <small class="text-muted">@(siparis.Masa?.Bolge?.Ad ?? "Standart Alan")</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><strong class="text-dark" style="font-size:1.05rem;">@siparis.ToplamTutar.ToString("N2") ₺</strong></td>
+                        <td>
+                            @if(siparis.Durum == QRMenu.Core.Enums.SiparisDurum.TamOdendi) {
+                                <span class="text-success small fw-bold"><i class="bi bi-check-circle-fill"></i> Ödendi</span>
+                            } else if (siparis.Durum == QRMenu.Core.Enums.SiparisDurum.Iptal) {
+                                <span class="text-danger small fw-bold"><i class="bi bi-x-circle-fill"></i> Ödenmedi</span>
+                            } else {
+                                <span class="text-warning small fw-bold"><i class="bi bi-clock-history"></i> Açık</span>
+                            }
+                        </td>
+                        <td><span class="badge-durum @durumClass">@durumText</span></td>
+                        <td class="text-end">
+                            <button class="btn-detay" onclick="detayGoster(@siparis.Id)"><i class="bi bi-eye"></i> Detay Gör</button>
+                        </td>
+                    </tr>
+                }
+                <tr id="emptyRow" style="display:none;">
+                    <td colspan="7" class="text-center py-5">
+                        <div class="text-muted">
+                            <i class="bi bi-search fs-1 d-block mb-3 text-secondary"></i> 
+                            <h5>Sonuç Bulunamadı</h5>
+                            <p class="mb-0 small">Filtre kriterlerinize uygun sipariş kaydı yok.</p>
+                        </div>
+                    </td>
+                </tr>
+                @if (!Model.Any())
+                {
+                    <script>
+                        document.addEventListener("DOMContentLoaded", function() {
+                            document.getElementById('emptyRow').style.display = '';
+                            document.getElementById('emptyRow').querySelector('h5').innerText = "Kayıt Yok";
+                            document.getElementById('emptyRow').querySelector('p').innerText = "Sisteme henüz hiç sipariş düşmedi.";
+                        });
+                    </script>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
 
-                <div style="display:flex; gap:20px; padding:12px 28px; font-size:0.85rem; color:#888; border-bottom:1px solid #f0f0f0;">
-                    <span><i class="bi bi-clock"></i> ${data.olusturmaTarihi}</span>
-                    ${data.guncellemeTarihi ? `<span><i class="bi bi-arrow-repeat"></i> ${data.guncellemeTarihi}</span>` : ''}
-                </div>
-
-                <div style="padding:8px 28px;">
-                    ${urunlerHtml}
-                </div>
-
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:18px 28px; background:#f8f9fa; border-top:2px solid #2c3e50; font-size:1.3rem; font-weight:900; color:#2c3e50;">
-                    <span>TOPLAM</span>
-                    <span style="display:flex; flex-direction:column; align-items:flex-end;">
-                        ${data.toplamTutar.toFixed(2)} TL
-                    </span>
+<!-- SİPARİŞ DETAY MODALI (YENİ TASARIM) -->
+<div class="modal fade" id="siparisDetayModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header border-0 bg-light pb-2 pt-4 px-4 rounded-top" style="border-radius: 1.25rem;">
+                <h5 class="modal-title fw-bold flex-grow-1 text-dark">
+                    <i class="bi bi-receipt-cutoff me-2 text-primary"></i> <span id="mdlTitle">Sipariş Fişi</span>
+                </h5>
+                <button type="button" class="btn-close bg-white rounded-circle shadow-sm" data-bs-dismiss="modal" style="width: 2.5rem; height: 2.5rem;"></button>
+            </div>
+            <div class="modal-body px-0 py-0 pb-3" style="background-color: #f8f9fa;">
+                <div id="modalLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="mt-2 text-muted fw-bold">Veriler Getiriliyor...</div>
                 </div>
                 
-                ${(data.notlar && data.notlar.includes('🎉 Happy Hour')) ? `<div style="padding:10px 28px; font-size:1rem; color:#856404; background:#fff3cd; font-weight:800; text-align:center; display:flex; justify-content:center; align-items:center; gap:8px;"><i class="bi bi-gift-fill"></i> ${escapeHtml(data.notlar.split('|')[0].trim())}</div>` : ''}
-
-                ${data.notlar && !data.notlar.startsWith('🎉 Happy Hour') ? `<div style="padding:14px 28px; font-size:0.9rem; color:#666; background:#fffbf0; border-top:1px solid #f0f0f0;"><i class="bi bi-chat-left-text" style="color:#e67e22; margin-right:6px;"></i> ${escapeHtml(data.notlar)}</div>` : ''}
-                ${data.notlar && data.notlar.includes('|') ? `<div style="padding:14px 28px; font-size:0.9rem; color:#666; background:#fffbf0; border-top:1px solid #f0f0f0;"><i class="bi bi-chat-left-text" style="color:#e67e22; margin-right:6px;"></i> ${escapeHtml(data.notlar.split('|')[1].trim())}</div>` : ''}
-                <div class="receipt-zigzag"></div>
+                <div id="modalIcerik" style="display:none;">
+                    <div class="bg-white p-4 mx-3 mt-3 shadow-sm" style="border-radius: 1rem; border: 1px solid #eee; position: relative;">
+                        <!-- Cırt Cırt Efekti Top -->
+                        <div style="position:absolute; top:-6px; left:0; right:0; height:12px; background: radial-gradient(circle, transparent 4px, #fff 5px, #fff 6px, transparent 6px); background-size: 16px 12px; z-index:1;"></div>
+                        
+                        <div class="row mb-3 pb-3 border-bottom border-dashed border-2 px-1">
+                            <div class="col-6">
+                                <div class="small text-muted text-uppercase fw-bold letter-spacing-1">Sipariş Numarası</div>
+                                <h4 class="fw-bold mb-0 text-dark" id="mdlSiparisId"></h4>
+                            </div>
+                            <div class="col-6 text-end">
+                                <div class="small text-muted text-uppercase fw-bold letter-spacing-1">Masa / Konum</div>
+                                <h4 class="fw-bold mb-0 text-dark" id="mdlMasaNo"></h4>
+                            </div>
+                        </div>
+                        
+                        <!-- Sipariş Kalemleri -->
+                        <div class="small text-muted fw-bold text-uppercase mb-3 ps-1"><i class="bi bi-list-ul"></i> Sipariş İçeriği</div>
+                        <div id="mdlUrunList" class="mb-4">
+                            <!-- JS İle Dolacak -->
+                        </div>
+                        
+                        <!-- Toplam Tutar Alanı -->
+                        <div class="d-flex justify-content-between align-items-center bg-light p-3 mt-4" style="border-radius: 0.75rem; border: 2px dashed #dee2e6;">
+                            <span class="text-secondary fw-bold text-uppercase fs-5">GENEL TOPLAM</span>
+                            <h3 class="fw-bold text-dark mb-0" id="mdlToplamTutar"></h3>
+                        </div>
+                    </div>
+                </div>
             </div>
-
-            <div class="action-sidebar">
-                <h6>İşlemler</h6>
-                ${actionsHtml}
+            <div class="modal-footer border-0 justify-content-center bg-light rounded-bottom py-3" style="border-radius: 1.25rem;">
+                <button type="button" class="btn btn-secondary px-4 fw-bold rounded-pill shadow-sm" data-bs-dismiss="modal">Kapat</button>
             </div>
-        `;
-    }
+        </div>
+    </div>
+</div>
 
-    function fisKapat() {
-        document.getElementById('fisOverlay').style.display = 'none';
-        acikSiparisId = null;
-    }
-
-    async function overlayDurumGuncelle(siparisId, yeniDurum) {
-        document.querySelectorAll('.detay-action-btn').forEach(b => b.disabled = true);
-
-        try {
-            const res = await fetch(`/admin/siparis-durum/${siparisId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ YeniDurum: yeniDurum })
-            });
-            const data = await res.json();
-            if (data.success) {
-                await siparisDetayAc(siparisId);
-            } else {
-                alert('Hata: ' + data.message);
-                document.querySelectorAll('.detay-action-btn').forEach(b => b.disabled = false);
-            }
-        } catch (e) {
-            console.error(e);
-            alert('Bir hata oluştu.');
-            document.querySelectorAll('.detay-action-btn').forEach(b => b.disabled = false);
-        }
-    }
-
-    function durumLabel(d) {
-        const map = {
-            'Sepette': 'Sepette', 'Onaylandi': 'Onaylandı', 'Hazirlaniyor': 'Hazırlanıyor',
-            'Hazir': 'Hazır', 'TeslimEdildi': 'Teslim Edildi', 'KismiOdendi': 'Kısmi Ödendi',
-            'TamOdendi': 'Tam Ödendi', 'Iptal': 'İptal', 'Iade': 'İade'
-        };
-        return map[d] || d;
-    }
-
-    function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
-    function getTransitions(durum) {
-        const map = {
-            'Onaylandi': [
-                { durum: 'Hazirlaniyor', text: 'Hazırlamaya Başla', cls: 'action-primary', icon: 'bi-fire' },
-                { durum: 'Iptal', text: 'İptal Et', cls: 'action-danger', icon: 'bi-x-lg' }
-            ],
-            'Hazirlaniyor': [
-                { durum: 'Hazir', text: 'Hazır', cls: 'action-success', icon: 'bi-check-lg' },
-                { durum: 'Iptal', text: 'İptal Et', cls: 'action-danger', icon: 'bi-x-lg' }
-            ],
-            'Hazir': [
-                { durum: 'TeslimEdildi', text: 'Teslim Et', cls: 'action-info', icon: 'bi-bag-check' }
-            ],
-            'TeslimEdildi': [
-                { durum: 'KismiOdendi', text: 'Kısmi Ödeme', cls: 'action-warning', icon: 'bi-cash' },
-                { durum: 'TamOdendi', text: 'Tamamı Ödendi', cls: 'action-success', icon: 'bi-check-circle' },
-                { durum: 'Iade', text: 'İade', cls: 'action-danger-outline', icon: 'bi-arrow-return-left' }
-            ],
-            'KismiOdendi': [
-                { durum: 'TamOdendi', text: 'Tamamı Ödendi', cls: 'action-success', icon: 'bi-check-circle' }
-            ],
-            'TamOdendi': [
-                { durum: 'Iade', text: 'İade', cls: 'action-danger-outline', icon: 'bi-arrow-return-left' }
-            ]
-        };
-        return map[durum] || [];
-    }
-
-    // ===== FILTRELEME =====
-    async function filtrele() {
-        const durum = document.getElementById('filterDurum').value;
-        const masaId = document.getElementById('filterMasa').value;
-
-        let url = '/admin/siparisler-json?';
-        if (durum) url += `durum=${durum}&`;
-        if (masaId) url += `masaId=${masaId}&`;
-
-        try {
-            const res = await fetch(url);
-            const list = await res.json();
-            renderTable(list);
-        } catch(e) {
-            console.error(e);
-        }
-    }
-
-    function filtreTemizle() {
-        document.getElementById('filterDurum').value = '';
-        document.getElementById('filterMasa').value = '';
-        location.reload();
-    }
-
-    function renderTable(list) {
-        const body = document.getElementById('siparisBody');
-        if (!list.length) {
-            body.innerHTML = `<tr><td colspan="6"><div class="siparis-empty"><div class="icon">📋</div><h5>Sonuç bulunamadı</h5></div></td></tr>`;
-            return;
-        }
-
-        body.innerHTML = list.map(s => {
-            return `<tr id="row-${s.id}" data-durum="${s.durum}" data-id="${s.id}" onclick="siparisDetayAc(${s.id}); highlightProgress(this);" style="cursor:pointer;">
-                <td><strong>#${s.id}</strong></td>
-                <td><span class="badge bg-dark rounded-pill">Masa ${s.masaNo || '-'}</span></td>
-                <td class="text-truncate" style="max-width:260px;" title="${escapeHtml(s.detayOzet)}">${escapeHtml(s.detayOzet)}</td>
-                <td><strong>${s.toplamTutar.toFixed(2)} TL</strong></td>
-                <td><span class="durum-badge durum-${s.durum}">${durumLabel(s.durum)}</span></td>
-                <td>${s.olusturmaTarihi}</td>
-            </tr>`;
-        }).join('');
-    }
-
-    // ===== PROGRESS STEPPER =====
-    function highlightProgress(row) {
-        document.querySelectorAll('#siparisBody tr').forEach(r => r.classList.remove('row-selected'));
-        row.classList.add('row-selected');
-
-        const durum = row.getAttribute('data-durum');
-        const stepMap = { 'Onaylandi': 1, 'Hazirlaniyor': 2, 'Hazir': 3, 'TeslimEdildi': 4, 'KismiOdendi': 5, 'TamOdendi': 5 };
-        const activeStep = stepMap[durum] || 0;
-        const isCancel = (durum === 'Iptal' || durum === 'Iade');
-
-        document.querySelectorAll('#stepperBar .stepper-item').forEach(item => {
-            const step = parseInt(item.getAttribute('data-step'));
-            item.classList.remove('completed', 'active', 'cancelled');
-
-            if (isCancel) {
-                item.classList.add('cancelled');
-            } else if (step < activeStep) {
-                item.classList.add('completed');
-            } else if (step === activeStep) {
-                item.classList.add('active');
-            }
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // İlk girişte Filtre çalışsın (Sadece bugün seçili geldiği için)
+            filtreleTablo();
         });
-    }
 
-    // ===== STATS GÜNCELLEME =====
-    function updateStats(list) {
-        const counts = { Onaylandi: 0, Hazirlaniyor: 0, Hazir: 0, TeslimEdildi: 0 };
-        list.forEach(s => { if (counts[s.durum] !== undefined) counts[s.durum]++; });
-        document.getElementById('statBekleyen').textContent = counts.Onaylandi;
-        document.getElementById('statHazirlaniyor').textContent = counts.Hazirlaniyor;
-        document.getElementById('statHazir').textContent = counts.Hazir;
-        document.getElementById('statTeslim').textContent = counts.TeslimEdildi;
-        document.getElementById('statToplam').textContent = list.length;
-    }
+        // Tablo içi Filtreleme
+        function filtreleTablo() {
+            var tarih = document.getElementById('filterTarih').value;
+            var durum = document.getElementById('filterDurum').value;
+            var masa = document.getElementById('filterMasa').value;
+            var arama = document.getElementById('filterArama').value.trim();
 
-    function bildirimSesiCal() {
-        try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(830, ctx.currentTime);
-            osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.3, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.5);
-        } catch(e) {}
-    }
+            var rows = document.querySelectorAll('.siparis-row');
+            var emptyRow = document.getElementById('emptyRow');
+            var gorunanRow = 0;
+            
+            rows.forEach(row => {
+                var rDate = row.getAttribute('data-date');
+                var rDurum = row.getAttribute('data-durum');
+                var rMasa = row.getAttribute('data-masa');
+                var rSearch = row.getAttribute('data-search');
+                var rBekleyen = row.getAttribute('data-isbekleyen') === 'true';
+                
+                var matchTarih = (tarih === 'all' || rDate === tarih);
+                
+                var matchDurum = true;
+                if (durum === 'bekleyen') matchDurum = rBekleyen;
+                else if (durum !== 'all') matchDurum = (rDurum === durum);
+                
+                var matchMasa = (masa === 'all' || rMasa === masa);
+                
+                var matchArama = true;
+                if(arama !== '') {
+                    // Sadece tam eşleşme veya içeriyorsa
+                    matchArama = rSearch.includes(arama) || (rSearch === arama);
+                }
 
-    const siparisConnection = new signalR.HubConnectionBuilder()
-        .withUrl('/hubs/menu')
-        .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-        .build();
+                if (matchTarih && matchDurum && matchMasa && matchArama) {
+                    row.style.display = '';
+                    gorunanRow++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
 
-    siparisConnection.on('SiparisEklendi', async function() {
-        try {
-            const res = await fetch('/admin/siparisler-json');
-            const list = await res.json();
-            renderTable(list);
-            updateStats(list);
-            bildirimSesiCal();
-        } catch(e) {
-            console.error('Yeni sipariş çekme hatası:', e);
-        }
-    });
-
-    siparisConnection.on('SiparisGuncellendi', async function() {
-        try {
-            const res = await fetch('/admin/siparisler-json');
-            const list = await res.json();
-            renderTable(list);
-            updateStats(list);
-            bildirimSesiCal();
-            if (acikSiparisId) {
-                const detayRes = await fetch(`/admin/siparis-detay/${acikSiparisId}`);
-                const detayData = await detayRes.json();
-                if (detayData.success) renderFis(detayData);
+            if(emptyRow) {
+                if(gorunanRow === 0) {
+                    emptyRow.style.display = '';
+                } else {
+                    emptyRow.style.display = 'none';
+                }
             }
-        } catch(e) {
-            console.error('Sipariş güncelleme hatası:', e);
         }
-    });
 
-    siparisConnection.on('SiparisGuncellendi', async function() {
-        try {
-            const res = await fetch('/admin/siparisler-json');
-            const list = await res.json();
-            renderTable(list);
-            updateStats(list);
-            bildirimSesiCal();
-            if (acikSiparisId) {
-                const detayRes = await fetch(`/admin/siparis-detay/${acikSiparisId}`);
-                const detayData = await detayRes.json();
-                if (detayData.success) renderFis(detayData);
+        // Sipariş Detayını Admin/SiparislerDetay API'sinden Veya Var Olan Bir Yerden Çekmek
+        async function detayGoster(id) {
+            var m = new bootstrap.Modal(document.getElementById('siparisDetayModal'));
+            m.show();
+            
+            document.getElementById('modalLoading').style.display = 'block';
+            document.getElementById('modalIcerik').style.display = 'none';
+
+            try {
+                // Halihazırda var olan "/admin/siparis-detay/id" JSON dönen Controller kullanılıyor (Eski kodunuzdaki endpoint)
+                const res = await fetch(`/admin/siparis-detay/${id}`);
+                const data = await res.json();
+                
+                if(data.success || data.id) {
+                    // Mevcut data objesini parse edelim
+                    var sData = data.success ? data : data; // Fallback
+                    
+                    document.getElementById('mdlSiparisId').innerText = "#" + id;
+                    document.getElementById('mdlTitle').innerText = "Sipariş Fişi #" + id;
+                    document.getElementById('mdlMasaNo').innerText = sData.masaNo ? "Masa " + sData.masaNo : "Belirtilmemiş";
+                    document.getElementById('mdlToplamTutar').innerText = parseFloat(sData.toplamTutar).toFixed(2) + " ₺";
+
+                    var htmlUrun = "";
+                    if(sData.detaylar && sData.detaylar.length > 0) {
+                        sData.detaylar.forEach(d => {
+                            // JSON içindeki opsiyonları vs parse edip güzelce yazdır
+                            let opsText = "";
+                            if(d.opsiyonlar) {
+                                try {
+                                    var ops = JSON.parse(d.opsiyonlar);
+                                    if(ops.length > 0) {
+                                        opsText = `<div class="small text-secondary mt-1"><i class="bi bi-tag-fill me-1"></i> ${ops.map(x => x.Ad).join(", ")}</div>`;
+                                    }
+                                } catch(e) {}
+                            }
+
+                            htmlUrun += `
+                            <div class="d-flex justify-content-between align-items-center bg-light bg-opacity-50 p-3 mb-2 rounded" style="border: 1px solid #f1f2f4;">
+                                <div>
+                                    <div class="fw-bold text-dark fs-6"><span class="badge bg-secondary me-2 rounded-pill">${d.adet}x</span> ${d.urunAd || 'Ürün'}</div>
+                                    ${opsText}
+                                </div>
+                                <div class="fw-bold text-dark fs-6">${(d.adet * d.birimFiyat).toFixed(2)} ₺</div>
+                            </div>`;
+                        });
+                    } else {
+                        htmlUrun = `<div class="text-center text-muted p-3"><i class="bi bi-exclamation-circle me-1"></i> İçerik bulunamadı.</div>`;
+                    }
+                    document.getElementById('mdlUrunList').innerHTML = htmlUrun;
+
+                    document.getElementById('modalLoading').style.display = 'none';
+                    document.getElementById('modalIcerik').style.display = 'block';
+                } else {
+                    alert("Detaylar alınamadı: " + (data.message || "Bilinmeyen hata"));
+                    m.hide();
+                }
+            } catch (err) {
+                console.error(err);
+                alert("İşlem sırasında bir hata oluştu.");
+                m.hide();
             }
-        } catch(e) {
-            console.error('Sipariş güncelleme hatası:', e);
         }
-    });
-
-    siparisConnection.start().catch(function(err) {
-        console.error('SignalR bağlantı hatası:', err);
-    });
-</script>
+    </script>
 }
+// End of file

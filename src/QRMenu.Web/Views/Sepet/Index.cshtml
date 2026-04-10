@@ -2,10 +2,14 @@
 @{
     ViewData["Title"] = "Sepetim";
     Layout = null;
+
+    var currentLang = Context.Request.Cookies["lang"] ?? "tr";
+    bool isEn = currentLang == "en";
+    string L(string tr, string? en) => (isEn && !string.IsNullOrEmpty(en)) ? en : tr;
 }
 
 <!DOCTYPE html>
-<html class="light" lang="tr">
+<html class="light" lang="@(isEn ? "en" : "tr")">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -49,12 +53,12 @@
                 <a href="/Menu/Index" class="hover:bg-neutral-100 transition-colors p-2 rounded-full" style="text-decoration:none;">
                     <span class="material-symbols-outlined text-orange-800">arrow_back</span>
                 </a>
-                <h1 class="font-headline font-bold text-lg uppercase tracking-tight text-orange-800">Kafe Menü</h1>
+                <h1 class="font-headline font-bold text-lg uppercase tracking-tight text-orange-800">@(L("Kafe Menü", "Cafe Menu"))</h1>
             </div>
             <div class="flex items-center gap-2">
                 @if (Context.Items.ContainsKey("MasaId"))
                 {
-                    <span class="font-label text-sm font-semibold text-on-surface-variant">Masa @Context.Items["MasaId"]</span>
+                    <span class="font-label text-sm font-semibold text-on-surface-variant">@(L("Masa", "Table")) @Context.Items["MasaId"]</span>
                 }
                 <span class="material-symbols-outlined text-orange-800">shopping_bag</span>
             </div>
@@ -67,11 +71,11 @@
             <!-- Empty State -->
             <div class="text-center py-20">
                 <span class="material-symbols-outlined text-7xl opacity-20 block mb-4">shopping_cart</span>
-                <h3 class="font-headline font-extrabold text-2xl text-on-surface mb-2">Sepetiniz Boş</h3>
-                <p class="text-on-surface-variant font-medium mb-8">Menüden lezzetli ürünler eklemeye başlayın.</p>
+                <h3 class="font-headline font-extrabold text-2xl text-on-surface mb-2">@(L("Sepetiniz Boş", "Your Cart is Empty"))</h3>
+                <p class="text-on-surface-variant font-medium mb-8">@(L("Menüden lezzetli ürünler eklemeye başlayın.", "Start adding delicious items from the menu."))</p>
                 <a href="/Menu/Index" class="inline-flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-headline font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform" style="text-decoration:none;">
                     <span class="material-symbols-outlined text-xl">restaurant_menu</span>
-                    Menüye Dön
+                    @(L("Menüye Dön", "Return to Menu"))
                 </a>
             </div>
         }
@@ -79,7 +83,7 @@
         {
             <!-- Page Title (Stitch) -->
             <div class="mb-10">
-                <h2 class="font-headline text-4xl font-extrabold text-on-surface tracking-tight leading-none mb-2">Seçimlerinizi Gözden Geçirin</h2>
+                <h2 class="font-headline text-4xl font-extrabold text-on-surface tracking-tight leading-none mb-2">@(L("Seçimlerinizi Gözden Geçirin", "Review Your Selection"))</h2>
                 @{
                     var hh = ViewBag.HappyHour as (decimal IndirimOrani, List<int> UrunIds)?;
                 }
@@ -88,12 +92,12 @@
                     <div class="bg-primary/5 border border-primary/10 rounded-2xl p-4 flex items-center gap-3 mb-4">
                         <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">card_giftcard</span>
                         <div>
-                            <p class="text-primary font-bold text-sm">Mutlu Saatler Aktif! 🎉</p>
-                            <p class="text-primary/70 text-xs font-medium">Seçili ürünlerde % @hh.Value.IndirimOrani indirim sepetinize yansıdı.</p>
+                            <p class="text-primary font-bold text-sm">@(L("Mutlu Saatler Aktif! 🎉", "Happy Hour Active! 🎉"))</p>
+                            <p class="text-primary/70 text-xs font-medium">@(L($"Seçili ürünlerde % {hh.Value.IndirimOrani} indirim sepetinize yansıdı.", $"{hh.Value.IndirimOrani}% discount applied on selected items."))</p>
                         </div>
                     </div>
                 }
-                <p class="text-on-surface-variant font-medium">Onayınız alındığında taze olarak hazırlanacaktır.</p>
+                <p class="text-on-surface-variant font-medium">@(L("Onayınız alındığında taze olarak hazırlanacaktır.", "It will be freshly prepared upon your approval."))</p>
             </div>
 
             <!-- Order Items (Stitch Bento) -->
@@ -103,7 +107,7 @@
                     <div class="bg-surface-container-lowest rounded-xl p-4 flex gap-4 items-center group" id="item-@detay.Id">
                         <div class="flex-grow">
                             <div class="flex justify-between items-start">
-                                <h3 class="font-headline font-bold text-on-surface text-lg">@detay.Urun.Ad</h3>
+                                <h3 class="font-headline font-bold text-on-surface text-lg">@(L(detay.Urun.Ad, detay.Urun.AdEN))</h3>
                                 <div class="flex flex-col items-end">
                                     @{
                                         bool isHHDetay = hh != null && (!hh.Value.UrunIds.Any() || hh.Value.UrunIds.Contains(detay.UrunId));
@@ -131,7 +135,7 @@
 
                                     @if (indirimliMi || isHHDetay)
                                     {
-                                        <span class="text-[10px] text-primary font-extrabold uppercase tracking-tighter bg-primary/10 px-2 py-0.5 rounded-md mt-1">İndirim Uygulandı</span>
+                                        <span class="text-[10px] text-primary font-extrabold uppercase tracking-tighter bg-primary/10 px-2 py-0.5 rounded-md mt-1">@(L("İndirim Uygulandı", "Discount Applied"))</span>
                                     }
                                 </div>
                             </div>
@@ -143,6 +147,7 @@
                                             var opsJson = System.Text.Json.JsonDocument.Parse(detay.SeciliOpsiyonlar);
                                             var opsList = new List<string>();
                                             foreach(var ops in opsJson.RootElement.EnumerateArray()) {
+                                                // Ideally translate options here if needed, but we don't have ADEN right now
                                                 opsList.Add(ops.GetProperty("Ad").GetString() ?? "");
                                             }
                                             @string.Join(", ", opsList)
@@ -165,7 +170,7 @@
                                 <button class="text-error text-sm font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity border-0 bg-transparent cursor-pointer"
                                         onclick="removeItem(@detay.Id)">
                                     <span class="material-symbols-outlined text-sm">delete</span>
-                                    Sil
+                                    @(L("Sil", "Delete"))
                                 </button>
                             </div>
                         </div>
@@ -178,13 +183,13 @@
                 <div class="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
                     <div class="space-y-3 mb-6">
                         <div class="flex justify-between items-center text-on-surface-variant font-medium">
-                            <span>Ara Toplam</span>
+                            <span>@(L("Ara Toplam", "Subtotal"))</span>
                             <span>@Model.ToplamTutar.ToString("N2") ₺</span>
                         </div>
                     </div>
                     <div class="pt-4 border-t border-surface-container flex justify-between items-end">
                         <div>
-                            <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Toplam Tutar</p>
+                            <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">@(L("Toplam Tutar", "Total Amount"))</p>
                             <h4 class="font-headline text-3xl font-extrabold text-on-surface">@Model.ToplamTutar.ToString("N2") ₺</h4>
                         </div>
                     </div>
@@ -194,7 +199,7 @@
                 <div class="flex justify-center">
                     <button onclick="clearCart()" class="flex items-center gap-2 px-5 py-2.5 bg-surface-container-high rounded-full hover:bg-surface-container-highest transition-colors active:scale-95 border-0 cursor-pointer">
                         <span class="material-symbols-outlined text-sm">delete_sweep</span>
-                        <span class="font-headline font-bold text-on-surface text-sm">Sepeti Temizle</span>
+                        <span class="font-headline font-bold text-on-surface text-sm">@(L("Sepeti Temizle", "Clear Cart"))</span>
                     </button>
                 </div>
             </section>
@@ -209,10 +214,10 @@
                 <button id="completeOrderBtn" onclick="siparisGonder()"
                         class="w-full bg-gradient-to-r from-primary to-primary-container text-white py-5 rounded-full font-headline font-bold text-lg shadow-[0_12px_32px_rgba(162,55,24,0.3)] active:scale-95 transition-transform flex items-center justify-center gap-3 border-0 cursor-pointer">
                     <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                    Siparişi Onayla
+                    @(L("Siparişi Onayla", "Confirm Order"))
                 </button>
                 <p class="text-center mt-3 text-[11px] font-medium text-on-surface-variant uppercase tracking-widest">
-                    Onayınız alındığında siparişiniz mutfağa iletilecektir.
+                    @(L("Onayınız alındığında siparişiniz mutfağa iletilecektir.", "Your order will be sent to the kitchen upon your approval."))
                 </p>
             </div>
         </div>
@@ -222,15 +227,15 @@
     <nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-3xl z-[60]">
         <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/Menu/Index" style="text-decoration:none;">
             <span class="material-symbols-outlined">restaurant_menu</span>
-            <span class="font-body text-[11px] font-semibold mt-1">Menü</span>
+            <span class="font-body text-[11px] font-semibold mt-1">@(L("Menü", "Menu"))</span>
         </a>
         <a class="flex flex-col items-center justify-center bg-orange-100 text-orange-900 rounded-xl px-3 py-1.5 transition-transform active:scale-90" href="/Sepet" style="text-decoration:none;">
             <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shopping_cart</span>
-            <span class="font-body text-[11px] font-semibold mt-1">Sepet</span>
+            <span class="font-body text-[11px] font-semibold mt-1">@(L("Sepet", "Cart"))</span>
         </a>
         <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/siparislerim" style="text-decoration:none;">
             <span class="material-symbols-outlined">receipt_long</span>
-            <span class="font-body text-[11px] font-semibold mt-1">Siparişlerim</span>
+            <span class="font-body text-[11px] font-semibold mt-1">@(L("Siparişlerim", "Orders"))</span>
         </a>
     </nav>
 
@@ -340,10 +345,16 @@
                 btn.disabled = true;
                 btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Gönderiliyor...';
                 try {
-                    const res = await fetch('/siparis/olustur', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+                    const res = await fetch('/siparis/olustur', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({}) });
+                    if (res.status === 401 || res.redirected) {
+                        showErrorToast('@Html.Raw(L("Oturumunuz bulunamadı. Lütfen QR kodu okutun.", "Session not found. Please scan the QR code."))');
+                        btn.disabled = false;
+                        btn.innerHTML = '<span class="material-symbols-outlined" style="font-variation-settings:\'FILL\' 1;">check_circle</span> @Html.Raw(L("Siparişi Onayla", "Confirm Order"))';
+                        return;
+                    }
                     const data = await res.json();
                     if (data.success) {
-                        showSuccess('Afiyet Olsun! 🎉', 'Siparişiniz mutfağa iletildi. Kısa sürede hazırlanacaktır.', '/siparislerim', 2500);
+                        showSuccess('@Html.Raw(L("Afiyet Olsun! 🎉", "Enjoy your meal! 🎉"))', '@Html.Raw(L("Siparişiniz mutfağa iletildi. Kısa sürede hazırlanacaktır.", "Your order has been sent to the kitchen. It will be prepared shortly."))', '/siparislerim', 2500);
                     } else {
                         showErrorToast('Hata: ' + data.message);
                         btn.disabled = false;

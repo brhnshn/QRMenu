@@ -78,6 +78,7 @@ namespace QRMenu.Web.Middleware
             context.Items["Oturum"] = oturum;
             context.Items["OturumId"] = oturum.Id;
             context.Items["MasaId"] = oturum.MasaId;
+            context.Items["MasaNo"] = oturum.Masa?.MasaNo ?? oturum.MasaId;
 
             // Sliding expiration: Son işlem zamanını güncelle
             await tokenService.RefreshSessionAsync(oturum.Id);

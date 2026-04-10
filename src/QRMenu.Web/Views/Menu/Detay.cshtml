@@ -1,17 +1,70 @@
 @model QRMenu.Core.Entities.Urun
 @{
-    ViewData["Title"] = Model.Ad;
+    var currentLang = Context.Request.Cookies["lang"] ?? "tr";
+    bool isEn = currentLang == "en";
+    string L(string tr, string? en) => (isEn && !string.IsNullOrEmpty(en)) ? en : tr;
+
+    string L_Opt(string tr)
+    {
+        if (!isEn) return tr;
+        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "BOYUT", "SIZE" },
+            { "SEÇENEK", "OPTION" },
+            { "EKSTRALAR", "EXTRAS" },
+            { "SOSLAR", "SAUCES" },
+            { "İÇECEKLER", "BEVERAGES" },
+            { "Küçük", "Small" },
+            { "Orta", "Medium" },
+            { "Büyük", "Large" },
+            { "Mega", "Extra Large" },
+            { "Buzlu", "Iced" },
+            { "Buzsuz", "No Ice" },
+            { "Az Buzlu", "Light Ice" },
+            { "Şekerli", "Sweetened" },
+            { "Şekersiz", "Unsweetened" },
+            { "Az Şekerli", "Light Sugar" },
+            { "Sıcak", "Hot" },
+            { "Soğuk", "Cold" },
+            { "Az Pişmiş", "Rare" },
+            { "Orta Pişmiş", "Medium" },
+            { "İyi Pişmiş", "Well Done" },
+            { "Ketçap", "Ketchup" },
+            { "Mayonez", "Mayonnaise" },
+            { "Hardal", "Mustard" },
+            { "Ranch Sos", "Ranch Sauce" },
+            { "Barbekü Sos", "BBQ Sauce" },
+            { "Acı Sos", "Hot Sauce" },
+            { "Sarımsaklı Mayonez", "Garlic Mayo" },
+            { "Peynir", "Cheese" },
+            { "Çedar Peyniri", "Cheddar Cheese" },
+            { "Çift Peynir", "Double Cheese" },
+            { "Soğan", "Onion" },
+            { "Domates", "Tomato" },
+            { "Turşu", "Pickles" },
+            { "Marul", "Lettuce" },
+            { "Ketçapsız", "No Ketchup" },
+            { "Mayonezsiz", "No Mayo" },
+            { "Soğansız", "No Onion" },
+            { "Domatessiz", "No Tomato" },
+            { "Turşusuz", "No Pickles" },
+            { "Marulsuz", "No Lettuce" }
+        };
+        return dict.TryGetValue(tr.Trim(), out var en) ? en : tr;
+    }
+
+    ViewData["Title"] = L(Model.Ad, Model.AdEN);
     Layout = null;
     var opsiyonlar = Model.UrunOpsiyonlar?.OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new { id = uo.Opsiyon.Id, ad = uo.Opsiyon.Ad, grup = uo.Opsiyon.Grup, ekFiyat = uo.Opsiyon.EkFiyat, zorunlu = uo.Opsiyon.Zorunlu }).ToList() ?? new();
     var gruplar = opsiyonlar.GroupBy(o => o.grup).ToList();
 }
 
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="@(isEn ? "en" : "tr")">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@Model.Ad - QR Menü</title>
+    <title>@L(Model.Ad, Model.AdEN) - QR Menü</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet" />
@@ -50,12 +103,12 @@
                 <a href="/Menu/Index" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors" style="text-decoration:none;">
                     <span class="material-symbols-outlined text-on-surface">arrow_back</span>
                 </a>
-                <h1 class="font-headline font-bold text-lg uppercase tracking-tight text-orange-800">Kafe Menü</h1>
+                <h1 class="font-headline font-bold text-lg uppercase tracking-tight text-orange-800">@(L("Kafe Menü", "Cafe Menu"))</h1>
             </div>
             <div class="flex items-center gap-2">
                 @if (Context.Items.ContainsKey("MasaId"))
                 {
-                    <span class="font-label text-sm font-semibold text-on-surface-variant">Masa @Context.Items["MasaId"]</span>
+                    <span class="font-label text-sm font-semibold text-on-surface-variant">@(L("Masa", "Table")) @Context.Items["MasaId"]</span>
                 }
             </div>
         </div>
@@ -91,7 +144,7 @@
         <div class="max-w-2xl mx-auto px-6 -mt-16 relative z-10">
             <div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
                 <div class="flex justify-between items-start mb-4">
-                    <h2 class="font-headline font-extrabold text-3xl md:text-4xl text-on-surface leading-tight">@Model.Ad</h2>
+                    <h2 class="font-headline font-extrabold text-3xl md:text-4xl text-on-surface leading-tight">@L(Model.Ad, Model.AdEN)</h2>
                     @{
                         var hh = ViewBag.HappyHour as (decimal IndirimOrani, List<int> UrunIds)?;
                         bool isHH = false;
@@ -116,18 +169,18 @@
                 <div class="flex gap-2 mb-6">
                     @if (Model.PopulerMi)
                     {
-                        <span class="bg-secondary-container text-on-secondary-container text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">Popüler</span>
+                        <span class="bg-secondary-container text-on-secondary-container text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">@(L("Popüler", "Popular"))</span>
                     }
                     @if (!Model.AktifMi)
                     {
-                        <span class="bg-error-container text-on-error text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">Tükendi</span>
+                        <span class="bg-error-container text-on-error text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">@(L("Tükendi", "Sold Out"))</span>
                     }
                 </div>
 
                 <!-- Description -->
                 @if (!string.IsNullOrEmpty(Model.Aciklama))
                 {
-                    <p class="text-on-surface-variant leading-relaxed text-lg mb-8">@Model.Aciklama</p>
+                    <p class="text-on-surface-variant leading-relaxed text-lg mb-8">@L(Model.Aciklama, Model.AciklamaEN)</p>
                 }
 
                 <!-- Customization Sections (Stitch) -->
@@ -145,10 +198,14 @@
                                 <div class="flex items-center gap-3">
                                     <span class="w-1 h-6 @barColor2 rounded-full"></span>
                                     <h3 class="font-headline font-bold text-xl uppercase tracking-tighter">
-                                        @grup.Key
+                                        @L_Opt(grup.Key ?? "")
                                         @if (isZorunlu2)
                                         {
-                                            <span class="text-error text-xs font-bold normal-case">(Zorunlu)</span>
+                                            <span class="text-error text-xs font-bold normal-case">@(L("(Zorunlu)", "(Required)"))</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-on-surface-variant text-xs font-bold normal-case">@(L("(Opsiyonel)", "(Optional)"))</span>
                                         }
                                     </h3>
                                 </div>
@@ -167,7 +224,7 @@
                                                            onchange="updateDetayPrice()" />
                                                     <span class="material-symbols-outlined absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none text-sm left-1" style="font-variation-settings: 'wght' 700;">check</span>
                                                 </div>
-                                                <span class="font-semibold text-on-surface">@ops.ad</span>
+                                                <span class="font-semibold text-on-surface">@L_Opt(ops.ad)</span>
                                             </div>
                                             @if (ops.ekFiyat > 0)
                                             {
@@ -175,7 +232,7 @@
                                             }
                                             else
                                             {
-                                                <span class="font-label text-xs uppercase text-on-surface-variant font-bold">Dahil</span>
+                                                <span class="font-label text-xs uppercase text-on-surface-variant font-bold">@(L("Dahil", "Included"))</span>
                                             }
                                         </label>
                                     }
@@ -208,28 +265,28 @@
                     <!-- Primary Action Button -->
                     <button id="btnDetayAddToCart" onclick="detayAddToCart()"
                             class="flex-1 bg-gradient-to-r from-primary to-primary-container h-12 rounded-xl flex items-center justify-between px-6 text-white font-headline font-bold uppercase tracking-widest shadow-lg shadow-primary/20 transition-transform active:scale-[0.98] border-0 cursor-pointer">
-                        <span>Sepete Ekle</span>
+                        <span>@(L("Sepete Ekle", "Add to Cart"))</span>
                         <span class="text-on-primary/90" id="detayTotalPrice">@Model.Fiyat.ToString("N2") ₺</span>
                     </button>
                 </div>
-                <div id="detayWarning" class="text-error text-xs font-semibold text-center mt-2" style="display:none;">Lütfen tüm zorunlu seçenekleri belirleyin.</div>
+                <div id="detayWarning" class="text-error text-xs font-semibold text-center mt-2" style="display:none;">@(L("Lütfen tüm zorunlu seçenekleri belirleyin.", "Please select all required options."))</div>
             </div>
         </footer>
     }
 
     <!-- ═══ BOTTOM NAV (Stitch — same as other pages) ═══ -->
     <nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-3xl z-[60]">
-        <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/Menu/Index" style="text-decoration:none;">
-            <span class="material-symbols-outlined">restaurant_menu</span>
-            <span class="font-body text-[11px] font-semibold mt-1">Menü</span>
+        <a class="flex flex-col items-center justify-center bg-orange-100 text-orange-900 rounded-xl px-3 py-1.5 transition-transform active:scale-90" href="/Menu/Index" style="text-decoration:none;">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">restaurant_menu</span>
+            <span class="font-body text-[11px] font-semibold mt-1">@(L("Menü", "Menu"))</span>
         </a>
         <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/Sepet" style="text-decoration:none;">
             <span class="material-symbols-outlined">shopping_cart</span>
-            <span class="font-body text-[11px] font-semibold mt-1">Sepet</span>
+            <span class="font-body text-[11px] font-semibold mt-1">@(L("Sepet", "Cart"))</span>
         </a>
         <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/siparislerim" style="text-decoration:none;">
             <span class="material-symbols-outlined">receipt_long</span>
-            <span class="font-body text-[11px] font-semibold mt-1">Siparişlerim</span>
+            <span class="font-body text-[11px] font-semibold mt-1">@(L("Siparişlerim", "Orders"))</span>
         </a>
     </nav>
 
@@ -274,26 +331,33 @@
 
             const btn = document.getElementById('btnDetayAddToCart');
             btn.disabled = true;
-            btn.innerHTML = '<span>Ekleniyor...</span><span></span>';
+            btn.innerHTML = '<span>@(L("Ekleniyor...", "Adding..."))</span><span></span>';
 
             try {
                 const response = await fetch('/sepet/ekle', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     body: JSON.stringify({ UrunId: URUN_ID, Adet: detayQty, OpsiyonIds: selectedOps })
                 });
+                if (response.status === 401 || response.redirected) {
+                    alert('@(L("❌ Lütfen masanızdaki QR kodu okutun.", "❌ Please scan the QR code on your table."))');
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>@(L("Sepete Ekle", "Add to Cart"))</span><span class="text-on-primary/90">' + (BASE_PRICE * detayQty).toFixed(2) + ' ₺</span>';
+                    return;
+                }
                 const data = await response.json();
                 if (data.success) {
                     window.location.href = '/Menu/Index';
                 } else {
-                    alert('Hata: ' + data.message);
+                    alert('@(L("Hata: ", "Error: "))' + data.message);
                     btn.disabled = false;
-                    btn.innerHTML = '<span>Sepete Ekle</span><span class="text-on-primary/90">' + (BASE_PRICE * detayQty).toFixed(2) + ' ₺</span>';
+                    btn.innerHTML = '<span>@(L("Sepete Ekle", "Add to Cart"))</span><span class="text-on-primary/90">' + (BASE_PRICE * detayQty).toFixed(2) + ' ₺</span>';
                 }
             } catch (err) {
                 console.error(err);
-                alert('Bağlantı hatası.');
+                alert('@(L("Bağlantı hatası veya oturum süresi doldu.", "Connection error or session expired."))');
                 btn.disabled = false;
+                btn.innerHTML = '<span>@(L("Sepete Ekle", "Add to Cart"))</span><span class="text-on-primary/90">' + (BASE_PRICE * detayQty).toFixed(2) + ' ₺</span>';
             }
         }
 

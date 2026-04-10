@@ -1,6 +1,9 @@
 @{
     ViewData["Title"] = "Siparişlerim";
     Layout = null;
+    var langCookie = Context.Request.Cookies["lang"];
+    bool isEn = langCookie == "en";
+    string L(string tr, string en) => isEn ? en : tr;
 }
 
 <!DOCTYPE html>
@@ -54,12 +57,12 @@
                 <a href="/Menu/Index" class="p-2 hover:bg-neutral-100 transition-colors rounded-full" style="text-decoration:none;">
                     <span class="material-symbols-outlined text-orange-800">arrow_back</span>
                 </a>
-                <h1 class="font-headline font-bold text-lg uppercase tracking-tight text-neutral-800">Siparişlerim</h1>
+                <h1 class="font-headline font-bold text-lg uppercase tracking-tight text-neutral-800">@L("Siparişlerim", "My Orders")</h1>
             </div>
             <div class="flex items-center gap-2">
                 @if (Context.Items.ContainsKey("MasaId"))
                 {
-                    <span class="font-label text-sm font-semibold text-on-surface-variant bg-surface-container-low px-3 py-1.5 rounded-full">Masa @Context.Items["MasaId"]</span>
+                    <span class="font-label text-sm font-semibold text-on-surface-variant bg-surface-container-low px-3 py-1.5 rounded-full">@L("Masa", "Table") @Context.Items["MasaId"]</span>
                 }
             </div>
         </div>
@@ -75,8 +78,8 @@
                     🍽️
                 </div>
             </div>
-            <h2 class="font-headline text-3xl font-extrabold text-on-surface mb-2 tracking-tight" id="heroTitle">Siparişleriniz yükleniyor...</h2>
-            <p class="text-on-surface-variant font-medium" id="heroSubtitle">Lütfen bekleyin.</p>
+            <h2 class="font-headline text-3xl font-extrabold text-on-surface mb-2 tracking-tight" id="heroTitle">@L("Siparişleriniz yükleniyor...", "Loading your orders...")</h2>
+            <p class="text-on-surface-variant font-medium" id="heroSubtitle">@L("Lütfen bekleyin.", "Please wait.")</p>
         </section>
 
         <!-- Orders Container (populated by JS) -->
@@ -86,27 +89,27 @@
         <section class="flex flex-col gap-4 mt-10" id="helpSection" style="display:none;">
             <button class="w-full bg-surface-container-high py-5 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 hover:bg-surface-container-highest border-0 cursor-pointer" onclick="callWaiter()">
                 <span class="material-symbols-outlined text-secondary">person_raised_hand</span>
-                <span class="font-headline font-bold text-on-surface">Garson Çağır</span>
+                <span class="font-headline font-bold text-on-surface">@L("Garson Çağır", "Call Waiter")</span>
             </button>
             <div class="flex justify-center mb-2">
                 <button class="flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full hover:bg-primary/20 transition-colors border-0 cursor-pointer" onclick="callWaiter()">
                     <span class="material-symbols-outlined text-sm">notifications_active</span>
-                    <span class="text-xs font-bold uppercase tracking-wider">Hızlı Çağrı</span>
+                    <span class="text-xs font-bold uppercase tracking-wider">@L("Hızlı Çağrı", "Quick Call")</span>
                 </button>
             </div>
             <p class="text-center text-xs text-on-surface-variant px-12" id="helpText">
-                Butona basarak garsonunuzu masanıza çağırabilirsiniz.
+                @L("Butona basarak garsonunuzu masanıza çağırabilirsiniz.", "You can hit the button to call your waiter.")
             </p>
         </section>
 
         <!-- Empty State -->
         <div id="emptyState" style="display:none;" class="text-center py-12">
             <span class="material-symbols-outlined text-7xl opacity-20 block mb-4">receipt_long</span>
-            <h3 class="font-headline font-extrabold text-2xl text-on-surface mb-2">Henüz siparişiniz yok</h3>
-            <p class="text-on-surface-variant font-medium mb-8">Menüden sipariş vererek başlayabilirsiniz.</p>
+            <h3 class="font-headline font-extrabold text-2xl text-on-surface mb-2">@L("Henüz siparişiniz yok", "No orders yet")</h3>
+            <p class="text-on-surface-variant font-medium mb-8">@L("Menüden sipariş vererek başlayabilirsiniz.", "You can start by ordering from the menu.")</p>
             <a href="/Menu/Index" class="inline-flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-headline font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform" style="text-decoration:none;">
                 <span class="material-symbols-outlined text-xl">restaurant_menu</span>
-                Menüye Dön
+                @L("Menüye Dön", "Back to Menu")
             </a>
         </div>
     </main>
@@ -115,15 +118,15 @@
     <nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-3xl z-[60]">
         <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/Menu/Index" style="text-decoration:none;">
             <span class="material-symbols-outlined">restaurant_menu</span>
-            <span class="font-body text-[11px] font-semibold mt-1">Menü</span>
+            <span class="font-body text-[11px] font-semibold mt-1">@L("Menü", "Menu")</span>
         </a>
         <a class="flex flex-col items-center justify-center text-neutral-400 px-3 py-1.5 transition-transform active:scale-90" href="/sepet" style="text-decoration:none;">
             <span class="material-symbols-outlined">shopping_cart</span>
-            <span class="font-body text-[11px] font-semibold mt-1">Sepet</span>
+            <span class="font-body text-[11px] font-semibold mt-1">@L("Sepet", "Cart")</span>
         </a>
         <a class="flex flex-col items-center justify-center bg-orange-100 text-orange-900 rounded-xl px-3 py-1.5 transition-transform active:scale-90" href="/siparislerim" style="text-decoration:none;">
             <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
-            <span class="font-body text-[11px] font-semibold mt-1">Siparişlerim</span>
+            <span class="font-body text-[11px] font-semibold mt-1">@L("Siparişlerim", "My Orders")</span>
         </a>
     </nav>
 
@@ -137,18 +140,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script>
         const stepDefs = [
-            { durum: 'Onaylandi', label: 'Alındı', sublabel: 'Siparişiniz mutfağa ulaştı', icon: 'task_alt' },
-            { durum: 'Hazirlaniyor', label: 'Hazırlanıyor', sublabel: 'Mutfak ekibi yemeğinizi hazırlıyor', icon: 'restaurant' },
-            { durum: 'Hazir', label: 'Hazır', sublabel: 'Servis için hazırlanıyor', icon: 'doorbell' },
-            { durum: 'TeslimEdildi', label: 'Teslim Edildi', sublabel: 'Afiyet olsun!', icon: 'celebration' }
+            { durum: 'Onaylandi', label: '@Html.Raw(L("Alındı", "Received"))', sublabel: '@Html.Raw(L("Siparişiniz mutfağa ulaştı", "Your order reached the kitchen"))', icon: 'task_alt' },
+            { durum: 'Hazirlaniyor', label: '@Html.Raw(L("Hazırlanıyor", "Preparing"))', sublabel: '@Html.Raw(L("Mutfak ekibi yemeğinizi hazırlıyor", "Our kitchen is preparing your meal"))', icon: 'restaurant' },
+            { durum: 'Hazir', label: '@Html.Raw(L("Hazır", "Ready"))', sublabel: '@Html.Raw(L("Servis için hazırlanıyor", "Getting ready for service"))', icon: 'doorbell' },
+            { durum: 'TeslimEdildi', label: '@Html.Raw(L("Teslim Edildi", "Delivered"))', sublabel: '@Html.Raw(L("Afiyet olsun!", "Enjoy your meal!"))', icon: 'celebration' }
         ];
         const stepOrder = { Onaylandi: 1, Hazirlaniyor: 2, Hazir: 3, TeslimEdildi: 4 };
 
         const heroMessages = {
-            1: { title: 'Siparişiniz alındı.', subtitle: 'Mutfak ekibimiz siparişinizi aldı.' },
-            2: { title: 'Yemekleriniz hazırlanıyor.', subtitle: 'Şeflerimiz lezzetli yemeklerinizi hazırlıyor.' },
-            3: { title: 'Siparişiniz hazır!', subtitle: 'Servis ekibi masanıza doğru yola çıktı.' },
-            4: { title: 'Afiyet olsun!', subtitle: 'Siparişiniz teslim edildi. Tekrar bekleriz!' }
+            1: { title: '@Html.Raw(L("Siparişiniz alındı.", "Order received."))', subtitle: '@Html.Raw(L("Mutfak ekibimiz siparişinizi aldı.", "Kitchen team got your order."))' },
+            2: { title: '@Html.Raw(L("Yemekleriniz hazırlanıyor.", "Preparing your meal."))', subtitle: '@Html.Raw(L("Şeflerimiz lezzetli yemeklerinizi hazırlıyor.", "Chefs are preparing your meal."))' },
+            3: { title: '@Html.Raw(L("Siparişiniz hazır!", "Your order is ready!"))', subtitle: '@Html.Raw(L("Servis ekibi masanıza doğru yola çıktı.", "Service team is on the way."))' },
+            4: { title: '@Html.Raw(L("Afiyet olsun!", "Enjoy!"))', subtitle: '@Html.Raw(L("Siparişiniz teslim edildi. Tekrar bekleriz!", "Order delivered. We hope to see you again!"))' }
         };
 
         function renderOrders(siparisler) {
@@ -193,8 +196,8 @@
 
             // Update help text
             const masaBadge = document.querySelector('.font-label');
-            const masaNo = masaBadge ? masaBadge.textContent.replace('Masa ', '') : '';
-            document.getElementById('helpText').textContent = `Butona basarak garsonunuzu Masa ${masaNo}'a çağırabilirsiniz.`;
+            const masaNo = masaBadge ? masaBadge.textContent.replace('@L("Masa", "Table") ', '') : '';
+            document.getElementById('helpText').textContent = `@Html.Raw(L("Butona basarak garsonunuzu Masa {0}'a çağırabilirsiniz.", "You can call your waiter to Table {0} by pressing the button."))`.replace('{0}', masaNo);
 
             // Render each order (Stitch Progress Tracker)
             container.innerHTML = aktif.map(s => {
@@ -207,7 +210,7 @@
                     timeCard = `
                         <section class="bg-surface-container-lowest rounded-3xl p-8 shadow-[0_4px_24px_rgba(0,0,0,0.04)] mb-10 text-center relative overflow-hidden">
                             <div class="absolute top-0 left-0 w-1.5 h-full bg-primary"></div>
-                            <span class="text-xs font-label font-bold uppercase tracking-widest text-on-surface-variant block mb-2">Sipariş #${s.siparisId}</span>
+                            <span class="text-xs font-label font-bold uppercase tracking-widest text-on-surface-variant block mb-2">@L("Sipariş", "Order") #${s.siparisId}</span>
                             <div class="flex items-center justify-center gap-3">
                                 <span class="font-headline text-3xl font-extrabold text-primary">${s.toplamTutar.toFixed(2)}</span>
                                 <span class="font-headline text-lg font-bold text-on-surface mt-1">₺</span>
@@ -269,18 +272,22 @@
         // Fetch orders
         async function fetchOrders() {
             try {
-                const res = await fetch('/siparis/siparislerim');
-                if (!res.ok) {
-                    document.getElementById('heroTitle').textContent = 'Oturum bulunamadı';
-                    document.getElementById('heroSubtitle').textContent = 'QR kodu tekrar okutun.';
+                const res = await fetch('/siparis/siparislerim', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (res.status === 401 || res.redirected) {
+                    document.getElementById('heroTitle').textContent = '@Html.Raw(L("Oturum bulunamadı", "Session not found"))';
+                    document.getElementById('heroSubtitle').textContent = '@Html.Raw(L("Lütfen QR kodu tekrar okutun.", "Please scan the QR code again."))';
                     return;
                 }
+                if (!res.ok) throw new Error('Network error');
+                
                 const data = await res.json();
                 if (data.success) renderOrders(data.siparisler);
             } catch(e) {
                 console.error(e);
-                document.getElementById('heroTitle').textContent = 'Bağlantı hatası';
-                document.getElementById('heroSubtitle').textContent = 'Sayfa yenilensin mi?';
+                document.getElementById('heroTitle').textContent = '@Html.Raw(L("Bağlantı hatası", "Connection error"))';
+                document.getElementById('heroSubtitle').textContent = '@Html.Raw(L("Sayfa yenilensin mi?", "Should we refresh the page?"))';
             }
         }
 
@@ -294,10 +301,19 @@
         // Garson Çağır
         async function callWaiter() {
             try {
-                const res = await fetch('/siparis/garson-cagir', { method: 'POST' });
+                const res = await fetch('/siparis/garson-cagir', { 
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                if (res.status === 401 || res.redirected) {
+                    showToast('⚠️ @Html.Raw(L("Lütfen QR kodu okutun", "Please scan the QR code"))', true);
+                    return;
+                }
+                
                 const data = await res.json();
-                showToast(data.success ? '✅ Garson çağrıldı!' : '⚠️ ' + (data.message || 'Hata.'), !data.success);
-            } catch(e) { showToast('⚠️ Tekrar deneyin.', true); }
+                showToast(data.success ? '✅ @Html.Raw(L("Garson çağrıldı!", "Waiter called!"))' : '⚠️ ' + (data.message || '@Html.Raw(L("Hata.", "Error."))'), !data.success);
+            } catch(e) { showToast('⚠️ @Html.Raw(L("Tekrar deneyin.", "Try again."))', true); }
         }
 
         function showToast(msg, isError) {

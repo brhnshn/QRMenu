@@ -9,6 +9,7 @@ namespace QRMenu.Data.Data
         public QRMenuDbContext(DbContextOptions<QRMenuDbContext> options) : base(options) { }
 
         // DbSet tanımları
+        public DbSet<Bolge> Bolgeler => Set<Bolge>();
         public DbSet<Masa> Masalar => Set<Masa>();
         public DbSet<Kategori> Kategoriler => Set<Kategori>();
         public DbSet<Urun> Urunler => Set<Urun>();

@@ -6,6 +6,9 @@ namespace QRMenu.Core.Entities
         public int MasaNo { get; set; }
         public bool AktifMi { get; set; } = true;
         public string? QrKodUrl { get; set; }
+        
+        public int? BolgeId { get; set; }
+        public Bolge? Bolge { get; set; }
 
         // Navigation Properties
         public ICollection<Siparis> Siparisler { get; set; } = new List<Siparis>();

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using QRMenu.Data.Data;
@@ -11,9 +12,11 @@ using QRMenu.Data.Data;
 namespace QRMenu.Data.Migrations
 {
     [DbContext(typeof(QRMenuDbContext))]
-    partial class QRMenuDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260410213312_AddGrupENToOpsiyon")]
+    partial class AddGrupENToOpsiyon
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -190,26 +193,6 @@ namespace QRMenu.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("AuditLoglar", (string)null);
-                });
-
-            modelBuilder.Entity("QRMenu.Core.Entities.Bolge", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Ad")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("SiraNo")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Bolgeler");
                 });
 
             modelBuilder.Entity("QRMenu.Core.Entities.HappyHour", b =>
@@ -410,9 +393,6 @@ namespace QRMenu.Data.Migrations
                     b.Property<bool>("AktifMi")
                         .HasColumnType("boolean");
 
-                    b.Property<int?>("BolgeId")
-                        .HasColumnType("integer");
-
                     b.Property<int>("MasaNo")
                         .HasColumnType("integer");
 
@@ -420,8 +400,6 @@ namespace QRMenu.Data.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BolgeId");
 
                     b.HasIndex("MasaNo")
                         .IsUnique();
@@ -1151,15 +1129,6 @@ namespace QRMenu.Data.Migrations
                     b.Navigation("Urun");
                 });
 
-            modelBuilder.Entity("QRMenu.Core.Entities.Masa", b =>
-                {
-                    b.HasOne("QRMenu.Core.Entities.Bolge", "Bolge")
-                        .WithMany("Masalar")
-                        .HasForeignKey("BolgeId");
-
-                    b.Navigation("Bolge");
-                });
-
             modelBuilder.Entity("QRMenu.Core.Entities.Odeme", b =>
                 {
                     b.HasOne("QRMenu.Core.Entities.Siparis", "Siparis")
@@ -1288,11 +1257,6 @@ namespace QRMenu.Data.Migrations
                     b.Navigation("Opsiyon");
 
                     b.Navigation("Urun");
-                });
-
-            modelBuilder.Entity("QRMenu.Core.Entities.Bolge", b =>
-                {
-                    b.Navigation("Masalar");
                 });
 
             modelBuilder.Entity("QRMenu.Core.Entities.HappyHour", b =>

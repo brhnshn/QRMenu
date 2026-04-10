@@ -57,17 +57,25 @@ namespace QRMenu.Web.Controllers
         {
             var masalar = await _context.Masalar
                 .Where(m => m.AktifMi)
+                .Include(m => m.Bolge)
                 .Include(m => m.Siparisler.Where(s => s.Durum != SiparisDurum.Iptal && s.Durum != SiparisDurum.TamOdendi && s.Durum != SiparisDurum.Iade))
-                .OrderBy(m => m.MasaNo)
+                .OrderBy(m => m.BolgeId.HasValue ? m.Bolge!.SiraNo : 9999)
+                .ThenBy(m => m.MasaNo)
                 .ToListAsync();
+
+            var bolgeler = await _context.Bolgeler.OrderBy(b => b.SiraNo).ToListAsync();
+            ViewBag.Bolgeler = bolgeler;
 
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
             var liste = masalar.Select(m => new QrKodViewModel
             {
+                Id = m.Id,
                 MasaNo = m.MasaNo,
                 QrUrl = m.QrKodUrl ?? "",
                 QrBase64 = "",
-                DoluMu = m.Siparisler.Any()
+                DoluMu = m.Siparisler.Any(),
+                BolgeId = m.BolgeId,
+                BolgeAd = m.Bolge?.Ad
             }).ToList();
 
             ViewBag.BaseUrl = baseUrl;
@@ -95,6 +103,71 @@ namespace QRMenu.Web.Controllers
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("Masa oluşturuldu. MasaNo={MasaNo}", masaNo);
+            return Json(new { success = true });
+        }
+
+        // AJAX: Masa oluştur (Yeni)
+        [HttpPost("/admin/masa-ekle")]
+        public async Task<IActionResult> MasaEkle([FromBody] QRMenu.Web.ViewModels.MasaFormViewModel model)
+        {
+            var mevcut = await _context.Masalar.FirstOrDefaultAsync(m => m.MasaNo == model.MasaNo);
+            if (mevcut != null) return Json(new { success = false, message = $"Masa {model.MasaNo} zaten var" });
+
+            var yeniMasa = new Masa { MasaNo = model.MasaNo, BolgeId = model.BolgeId, AktifMi = true };
+            _context.Masalar.Add(yeniMasa);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Masa oluşturuldu. MasaNo={MasaNo} BolgeId={BolgeId}", model.MasaNo, model.BolgeId);
+            return Json(new { success = true });
+        }
+
+        // AJAX: Masa guncelle (Yeni)
+        [HttpPost("/admin/masa-guncelle/{id:int}")]
+        public async Task<IActionResult> MasaGuncelle(int id, [FromBody] QRMenu.Web.ViewModels.MasaFormViewModel model)
+        {
+            var masa = await _context.Masalar.FindAsync(id);
+            if (masa == null) return Json(new { success = false, message = "Masa bulunamadı" });
+
+            if (masa.MasaNo != model.MasaNo && await _context.Masalar.AnyAsync(m => m.MasaNo == model.MasaNo))
+                return Json(new { success = false, message = "Bu numarada başka bir masa var!" });
+
+            masa.MasaNo = model.MasaNo;
+            masa.BolgeId = model.BolgeId;
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        [HttpPost("/admin/bolge-ekle")]
+        public async Task<IActionResult> BolgeEkle([FromBody] QRMenu.Web.ViewModels.BolgeFormViewModel model)
+        {
+            if (string.IsNullOrWhiteSpace(model.Ad)) return Json(new { success=false, message="Bölge adı zorunlu."});
+            var b = new Bolge { Ad = model.Ad, SiraNo = model.SiraNo };
+            _context.Bolgeler.Add(b);
+            await _context.SaveChangesAsync();
+            return Json(new { success=true });
+        }
+
+        [HttpPost("/admin/bolge-guncelle/{id:int}")]
+        public async Task<IActionResult> BolgeGuncelle(int id, [FromBody] QRMenu.Web.ViewModels.BolgeFormViewModel model)
+        {
+            var b = await _context.Bolgeler.FindAsync(id);
+            if (b == null) return Json(new { success = false, message="Bulunamadı" });
+            b.Ad = model.Ad;
+            b.SiraNo = model.SiraNo;
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        [HttpPost("/admin/bolge-sil/{id:int}")]
+        public async Task<IActionResult> BolgeSil(int id)
+        {
+            var b = await _context.Bolgeler.FindAsync(id);
+            if (b == null) return Json(new { success = false });
+
+            if (await _context.Masalar.AnyAsync(m => m.BolgeId == id))
+                return Json(new { success = false, message="Bu bölgeye bağlı masalar var. Önce masaları kaldırın/taşıyın."});
+
+            _context.Bolgeler.Remove(b);
+            await _context.SaveChangesAsync();
             return Json(new { success = true });
         }
 
@@ -171,10 +244,11 @@ namespace QRMenu.Web.Controllers
         public async Task<IActionResult> Siparisler()
         {
             ViewData["ActivePage"] = "Siparisler";
-            ViewData["PageTitle"] = "Sipariş Yönetimi";
+            ViewData["PageTitle"] = "Sipariş Geçmişi & Raporlama";
 
             var siparisler = await _context.Siparisler
                 .Include(s => s.Masa)
+                .ThenInclude(m => m.Bolge)
                 .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
                 .AsSplitQuery()
@@ -406,7 +480,9 @@ namespace QRMenu.Web.Controllers
                     {
                         uo.Opsiyon.Id,
                         uo.Opsiyon.Ad,
+                        uo.Opsiyon.AdEN,
                         uo.Opsiyon.Grup,
+                        uo.Opsiyon.GrupEN,
                         uo.Opsiyon.EkFiyat,
                         uo.Opsiyon.Zorunlu
                     })
@@ -562,11 +638,14 @@ namespace QRMenu.Web.Controllers
             Opsiyon opsiyon;
             if (mevcutOpsiyon != null)
             {
-                // Fiyat veya zorunluluk değiştiyse güncelle
-                if (mevcutOpsiyon.EkFiyat != model.EkFiyat || mevcutOpsiyon.Zorunlu != model.Zorunlu)
+                // Fiyat, zorunluluk veya İngilizce isimler değiştiyse güncelle
+                if (mevcutOpsiyon.EkFiyat != model.EkFiyat || mevcutOpsiyon.Zorunlu != model.Zorunlu ||
+                    mevcutOpsiyon.AdEN != model.AdEN || mevcutOpsiyon.GrupEN != model.GrupEN)
                 {
                     mevcutOpsiyon.EkFiyat = model.EkFiyat;
                     mevcutOpsiyon.Zorunlu = model.Zorunlu;
+                    mevcutOpsiyon.AdEN = model.AdEN;
+                    mevcutOpsiyon.GrupEN = model.GrupEN;
                     await _context.SaveChangesAsync();
                 }
                 opsiyon = mevcutOpsiyon;
@@ -576,7 +655,9 @@ namespace QRMenu.Web.Controllers
                 opsiyon = new Opsiyon
                 {
                     Ad = model.Ad,
+                    AdEN = model.AdEN,
                     Grup = model.Grup,
+                    GrupEN = model.GrupEN,
                     EkFiyat = model.EkFiyat,
                     Zorunlu = model.Zorunlu
                 };
@@ -694,7 +775,12 @@ namespace QRMenu.Web.Controllers
         {
             ViewData["ActivePage"] = "HappyHour";
             ViewData["PageTitle"] = "İndirim Saatleri";
-            ViewBag.Urunler = await _context.Urunler.Where(u => u.AktifMi).OrderBy(u => u.Ad).ToListAsync();
+            ViewBag.Urunler = await _context.Urunler
+                .Include(u => u.Kategori)
+                .Where(u => u.AktifMi)
+                .OrderBy(u => u.Kategori.SiraNo)
+                .ThenBy(u => u.Ad)
+                .ToListAsync();
             var happyHour = await _context.HappyHourlar
                 .Include(h => h.HappyHourUrunler)
                 .FirstOrDefaultAsync();
@@ -730,7 +816,7 @@ namespace QRMenu.Web.Controllers
                 aktifMi = hh.AktifMi,
                 suAnAktif,
                 indirimOrani = hh.IndirimOrani,
-                baslaingicSaati = hh.BaslangicSaati.ToString(@"hh\:mm"),
+                baslangicSaati = hh.BaslangicSaati.ToString(@"hh\:mm"),
                 bitisSaati = hh.BitisSaati.ToString(@"hh\:mm"),
                 urunIds = hh.HappyHourUrunler.Select(x => x.UrunId).ToArray()
             });
@@ -758,7 +844,7 @@ namespace QRMenu.Web.Controllers
                     baslangicRaw,
                     new[] { @"hh\:mm", @"h\:mm" },
                     CultureInfo.InvariantCulture,
-                    out var baslaingicTs))
+                    out var baslangicTs))
                 return Json(new { success = false, message = "Geçersiz başlangıç saati formatı. Örn: 14:00" });
 
                 if (!TimeSpan.TryParseExact(
@@ -768,7 +854,7 @@ namespace QRMenu.Web.Controllers
                     out var bitisTs))
                 return Json(new { success = false, message = "Geçersiz bitiş saati formatı. Örn: 17:00" });
 
-            hh.BaslangicSaati = baslaingicTs;
+            hh.BaslangicSaati = baslangicTs;
             hh.BitisSaati = bitisTs;
             hh.IndirimOrani = model.IndirimOrani;
             hh.AktifMi = model.AktifMi;
