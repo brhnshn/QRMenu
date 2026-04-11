@@ -36,6 +36,9 @@
             <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Urunler" ? "active" : "")" href="/admin/urunler">
                 <i class="bi bi-cup-hot"></i> Ürünler
             </a>
+            <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Oyunlar" ? "active" : "")" href="/admin/oyunlar">
+                <i class="bi bi-dice-5"></i> Şans Oyunları
+            </a>
             <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Siparisler" ? "active" : "")" href="/admin/siparisler">
                 <i class="bi bi-receipt"></i> Siparişler
             </a>

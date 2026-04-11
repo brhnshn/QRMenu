@@ -82,6 +82,11 @@
                 .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal)
                 .ToList();
 
+            var siparisBazToplam = siparis.SiparisDetaylar
+                .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
+                .Sum(sd => sd.Adet * sd.BirimFiyat);
+            var indirimOrani = siparisBazToplam > 0 ? (siparis.ToplamTutar / siparisBazToplam) : 1m;
+
             if (bekleyenDetaylar.Any())
             {
                 odenecekVarMi = true;
@@ -98,7 +103,7 @@
 
                     @foreach(var detay in bekleyenDetaylar)
                     {
-                        var satirTutar = detay.Adet * detay.BirimFiyat;
+                        var satirTutar = (detay.Adet * detay.BirimFiyat) * indirimOrani;
                         <label class="kasa-item-row">
                             <div class="d-flex align-items-center">
                                 <input type="checkbox" class="kasa-checkbox urun-check" value="@detay.Id" data-fiyat="@satirTutar.ToString().Replace(",", ".")" onchange="hesapla()" />

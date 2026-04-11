@@ -56,12 +56,30 @@ namespace QRMenu.Data.Services
                 decimal odenenTutar = 0;
                 var siparisBazliTutarlar = new Dictionary<int, decimal>();
 
+                // Siparişe uygulanan indirimleri ödeme anında satır tutarlarına oransal dağıt.
+                var siparisOranlari = detaylar
+                    .Select(d => d.Siparis)
+                    .Where(s => s != null)
+                    .DistinctBy(s => s!.Id)
+                    .ToDictionary(
+                        s => s!.Id,
+                        s =>
+                        {
+                            var bazToplam = _context.SiparisDetaylar
+                                .Where(sd => sd.SiparisId == s!.Id && sd.Durum != SiparisDurum.Iptal && sd.Durum != SiparisDurum.Iade)
+                                .Sum(sd => sd.BirimFiyat * sd.Adet);
+
+                            if (bazToplam <= 0) return 1m;
+                            return s.ToplamTutar / bazToplam;
+                        });
+
                 foreach (var detay in detaylar)
                 {
                     if (detay.Durum == SiparisDurum.TamOdendi || detay.Durum == SiparisDurum.Iptal) continue;
 
                     detay.Durum = SiparisDurum.TamOdendi;
-                    var tutar = (detay.BirimFiyat * detay.Adet);
+                    var oran = siparisOranlari.TryGetValue(detay.SiparisId, out var value) ? value : 1m;
+                    var tutar = (detay.BirimFiyat * detay.Adet) * oran;
                     odenenTutar += tutar;
                     
                     if (!siparisBazliTutarlar.ContainsKey(detay.SiparisId))

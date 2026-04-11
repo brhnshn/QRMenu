@@ -91,12 +91,21 @@
                 var siparisler = masa.Siparisler.Where(s => s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade).ToList();
                 var doluMu = siparisler.Any();
                 
-                // Önemli: Siparişin ToplamTutar'ı yerine, sadece ödenmemiş kalemlerin bakiye toplamını gösteriyoruz.
-                var kalanBakiye = siparisler.SelectMany(s => s.SiparisDetaylar)
-                    .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && 
-                                 sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && 
-                                 sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
-                    .Sum(sd => sd.Adet * sd.BirimFiyat);
+                // Siparişe uygulanan indirimleri kalan bakiyeye oransal yansıtıyoruz.
+                var kalanBakiye = siparisler.Sum(s =>
+                {
+                    var bazToplam = s.SiparisDetaylar
+                        .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
+                        .Sum(sd => sd.Adet * sd.BirimFiyat);
+
+                    var oran = bazToplam > 0 ? (s.ToplamTutar / bazToplam) : 1m;
+
+                    return s.SiparisDetaylar
+                        .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && 
+                                     sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && 
+                                     sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
+                        .Sum(sd => (sd.Adet * sd.BirimFiyat) * oran);
+                });
                 
                 // Eğer bakiye 0 olsa bile bazı siparişler 'aktif' kalmış olabilir (bug önlemi), 
                 // bu durumda da masayı boş kabul etmeliyiz ki kullanıcı kafa karışıklığı yaşamasın.

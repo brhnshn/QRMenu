@@ -46,6 +46,19 @@
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
         .step-active .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
         body { min-height: max(884px, 100dvh); }
+        .game-card { transition: transform .2s ease, box-shadow .2s ease; }
+        .game-card:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,.12); }
+        .memory-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+        .memory-card { position:relative; height:70px; border-radius:12px; cursor:pointer; transform-style:preserve-3d; transition:transform .35s ease; }
+        .memory-card.flipped { transform: rotateY(180deg); }
+        .memory-face { position:absolute; inset:0; border-radius:12px; backface-visibility:hidden; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+        .memory-front { background:#fff; border:1px solid #ddd; transform:rotateY(180deg); }
+        .memory-back { background:linear-gradient(135deg,#fd7954,#a23718); color:#fff; font-weight:800; }
+        .scratch-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+        .scratch-tile { border-radius:12px; background:#f0f0f0; border:1px dashed #bbb; min-height:72px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:700; transition:transform .25s ease, opacity .25s ease, box-shadow .25s ease; }
+        .scratch-tile.dimmed { opacity:.35; transform:scale(.92); }
+        .scratch-tile.selected { transform:scale(1.18); box-shadow:0 12px 28px rgba(0,0,0,.25); z-index:5; border:2px solid #a23718; }
+        .scratch-tile.revealed { background:#fff7df; border-color:#ffca57; }
     </style>
 </head>
 <body class="bg-surface font-body text-on-surface antialiased">
@@ -129,6 +142,16 @@
             <span class="font-body text-[11px] font-semibold mt-1">@L("Siparişlerim", "My Orders")</span>
         </a>
     </nav>
+
+<div class="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4" id="gameModal" style="display:none;">
+        <div class="bg-surface p-6 rounded-3xl max-w-xl w-full shadow-2xl max-h-[92vh] overflow-auto">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-headline font-extrabold text-xl text-on-surface" id="gameTitle">🎮 @L("Şans Oyunları", "Chance Games")</h3>
+                <button type="button" class="rounded-full px-3 py-1 bg-surface-container-low" onclick="closeGameModal()">✕</button>
+            </div>
+            <div id="gameStage" class="text-on-surface"></div>
+        </div>
+    </div>
 
     <!-- Toast -->
     <div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none">
@@ -229,6 +252,20 @@
                         </div>`
                     ).join('')}</div>`;
                 }
+                
+                let gameHtml = '';
+                if (s.durum === 'Hazirlaniyor' && s.oyunOynandiMi === false) {
+                    gameHtml = `
+                    <div class="mb-6 bg-secondary-container rounded-3xl p-6 text-center shadow-lg border border-secondary/20 relative overflow-hidden">
+                        <div class="absolute inset-0 bg-white/20 blur-md pointer-events-none"></div>
+                        <h4 class="font-headline font-extrabold text-xl text-on-secondary-container mb-2 relative">🎉 @L("Siparişin Hazırlanıyor!", "Your order is preparing!")</h4>
+                        <p class="text-sm text-on-secondary-container mb-4 relative">@L("Beklerken şansını dene, anında indirim kazan!", "Try your luck and win a discount while waiting!")</p>
+                        <button onclick="playGame(${s.siparisId})" class="relative inline-flex items-center gap-2 bg-secondary text-primary-container px-6 py-3 rounded-full font-headline font-bold shadow-lg active:scale-95 transition-transform">
+                            <span class="material-symbols-outlined text-xl">casino</span>
+                            @L("Şansını Dene", "Try Your Luck")
+                        </button>
+                    </div>`;
+                }
 
                 // Progress Tracker (Stitch — exact copy)
                 const stepsHtml = stepDefs.map((st, i) => {
@@ -256,6 +293,7 @@
                 return `
                     ${timeCard}
                     ${detailsHtml}
+                    ${gameHtml}
                     <section class="mb-12">
                         <div class="flex flex-col gap-8 relative">
                             <!-- Vertical Line (Stitch) -->
@@ -314,6 +352,367 @@
                 const data = await res.json();
                 showToast(data.success ? '✅ @Html.Raw(L("Garson çağrıldı!", "Waiter called!"))' : '⚠️ ' + (data.message || '@Html.Raw(L("Hata.", "Error."))'), !data.success);
             } catch(e) { showToast('⚠️ @Html.Raw(L("Tekrar deneyin.", "Try again."))', true); }
+        }
+
+        let currentGameOrderId = 0;
+        let currentGames = [];
+        let memoryTimer = null;
+
+        function closeGameModal() {
+            const modal = document.getElementById('gameModal');
+            modal.style.display = 'none';
+            if (memoryTimer) {
+                clearInterval(memoryTimer);
+                memoryTimer = null;
+            }
+        }
+
+        async function playGame(siparisId) {
+            currentGameOrderId = siparisId;
+            const modal = document.getElementById('gameModal');
+            const stage = document.getElementById('gameStage');
+            document.getElementById('gameTitle').textContent = '🎮 @Html.Raw(L("Şans Oyunları", "Chance Games"))';
+            modal.style.display = 'flex';
+            stage.innerHTML = '<div class="text-center py-8">@Html.Raw(L("Oyunlar yükleniyor...", "Loading games..."))</div>';
+
+            try {
+                const res = await fetch(`/siparis/oyun-secimleri/${siparisId}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await res.json();
+
+                if (!data.success) {
+                    stage.innerHTML = `<div class="text-center py-8">⚠️ ${data.message || '@Html.Raw(L("Bir hata oluştu.", "An error occurred."))'}</div>`;
+                    return;
+                }
+
+                currentGames = data.oyunlar || [];
+                renderGameSelection();
+            } catch (e) {
+                console.error(e);
+                stage.innerHTML = '<div class="text-center py-8">⚠️ @Html.Raw(L("Bağlantı hatası.", "Connection error."))</div>';
+            }
+        }
+
+        function renderGameSelection() {
+            const stage = document.getElementById('gameStage');
+            const cards = currentGames.map(g => {
+                const btn = g.aktif
+                    ? `<button class="mt-3 w-full bg-primary text-white rounded-xl py-2 font-bold" onclick="startSelectedGame('${g.tip}')">@Html.Raw(L("Oyunu Seç", "Select Game"))</button>`
+                    : `<button class="mt-3 w-full bg-gray-300 text-gray-600 rounded-xl py-2 font-bold" disabled>@Html.Raw(L("Pasif", "Inactive"))</button>`;
+
+                return `
+                <div class="game-card bg-surface-container-lowest rounded-2xl p-4 border border-surface-container mb-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-headline text-lg font-extrabold">${g.ad}</h4>
+                        <span class="text-xs px-2 py-1 rounded-full ${g.aktif ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">${g.aktif ? '@Html.Raw(L("Aktif", "Active"))' : '@Html.Raw(L("Pasif", "Inactive"))'}</span>
+                    </div>
+                    <p class="text-sm text-on-surface-variant mt-1">${g.aciklama || ''}</p>
+                    ${btn}
+                </div>`;
+            }).join('');
+
+            stage.innerHTML = `
+                <p class="text-sm text-on-surface-variant mb-3">@Html.Raw(L("Bir oyun seç ve şansını dene. Bir siparişte sadece bir kez oynayabilirsin.", "Pick one game and try your luck. You can play only once per order."))</p>
+                ${cards}
+            `;
+        }
+
+        function startSelectedGame(tip) {
+            const game = currentGames.find(g => g.tip === tip);
+            if (!game || !game.aktif) return;
+
+            if (tip === 'CARKIFELEK') startWheelGame(game);
+            else if (tip === 'HAFIZA') startMemoryGame(game);
+            else startScratchGame(game);
+        }
+
+        async function completeGame(oyunTipi, basariliMi, oyunToken, hafizaHamleleri) {
+            const res = await fetch(`/siparis/oyun-sonuclandir/${currentGameOrderId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ oyunTipi, basariliMi, oyunToken, hafizaHamleleri: hafizaHamleleri || [] })
+            });
+            return await res.json();
+        }
+
+        function showResultWithCountdown(resultEl, html, seconds, onDone) {
+            let remaining = seconds;
+
+            function render() {
+                resultEl.innerHTML = `${html}<div class="mt-2 text-sm opacity-80">@Html.Raw(L("Kapanıyor", "Closing")): ${remaining} sn</div>`;
+            }
+
+            render();
+            const intervalId = setInterval(() => {
+                remaining--;
+                if (remaining <= 0) {
+                    clearInterval(intervalId);
+                    onDone();
+                    return;
+                }
+                render();
+            }, 1000);
+        }
+
+        function startWheelGame(game) {
+            const stage = document.getElementById('gameStage');
+            const oduller = game.oduller || [];
+            if (!oduller.length) {
+                stage.innerHTML = '<div class="text-center py-8">⚠️ @Html.Raw(L("Çarkıfelek için ödül bulunmuyor.", "No rewards for wheel."))</div>';
+                return;
+            }
+
+            stage.innerHTML = `
+                <div class="text-center">
+                    <p class="mb-3 text-sm text-on-surface-variant">@Html.Raw(L("Çarkıfeleği döndür butonuna bas, çark durunca ödülün belli olacak.", "Press spin and wait for the wheel to stop."))</p>
+                    <div class="relative mx-auto" style="width:min(88vw,360px);height:min(88vw,360px);">
+                        <canvas id="wheelCanvas" width="360" height="360" style="width:100%;height:100%;"></canvas>
+                        <div style="position:absolute;left:50%;top:-6px;transform:translateX(-50%);font-size:34px;">▼</div>
+                    </div>
+                    <button id="spinBtn" class="mt-5 bg-primary text-white rounded-xl px-7 py-3.5 text-base font-bold">@Html.Raw(L("Çarkıfeleği Döndür", "Spin the Wheel"))</button>
+                    <div id="wheelResult" class="mt-4 text-base font-semibold"></div>
+                </div>`;
+
+            const canvas = document.getElementById('wheelCanvas');
+            const ctx = canvas.getContext('2d');
+            let angle = 0;
+            const colors = ['#fd7954', '#ffca57', '#ec6d49', '#ffd88f', '#ff9f6e', '#f7b84b'];
+            const weights = oduller.map(o => Math.max(0.01, parseFloat(o.ihtimal) || 0.01));
+            const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+            const slices = [];
+            let cumulative = 0;
+            for (let i = 0; i < oduller.length; i++) {
+                const span = (weights[i] / totalWeight) * Math.PI * 2;
+                slices.push({ start: cumulative, end: cumulative + span, mid: cumulative + (span / 2) });
+                cumulative += span;
+            }
+
+            function drawWheel(a) {
+                ctx.clearRect(0, 0, 360, 360);
+                for (let i = 0; i < oduller.length; i++) {
+                    const start = a + slices[i].start;
+                    const end = a + slices[i].end;
+                    const span = slices[i].end - slices[i].start;
+                    ctx.beginPath();
+                    ctx.moveTo(180, 180);
+                    ctx.arc(180, 180, 166, start, end);
+                    ctx.closePath();
+                    ctx.fillStyle = colors[i % colors.length];
+                    ctx.fill();
+
+                    ctx.save();
+                    ctx.translate(180, 180);
+                    ctx.rotate(a + slices[i].mid);
+                    ctx.fillStyle = '#2e2f2f';
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    const fontSize = span < 0.24 ? 9 : span < 0.45 ? 11 : 13;
+                    ctx.font = `bold ${fontSize}px sans-serif`;
+                    const text = (oduller[i].odulTanim || '').trim();
+                    ctx.fillText(text, 148, 0);
+                    ctx.restore();
+                }
+                ctx.beginPath();
+                ctx.arc(180, 180, 30, 0, Math.PI * 2);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+            }
+
+            function animateToIndex(targetIndex, done) {
+                const targetSlice = slices[targetIndex] || slices[0];
+                const desired = (Math.PI * 1.5) - targetSlice.mid;
+                const start = angle;
+                const end = desired + (Math.PI * 2 * 6);
+                const duration = 3500;
+                const t0 = performance.now();
+
+                function frame(t) {
+                    const p = Math.min(1, (t - t0) / duration);
+                    const eased = 1 - Math.pow(1 - p, 4);
+                    angle = start + (end - start) * eased;
+                    drawWheel(angle);
+                    if (p < 1) requestAnimationFrame(frame);
+                    else done();
+                }
+                requestAnimationFrame(frame);
+            }
+
+            drawWheel(angle);
+
+            document.getElementById('spinBtn').onclick = async () => {
+                const btn = document.getElementById('spinBtn');
+                const result = document.getElementById('wheelResult');
+                btn.disabled = true;
+                btn.classList.add('opacity-60');
+                result.textContent = '@Html.Raw(L("Çark dönüyor...", "Wheel is spinning..."))';
+
+                try {
+                    const data = await completeGame('CARKIFELEK', true, game.oyunToken, []);
+                    if (!data.success) {
+                        result.textContent = '⚠️ ' + (data.message || '@Html.Raw(L("Hata.", "Error."))');
+                        return;
+                    }
+                    const hedefIndex = Number.isInteger(data.hedefIndex) ? data.hedefIndex : Math.floor(Math.random() * oduller.length);
+                    animateToIndex(hedefIndex, () => {
+                        const gelenDilim = data.odulTanim ? `<div class="mb-1">🎯 @Html.Raw(L("Gelen dilim", "Landed slice")): <strong>${data.odulTanim}</strong></div>` : '';
+                        const html = data.kazandiMi
+                            ? `${gelenDilim}<div>🎉 ${data.message}</div><small>@Html.Raw(L("Yeni tutar", "New total")): ${data.yeniTutar.toFixed(2)} ₺</small>`
+                            : `${gelenDilim}<div>😢 ${data.message}</div>`;
+                        showResultWithCountdown(result, html, 6, () => { closeGameModal(); fetchOrders(); });
+                    });
+                } catch (e) {
+                    console.error(e);
+                    result.textContent = '⚠️ @Html.Raw(L("Bağlantı hatası.", "Connection error."))';
+                }
+            };
+        }
+
+        function startMemoryGame(game) {
+            const stage = document.getElementById('gameStage');
+            const cards = (game.hafizaKartlari || []);
+            if (cards.length < 16) {
+                stage.innerHTML = '<div class="text-center py-8">⚠️ @Html.Raw(L("Hafıza oyunu için en az 8 ürün görseli gerekli.", "At least 8 product images are required for memory game."))</div>';
+                return;
+            }
+
+            stage.innerHTML = `
+                <div class="mb-2 text-sm text-on-surface-variant">@Html.Raw(L("16 kartı 45 saniyede eşleştir.", "Match 16 cards in 45 seconds."))</div>
+                <div class="mb-3 font-bold">⏳ <span id="memoryTime">45</span> sn</div>
+                <div id="memoryGrid" class="memory-grid"></div>
+                <div id="memoryResult" class="mt-3 font-semibold"></div>
+            `;
+
+            const grid = document.getElementById('memoryGrid');
+            const result = document.getElementById('memoryResult');
+            let first = null;
+            let lock = false;
+            let matched = 0;
+            let seconds = 45;
+            const memoryMoves = [];
+
+            grid.innerHTML = cards.map((c, idx) => `
+                <div class="memory-card" data-index="${idx}" data-pair="${c.eslesmeId}">
+                    <div class="memory-face memory-back">QR</div>
+                    <div class="memory-face memory-front">
+                        <img src="${c.gorselUrl}" alt="${escapeHtml(c.urunAd)}" style="width:100%;height:100%;object-fit:cover;" />
+                    </div>
+                </div>
+            `).join('');
+
+            if (memoryTimer) clearInterval(memoryTimer);
+            memoryTimer = setInterval(async () => {
+                seconds--;
+                const timeEl = document.getElementById('memoryTime');
+                if (timeEl) timeEl.textContent = seconds.toString();
+                if (seconds <= 0) {
+                    clearInterval(memoryTimer);
+                    memoryTimer = null;
+                    result.textContent = '😢 @Html.Raw(L("Süre doldu, kazanamadınız.", "Time is up, you lost."))';
+                    const data = await completeGame('HAFIZA', false, game.oyunToken, memoryMoves);
+                    if (data?.message) result.textContent = `😢 ${data.message}`;
+                    showResultWithCountdown(result, result.innerHTML || result.textContent, 6, () => { closeGameModal(); fetchOrders(); });
+                }
+            }, 1000);
+
+            grid.querySelectorAll('.memory-card').forEach(card => {
+                card.addEventListener('click', async () => {
+                    if (lock || card.classList.contains('flipped') || card.dataset.done === '1') return;
+                    card.classList.add('flipped');
+
+                    if (!first) {
+                        first = card;
+                        return;
+                    }
+
+                    if (first.dataset.pair === card.dataset.pair) {
+                        memoryMoves.push({
+                            ilkIndex: parseInt(first.dataset.index),
+                            ikinciIndex: parseInt(card.dataset.index)
+                        });
+                        first.dataset.done = '1';
+                        card.dataset.done = '1';
+                        matched++;
+                        first = null;
+
+                        if (matched === 8) {
+                            if (memoryTimer) {
+                                clearInterval(memoryTimer);
+                                memoryTimer = null;
+                            }
+                            const data = await completeGame('HAFIZA', true, game.oyunToken, memoryMoves);
+                            const html = data.kazandiMi
+                                ? `🎉 ${data.message}<br><small>@Html.Raw(L("Yeni tutar", "New total")): ${data.yeniTutar.toFixed(2)} ₺</small>`
+                                : `😢 ${data.message}`;
+                            showResultWithCountdown(result, html, 6, () => { closeGameModal(); fetchOrders(); });
+                        }
+                    } else {
+                        lock = true;
+                        const second = card;
+                        const firstCard = first;
+                        first = null;
+                        setTimeout(() => {
+                            firstCard.classList.remove('flipped');
+                            second.classList.remove('flipped');
+                            lock = false;
+                        }, 700);
+                    }
+                });
+            });
+        }
+
+        function startScratchGame(game) {
+            const stage = document.getElementById('gameStage');
+            stage.innerHTML = `
+                <p class="text-sm text-on-surface-variant mb-3">@Html.Raw(L("Bir kart seç. Seçtiğin kart otomatik büyüyüp kazınacak.", "Pick one tile. The selected tile will grow and auto-scratch."))</p>
+                <div id="scratchGrid" class="scratch-grid mb-3">
+                    ${Array.from({ length: 9 }).map((_, i) => `<button class="scratch-tile" data-i="${i}">🪙 @Html.Raw(L("Kazı", "Scratch"))</button>`).join('')}
+                </div>
+                <div id="scratchResult" class="font-semibold"></div>
+            `;
+
+            let used = false;
+            const result = document.getElementById('scratchResult');
+            document.querySelectorAll('.scratch-tile').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    if (used) return;
+                    used = true;
+                    const allTiles = Array.from(document.querySelectorAll('.scratch-tile'));
+                    allTiles.forEach(tile => {
+                        tile.disabled = true;
+                        if (tile !== btn) tile.classList.add('dimmed');
+                    });
+
+                    btn.classList.add('selected');
+                    btn.textContent = '@Html.Raw(L("Hazırlanıyor...", "Preparing..."))';
+
+                    let tick = 0;
+                    const animFrames = ['@Html.Raw(L("Kazınıyor", "Scratching"))', '@Html.Raw(L("Kazınıyor.", "Scratching."))', '@Html.Raw(L("Kazınıyor..", "Scratching.."))', '@Html.Raw(L("Kazınıyor...", "Scratching..."))'];
+                    const animTimer = setInterval(() => {
+                        btn.textContent = animFrames[tick % animFrames.length];
+                        tick++;
+                    }, 250);
+
+                    await new Promise(resolve => setTimeout(resolve, 1400));
+                    clearInterval(animTimer);
+                    btn.classList.add('revealed');
+
+                    try {
+                        const data = await completeGame('KAZIKAZAN', true, game.oyunToken, []);
+                        if (data.kazandiMi) {
+                            btn.textContent = `🎁 ${data.odulTanim}`;
+                            const html = `🎉 ${data.message}<br><small>@Html.Raw(L("Yeni tutar", "New total")): ${data.yeniTutar.toFixed(2)} ₺</small>`;
+                            showResultWithCountdown(result, html, 6, () => { closeGameModal(); fetchOrders(); });
+                        } else {
+                            btn.textContent = '😢 @Html.Raw(L("Boş", "Empty"))';
+                            showResultWithCountdown(result, `😢 ${data.message}`, 6, () => { closeGameModal(); fetchOrders(); });
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        result.textContent = '⚠️ @Html.Raw(L("Bağlantı hatası.", "Connection error."))';
+                    }
+                });
+            });
         }
 
         function showToast(msg, isError) {
