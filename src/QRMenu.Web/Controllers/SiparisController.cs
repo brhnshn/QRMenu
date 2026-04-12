@@ -285,8 +285,8 @@ namespace QRMenu.Web.Controllers
                 if (siparis == null)
                     return Json(new { success = false, message = "Sipariş bulunamadı." });
 
-                if (siparis.Durum != SiparisDurum.Hazirlaniyor)
-                    return Json(new { success = false, message = "Oyun sadece siparişiniz hazırlanırken oynanabilir." });
+                if (siparis.Durum == SiparisDurum.Iptal || siparis.Durum == SiparisDurum.Iade || siparis.Durum == SiparisDurum.TamOdendi)
+                    return Json(new { success = false, message = "Oyun bu sipariş durumunda oynanamaz." });
 
                 if (siparis.OyunOynandiMi)
                     return Json(new { success = false, message = "Bu sipariş için daha önce şansınızı denediniz." });
@@ -472,8 +472,8 @@ namespace QRMenu.Web.Controllers
                 if (siparis == null)
                     return Json(new { success = false, message = "Sipariş bulunamadı." });
 
-                if (siparis.Durum != SiparisDurum.Hazirlaniyor)
-                    return Json(new { success = false, message = "Oyun sadece siparişiniz hazırlanırken oynanabilir." });
+                if (siparis.Durum == SiparisDurum.Iptal || siparis.Durum == SiparisDurum.Iade || siparis.Durum == SiparisDurum.TamOdendi)
+                    return Json(new { success = false, message = "Oyun bu sipariş durumunda oynanamaz." });
 
                 if (siparis.OyunOynandiMi)
                     return Json(new { success = false, message = "Bu sipariş için daha önce şansınızı denediniz." });

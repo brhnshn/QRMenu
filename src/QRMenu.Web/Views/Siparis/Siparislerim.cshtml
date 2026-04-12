@@ -254,12 +254,21 @@
                 }
                 
                 let gameHtml = '';
-                if (s.durum === 'Hazirlaniyor' && s.oyunOynandiMi === false) {
+                const allowedStatus = ['Onaylandi', 'Hazirlaniyor', 'Hazir', 'TeslimEdildi'];
+                if (allowedStatus.includes(s.durum) && s.oyunOynandiMi === false) {
+                    let titleMsg = '@L("Siparişin Hazırlanıyor!", "Your order is preparing!")';
+                    let descMsg = '@L("Beklerken şansını dene, anında indirim kazan!", "Try your luck and win a discount while waiting!")';
+                    
+                    if (s.durum === 'TeslimEdildi' || s.durum === 'Hazir') {
+                        titleMsg = '@L("Siparişin Hazır!", "Your order is ready!")';
+                        descMsg = '@L("Şansını dene, hesabına indirim uygula!", "Try your luck and apply a discount to your account!")';
+                    }
+
                     gameHtml = `
                     <div class="mb-6 bg-secondary-container rounded-3xl p-6 text-center shadow-lg border border-secondary/20 relative overflow-hidden">
                         <div class="absolute inset-0 bg-white/20 blur-md pointer-events-none"></div>
-                        <h4 class="font-headline font-extrabold text-xl text-on-secondary-container mb-2 relative">🎉 @L("Siparişin Hazırlanıyor!", "Your order is preparing!")</h4>
-                        <p class="text-sm text-on-secondary-container mb-4 relative">@L("Beklerken şansını dene, anında indirim kazan!", "Try your luck and win a discount while waiting!")</p>
+                        <h4 class="font-headline font-extrabold text-xl text-on-secondary-container mb-2 relative">🎉 ${titleMsg}</h4>
+                        <p class="text-sm text-on-secondary-container mb-4 relative">${descMsg}</p>
                         <button onclick="playGame(${s.siparisId})" class="relative inline-flex items-center gap-2 bg-secondary text-primary-container px-6 py-3 rounded-full font-headline font-bold shadow-lg active:scale-95 transition-transform">
                             <span class="material-symbols-outlined text-xl">casino</span>
                             @L("Şansını Dene", "Try Your Luck")
@@ -617,7 +626,7 @@
 
             grid.querySelectorAll('.memory-card').forEach(card => {
                 card.addEventListener('click', async () => {
-                    if (lock || card.classList.contains('flipped') || card.dataset.done === '1') return;
+                    if (seconds <= 0 || lock || card.classList.contains('flipped') || card.dataset.done === '1') return;
                     card.classList.add('flipped');
 
                     if (!first) {
@@ -663,56 +672,169 @@
 
         function startScratchGame(game) {
             const stage = document.getElementById('gameStage');
+            
+            // İlk Adım: 9 adet kartı göster.
             stage.innerHTML = `
-                <p class="text-sm text-on-surface-variant mb-3">@Html.Raw(L("Bir kart seç. Seçtiğin kart otomatik büyüyüp kazınacak.", "Pick one tile. The selected tile will grow and auto-scratch."))</p>
-                <div id="scratchGrid" class="scratch-grid mb-3">
-                    ${Array.from({ length: 9 }).map((_, i) => `<button class="scratch-tile" data-i="${i}">🪙 @Html.Raw(L("Kazı", "Scratch"))</button>`).join('')}
+                <p class="text-sm text-on-surface-variant mb-3 text-center" id="scratchGridInst">@Html.Raw(L("Aşağıdaki kartlardan birini seçin!", "Select one of the cards below!"))</p>
+                <div id="scratchGridContainer" class="grid grid-cols-3 gap-2 mb-4">
+                    ${Array.from({ length: 9 }).map((_, i) => `
+                        <button class="bg-surface-container-highest rounded-xl h-24 flex items-center justify-center font-bold text-on-surface hover:bg-primary hover:text-white transition-colors duration-300 shadow-sm border border-outline-variant scratch-select-btn" data-index="${i}">
+                            <span class="text-2xl block mb-1">🎁</span>
+                        </button>
+                    `).join('')}
                 </div>
-                <div id="scratchResult" class="font-semibold"></div>
+                <div id="scratchPlayArea" class="hidden">
+                    <p class="text-sm text-on-surface-variant mb-3 text-center">@Html.Raw(L("Seçtiğin kartı parmağınızla kazıyın!", "Scratch the selected card with your finger!"))</p>
+                    <div class="relative w-full max-w-[320px] h-[160px] mx-auto rounded-xl overflow-hidden shadow-md bg-surface-container-highest flex items-center justify-center select-none transform transition-all duration-500 scale-95" id="scratchCanvasContainer" style="touch-action: none;">
+                        <div id="scratchPrize" class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center opacity-0 transition-opacity duration-300">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" id="scratchLoading"></div>
+                            <span id="scratchText" class="font-headline font-extrabold text-2xl hidden"></span>
+                        </div>
+                        <canvas id="scratchCanvas" class="absolute inset-0 w-full h-full cursor-pointer z-10" width="320" height="160"></canvas>
+                    </div>
+                </div>
+                <div id="scratchResultMsg" class="mt-4 text-center font-bold text-sm min-h-[3rem]"></div>
             `;
 
-            let used = false;
-            const result = document.getElementById('scratchResult');
-            document.querySelectorAll('.scratch-tile').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    if (used) return;
-                    used = true;
-                    const allTiles = Array.from(document.querySelectorAll('.scratch-tile'));
-                    allTiles.forEach(tile => {
-                        tile.disabled = true;
-                        if (tile !== btn) tile.classList.add('dimmed');
-                    });
+            const gridContainer = document.getElementById('scratchGridContainer');
+            const playArea = document.getElementById('scratchPlayArea');
+            const canvasContainer = document.getElementById('scratchCanvasContainer');
+            const instText = document.getElementById('scratchGridInst');
+            const resultMsg = document.getElementById('scratchResultMsg');
+            let isGameStarted = false;
 
-                    btn.classList.add('selected');
-                    btn.textContent = '@Html.Raw(L("Hazırlanıyor...", "Preparing..."))';
+            document.querySelectorAll('.scratch-select-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (isGameStarted) return;
+                    isGameStarted = true;
+                    
+                    // Görsel geçiş
+                    gridContainer.classList.add('hidden');
+                    instText.classList.add('hidden');
+                    playArea.classList.remove('hidden');
+                    
+                    // Hafif büyük animasyonu
+                    setTimeout(() => {
+                        canvasContainer.classList.remove('scale-95');
+                        canvasContainer.classList.add('scale-100');
+                    }, 50);
 
-                    let tick = 0;
-                    const animFrames = ['@Html.Raw(L("Kazınıyor", "Scratching"))', '@Html.Raw(L("Kazınıyor.", "Scratching."))', '@Html.Raw(L("Kazınıyor..", "Scratching.."))', '@Html.Raw(L("Kazınıyor...", "Scratching..."))'];
-                    const animTimer = setInterval(() => {
-                        btn.textContent = animFrames[tick % animFrames.length];
-                        tick++;
-                    }, 250);
-
-                    await new Promise(resolve => setTimeout(resolve, 1400));
-                    clearInterval(animTimer);
-                    btn.classList.add('revealed');
-
-                    try {
-                        const data = await completeGame('KAZIKAZAN', true, game.oyunToken, []);
-                        if (data.kazandiMi) {
-                            btn.textContent = `🎁 ${data.odulTanim}`;
-                            const html = `🎉 ${data.message}<br><small>@Html.Raw(L("Yeni tutar", "New total")): ${data.yeniTutar.toFixed(2)} ₺</small>`;
-                            showResultWithCountdown(result, html, 6, () => { closeGameModal(); fetchOrders(); });
-                        } else {
-                            btn.textContent = '😢 @Html.Raw(L("Boş", "Empty"))';
-                            showResultWithCountdown(result, `😢 ${data.message}`, 6, () => { closeGameModal(); fetchOrders(); });
-                        }
-                    } catch (e) {
-                        console.error(e);
-                        result.textContent = '⚠️ @Html.Raw(L("Bağlantı hatası.", "Connection error."))';
-                    }
+                    initScratchCanvas();
                 });
             });
+
+            function initScratchCanvas() {
+                const canvas = document.getElementById('scratchCanvas');
+                const ctx = canvas.getContext('2d');
+                const prizeDiv = document.getElementById('scratchPrize');
+                const textDiv = document.getElementById('scratchText');
+                const loadDiv = document.getElementById('scratchLoading');
+                
+                // Fill with silver layer
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Add some pattern/text
+                ctx.font = 'bold 24px sans-serif';
+                ctx.fillStyle = '#475569';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('@Html.Raw(L("KAZI KAZAN", "SCRATCH CARD"))', canvas.width/2, canvas.height/2);
+
+                let isDrawing = false;
+                let resultFetched = false;
+                let fetchPromise = null;
+                let resultData = null;
+                let finished = false;
+
+                const fetchResultOnce = () => {
+                    if (!fetchPromise) {
+                        prizeDiv.classList.remove('opacity-0');
+                        fetchPromise = completeGame('KAZIKAZAN', true, game.oyunToken, []).then(data => {
+                            resultFetched = true;
+                            resultData = data;
+                            loadDiv.classList.add('hidden');
+                            textDiv.classList.remove('hidden');
+                            
+                            if (data.kazandiMi) {
+                                textDiv.innerHTML = `🎁<br>${data.odulTanim}`;
+                                textDiv.classList.add('text-primary');
+                            } else {
+                                textDiv.innerHTML = `😢<br>@Html.Raw(L("Boş", "Empty"))`;
+                                textDiv.classList.add('text-on-surface-variant');
+                            }
+                        }).catch(err => {
+                            console.error(err);
+                            resultFetched = true;
+                            loadDiv.classList.add('hidden');
+                            textDiv.classList.remove('hidden');
+                            textDiv.innerHTML = `⚠️<br>@Html.Raw(L("Hata", "Error"))`;
+                        });
+                    }
+                };
+
+                const getPos = (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    return {
+                        x: (clientX - rect.left) * (canvas.width / rect.width),
+                        y: (clientY - rect.top) * (canvas.height / rect.height)
+                    };
+                };
+
+                const startDraw = (e) => {
+                    if (finished) return;
+                    isDrawing = true;
+                    fetchResultOnce();
+                    draw(e);
+                };
+
+                const endDraw = () => {
+                    isDrawing = false;
+                    checkPercentage();
+                };
+
+                const draw = (e) => {
+                    if (!isDrawing || finished) return;
+                    e.preventDefault();
+                    const pos = getPos(e);
+                    ctx.globalCompositeOperation = 'destination-out';
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, 20, 0, Math.PI * 2);
+                    ctx.fill();
+                };
+
+                const checkPercentage = () => {
+                    if (!resultFetched) return;
+                    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                    let transparent = 0;
+                    for (let i = 3; i < pixels.length; i += 4) {
+                        if (pixels[i] < 50) transparent++;
+                    }
+                    const percent = transparent / (canvas.width * canvas.height);
+                    if (percent > 0.45 && !finished) {
+                        finished = true;
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        canvas.style.pointerEvents = 'none';
+                        if (resultData) {
+                            const html = resultData.kazandiMi 
+                                 ? `🎉 ${resultData.message}<br><small>@Html.Raw(L("Yeni tutar", "New total")): ${resultData.yeniTutar.toFixed(2)} ₺</small>`
+                                 : `😢 ${resultData.message}`;
+                            showResultWithCountdown(resultMsg, html, 6, () => { closeGameModal(); fetchOrders(); });
+                        }
+                    }
+                };
+
+                canvas.addEventListener('mousedown', startDraw);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseup', endDraw);
+                canvas.addEventListener('mouseleave', endDraw);
+
+                canvas.addEventListener('touchstart', startDraw, { passive: false });
+                canvas.addEventListener('touchmove', draw, { passive: false });
+                canvas.addEventListener('touchend', endDraw);
+            }
         }
 
         function showToast(msg, isError) {
