@@ -155,7 +155,7 @@
 
     <!-- Toast -->
     <div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none">
-        <div id="toastBildirim" class="bg-primary text-white px-6 py-3 rounded-2xl shadow-xl font-headline font-semibold text-sm flex items-center gap-2 opacity-0 transition-all duration-300 translate-y-4" style="pointer-events:auto;">
+        <div id="toastBildirim" class="bg-primary text-white px-6 py-3 rounded-full shadow-2xl font-headline font-semibold text-sm flex items-center gap-2 opacity-0 transition-all duration-300 translate-y-4" style="pointer-events:auto;">
             <span id="toastMesaj"></span>
         </div>
     </div>
@@ -839,7 +839,7 @@
 
         function showToast(msg, isError) {
             const el = document.getElementById('toastBildirim');
-            el.className = 'px-6 py-3 rounded-2xl shadow-xl font-headline font-semibold text-sm flex items-center gap-2 transition-all duration-300 text-white ' + (isError ? 'bg-error' : 'bg-primary');
+            el.className = 'px-6 py-3 rounded-full shadow-2xl font-headline font-semibold text-sm flex items-center gap-2 transition-all duration-300 text-white ' + (isError ? 'bg-error' : 'bg-primary');
             document.getElementById('toastMesaj').textContent = msg;
             el.style.opacity = '1'; el.style.transform = 'translateY(0)';
             setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(16px)'; }, 3000);

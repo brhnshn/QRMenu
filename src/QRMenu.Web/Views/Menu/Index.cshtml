@@ -84,6 +84,37 @@
         }
         .stitch-modal-overlay.active .stitch-modal-card { transform: translateY(0); }
         .stitch-modal-card::-webkit-scrollbar { display: none; }
+
+        /* Mobile category drawer */
+        .category-drawer-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            background: rgba(0, 0, 0, 0.35);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .category-drawer-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .category-drawer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 81;
+            width: min(85vw, 340px);
+            height: 100dvh;
+            background: linear-gradient(180deg, #ffffff 0%, #f8f6f5 100%);
+            box-shadow: 8px 0 30px rgba(0, 0, 0, 0.12);
+            transform: translateX(-105%);
+            transition: transform 0.28s ease;
+            overflow-y: auto;
+        }
+        .category-drawer.active {
+            transform: translateX(0);
+        }
     </style>
 </head>
 <body class="bg-background font-body text-on-background selection:bg-primary/20">
@@ -92,6 +123,11 @@
     <header class="fixed top-0 w-full z-[60] bg-white/80 backdrop-blur-md">
         <div class="flex justify-between items-center px-4 py-3 w-full max-w-screen-xl mx-auto">
             <div class="flex items-center gap-3">
+                <button class="md:hidden p-2 bg-surface-container-low hover:bg-surface-container-high transition-colors rounded-full"
+                        onclick="toggleCategoryDrawer()"
+                        aria-label="Kategoriler menüsü">
+                    <span class="material-symbols-outlined text-orange-800">menu</span>
+                </button>
                 <span class="material-symbols-outlined text-orange-800 text-2xl" style="font-variation-settings: 'FILL' 1;">restaurant</span>
                 <div class="flex flex-col">
                     <h1 class="font-headline font-bold text-base md:text-lg uppercase tracking-tight text-neutral-800 leading-tight">@(L("Kafe Menü", "Cafe Menu"))</h1>
@@ -111,6 +147,28 @@
             </div>
         </div>
     </header>
+
+    <!-- ═══ MOBILE CATEGORY DRAWER ═══ -->
+    <div id="categoryDrawerOverlay" class="category-drawer-overlay md:hidden" onclick="closeCategoryDrawer()"></div>
+    <aside id="categoryDrawer" class="category-drawer md:hidden" aria-hidden="true">
+        <div class="px-5 pt-5 pb-4 flex items-center justify-between border-b border-neutral-200">
+            <h3 class="font-headline font-extrabold text-lg text-on-surface">@(L("Kategoriler", "Categories"))</h3>
+            <button class="w-10 h-10 rounded-full bg-surface-container-low hover:bg-surface-container-high transition-colors"
+                    onclick="closeCategoryDrawer()"
+                    aria-label="Kapat">
+                <span class="material-symbols-outlined text-on-surface">close</span>
+            </button>
+        </div>
+        <div class="p-4 space-y-2" id="categoryDrawerList">
+            @foreach (var cat in kategoriler)
+            {
+                <button class="category-drawer-item w-full text-left px-4 py-3 rounded-2xl font-headline font-bold text-sm bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                        data-cat-id="@cat.Id">
+                    @L(cat.Ad, cat.AdEN)
+                </button>
+            }
+        </div>
+    </aside>
 
     <main class="pt-[72px] pb-40 px-6 max-w-screen-xl mx-auto">
 
@@ -133,7 +191,7 @@
         </section>
 
         <!-- ═══ CATEGORY TABS (Stitch — z-[55] so it stays ABOVE content but BELOW header z-[60]) ═══ -->
-        <nav class="flex gap-3 overflow-x-auto no-scrollbar pb-6 -mx-6 px-6 sticky top-[72px] z-[55] bg-background/95 backdrop-blur-sm pt-2">
+        <nav class="hidden md:flex gap-3 overflow-x-auto no-scrollbar pb-6 -mx-6 px-6 sticky top-[72px] z-[55] bg-background/95 backdrop-blur-sm pt-2">
             @for (var i = 0; i < kategoriler.Count; i++)
             {
                 var cat = kategoriler[i];
@@ -277,7 +335,7 @@
 
     <!-- ═══ TOAST (Custom) ═══ -->
     <div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none" id="toastContainer">
-        <div id="toastBildirim" class="bg-primary text-white px-6 py-3 rounded-2xl shadow-xl font-headline font-semibold text-sm flex items-center gap-2 opacity-0 transition-all duration-300 translate-y-4" style="pointer-events:auto;">
+        <div id="toastBildirim" class="bg-primary text-white px-6 py-3 rounded-full shadow-xl font-headline font-semibold text-sm flex items-center gap-2 opacity-0 transition-all duration-300 translate-y-4" style="pointer-events:auto;">
             <span id="toastMesaj"></span>
         </div>
     </div>
@@ -292,14 +350,14 @@
             if (el && el.style.display !== 'none') {
                 el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } else {
-                alert('Henüz aktif bir siparişiniz yok.');
+                showToast('Henüz aktif bir siparişiniz yok.', true);
             }
         }
 
         // ===== TOAST (Custom, no Bootstrap) =====
         function showToast(msg, isError) {
             const el = document.getElementById('toastBildirim');
-            el.className = 'px-6 py-3 rounded-2xl shadow-xl font-headline font-semibold text-sm flex items-center gap-2 transition-all duration-300 text-white ' + (isError ? 'bg-error' : 'bg-primary');
+            el.className = 'px-6 py-3 rounded-full shadow-2xl font-headline font-semibold text-sm flex items-center gap-2 transition-all duration-300 text-white ' + (isError ? 'bg-error' : 'bg-primary');
             document.getElementById('toastMesaj').textContent = msg;
             el.style.opacity = '1';
             el.style.transform = 'translateY(0)';
@@ -308,6 +366,56 @@
 
         // ===== CATEGORY SCROLL =====
         let scrollObserver = null;
+
+        function toggleCategoryDrawer() {
+            const drawer = document.getElementById('categoryDrawer');
+            const overlay = document.getElementById('categoryDrawerOverlay');
+            if (!drawer || !overlay) return;
+            const willOpen = !drawer.classList.contains('active');
+            drawer.classList.toggle('active');
+            overlay.classList.toggle('active');
+            drawer.setAttribute('aria-hidden', willOpen ? 'false' : 'true');
+        }
+
+        function closeCategoryDrawer() {
+            const drawer = document.getElementById('categoryDrawer');
+            const overlay = document.getElementById('categoryDrawerOverlay');
+            if (!drawer || !overlay) return;
+            drawer.classList.remove('active');
+            overlay.classList.remove('active');
+            drawer.setAttribute('aria-hidden', 'true');
+        }
+
+        function setActiveCategory(catId) {
+            document.querySelectorAll('.category-tab').forEach(function(t) {
+                t.classList.remove('bg-primary', 'text-on-primary', 'shadow-lg', 'shadow-primary/20');
+                t.classList.add('bg-surface-container-low', 'text-on-surface-variant');
+            });
+            const matchingTab = document.querySelector('.category-tab[data-cat-id="' + catId + '"]');
+            if (matchingTab) {
+                matchingTab.classList.remove('bg-surface-container-low', 'text-on-surface-variant');
+                matchingTab.classList.add('bg-primary', 'text-on-primary', 'shadow-lg', 'shadow-primary/20');
+            }
+
+            document.querySelectorAll('.category-drawer-item').forEach(function(item) {
+                item.classList.remove('bg-primary', 'text-on-primary');
+                item.classList.add('bg-surface-container-low', 'text-on-surface-variant');
+            });
+            const matchingDrawerItem = document.querySelector('.category-drawer-item[data-cat-id="' + catId + '"]');
+            if (matchingDrawerItem) {
+                matchingDrawerItem.classList.remove('bg-surface-container-low', 'text-on-surface-variant');
+                matchingDrawerItem.classList.add('bg-primary', 'text-on-primary');
+            }
+        }
+
+        function goToCategory(catId) {
+            const section = document.getElementById('cat-' + catId);
+            if (!section) return;
+            setActiveCategory(catId);
+            const y = section.getBoundingClientRect().top + window.pageYOffset - 140;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+            closeCategoryDrawer();
+        }
 
         function setupScrollObserver() {
             if (scrollObserver) scrollObserver.disconnect();
@@ -318,16 +426,9 @@
                 entries.forEach(function(entry) {
                     if (entry.isIntersecting) {
                         var catId = entry.target.id.replace('cat-', '');
-                        tabs.forEach(function(t) {
-                            t.classList.remove('bg-primary', 'text-on-primary', 'shadow-lg', 'shadow-primary/20');
-                            t.classList.add('bg-surface-container-low', 'text-on-surface-variant');
-                        });
+                        setActiveCategory(catId);
                         var matchingTab = document.querySelector('.category-tab[data-cat-id="' + catId + '"]');
-                        if (matchingTab) {
-                            matchingTab.classList.remove('bg-surface-container-low', 'text-on-surface-variant');
-                            matchingTab.classList.add('bg-primary', 'text-on-primary', 'shadow-lg', 'shadow-primary/20');
-                            matchingTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                        }
+                        if (matchingTab) matchingTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                     }
                 });
             }, { rootMargin: '-140px 0px -60% 0px', threshold: 0 });
@@ -339,19 +440,22 @@
             document.querySelectorAll('.category-tab').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var catId = this.getAttribute('data-cat-id');
-                    var section = document.getElementById('cat-' + catId);
-                    if (!section) return;
-                    document.querySelectorAll('.category-tab').forEach(function(t) {
-                        t.classList.remove('bg-primary', 'text-on-primary', 'shadow-lg', 'shadow-primary/20');
-                        t.classList.add('bg-surface-container-low', 'text-on-surface-variant');
-                    });
-                    this.classList.remove('bg-surface-container-low', 'text-on-surface-variant');
-                    this.classList.add('bg-primary', 'text-on-primary', 'shadow-lg', 'shadow-primary/20');
-                    var y = section.getBoundingClientRect().top + window.pageYOffset - 140;
-                    window.scrollTo({ top: y, behavior: 'smooth' });
+                    goToCategory(catId);
                 });
             });
+
+            document.querySelectorAll('.category-drawer-item').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var catId = this.getAttribute('data-cat-id');
+                    goToCategory(catId);
+                });
+            });
+
             setupScrollObserver();
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeCategoryDrawer();
+            });
         });
 
         // ===== GARSON =====
@@ -535,20 +639,30 @@
 
         function yenidenCiz(kategoriler, happyHour) {
             const tabScroll = document.querySelector('nav.sticky');
+            const drawerList = document.getElementById('categoryDrawerList');
             if (!tabScroll) return;
             tabScroll.innerHTML = '';
+            if (drawerList) drawerList.innerHTML = '';
             kategoriler.forEach(function(kat, i) {
                 const btn = document.createElement('button');
                 btn.className = 'category-tab px-6 py-2.5 rounded-full font-headline font-bold text-sm whitespace-nowrap transition-all active:scale-95 ' + (i === 0 ? 'bg-primary text-on-primary shadow-lg shadow-primary/20' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high');
                 btn.setAttribute('data-cat-id', kat.id);
                 btn.textContent = kat.ad;
                 btn.addEventListener('click', function() {
-                    tabScroll.querySelectorAll('.category-tab').forEach(t => { t.classList.remove('bg-primary','text-on-primary','shadow-lg','shadow-primary/20'); t.classList.add('bg-surface-container-low','text-on-surface-variant'); });
-                    btn.classList.remove('bg-surface-container-low','text-on-surface-variant'); btn.classList.add('bg-primary','text-on-primary','shadow-lg','shadow-primary/20');
-                    const sec = document.getElementById('cat-' + kat.id);
-                    if (sec) window.scrollTo({ top: sec.getBoundingClientRect().top + window.pageYOffset - 140, behavior: 'smooth' });
+                    goToCategory(kat.id);
                 });
                 tabScroll.appendChild(btn);
+
+                if (drawerList) {
+                    const dBtn = document.createElement('button');
+                    dBtn.className = 'category-drawer-item w-full text-left px-4 py-3 rounded-2xl font-headline font-bold text-sm bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high transition-colors';
+                    dBtn.setAttribute('data-cat-id', kat.id);
+                    dBtn.textContent = kat.ad;
+                    dBtn.addEventListener('click', function() {
+                        goToCategory(kat.id);
+                    });
+                    drawerList.appendChild(dBtn);
+                }
             });
 
             document.querySelectorAll('.category-section').forEach(el => el.remove());

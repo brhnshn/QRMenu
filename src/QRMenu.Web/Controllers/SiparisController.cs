@@ -533,6 +533,12 @@ namespace QRMenu.Web.Controllers
                     }
                 }
 
+                if (kazanilanOdul == null && oduller.Any())
+                {
+                    // Fallback to the last available reward just in case due to float precision
+                    kazanilanOdul = oduller.Last();
+                }
+
                 if (kazanilanOdul == null)
                 {
                     var bosIndex = oduller.FindIndex(o => o.IndirimYuzdesi <= 0 && o.IndirimTutari <= 0);

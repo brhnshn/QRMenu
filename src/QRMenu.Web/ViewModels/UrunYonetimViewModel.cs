@@ -3,10 +3,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace QRMenu.Web.ViewModels
 {
-    // ===== KATEGORÄ° =====
+    // ===== KATEGORI =====
     public class KategoriFormViewModel
     {
-        [Required(ErrorMessage = "Kategori adÄ± zorunludur.")]
+        [Required(ErrorMessage = "Kategori adi zorunludur.")]
         [MaxLength(100)]
         public string Ad { get; set; } = string.Empty;
 
@@ -16,10 +16,10 @@ namespace QRMenu.Web.ViewModels
         public int SiraNo { get; set; }
     }
 
-    // ===== ÃœRÃœN =====
+    // ===== URUN =====
     public class UrunFormViewModel
     {
-        [Required(ErrorMessage = "ÃœrÃ¼n adÄ± zorunludur.")]
+        [Required(ErrorMessage = "Urun adi zorunludur.")]
         [MaxLength(200)]
         public string Ad { get; set; } = string.Empty;
 
@@ -33,10 +33,10 @@ namespace QRMenu.Web.ViewModels
         public string? AciklamaEN { get; set; }
 
         [Required(ErrorMessage = "Fiyat zorunludur.")]
-        [Range(0.01, 99999.99, ErrorMessage = "GeÃ§erli bir fiyat giriniz.")]
+        [Range(0.01, 99999.99, ErrorMessage = "Gecerli bir fiyat giriniz.")]
         public decimal Fiyat { get; set; }
 
-        [Required(ErrorMessage = "Kategori seÃ§iniz.")]
+        [Required(ErrorMessage = "Kategori seciniz.")]
         public int KategoriId { get; set; }
 
         public bool PopulerMi { get; set; }
@@ -45,25 +45,25 @@ namespace QRMenu.Web.ViewModels
         public int? Kalori { get; set; }
 
         /// <summary>
-        /// ÃœrÃ¼n gÃ¶rseli (max 2MB, jpg/png/webp)
+        /// Urun gorseli (max 2MB, jpg/png/webp)
         /// </summary>
         public IFormFile? Gorsel { get; set; }
     }
 
-    // ===== OPSÄ°YON =====
+    // ===== OPSIYON =====
     public class OpsiyonFormViewModel
     {
-        [Required(ErrorMessage = "ÃœrÃ¼n ID zorunludur.")]
+        [Required(ErrorMessage = "Urun ID zorunludur.")]
         public int UrunId { get; set; }
 
-        [Required(ErrorMessage = "Opsiyon adÄ± zorunludur.")]
+        [Required(ErrorMessage = "Opsiyon adi zorunludur.")]
         [MaxLength(100)]
         public string Ad { get; set; } = string.Empty;
 
         [MaxLength(100)]
         public string? AdEN { get; set; }
 
-        [Required(ErrorMessage = "Grup adÄ± zorunludur.")]
+        [Required(ErrorMessage = "Grup adi zorunludur.")]
         [MaxLength(50)]
         public string Grup { get; set; } = string.Empty;
 
@@ -79,26 +79,26 @@ namespace QRMenu.Web.ViewModels
     // ===== HAPPY HOUR =====
     public class HappyHourFormViewModel
     {
-        [Required(ErrorMessage = "BaÅŸlangÄ±Ã§ saati zorunludur.")]
+        [Required(ErrorMessage = "Baslangic saati zorunludur.")]
         public string BaslangicSaati { get; set; } = "14:00"; // HH:mm
 
-        [Required(ErrorMessage = "BitiÅŸ saati zorunludur.")]
+        [Required(ErrorMessage = "Bitis saati zorunludur.")]
         public string BitisSaati { get; set; } = "17:00"; // HH:mm
 
-        [Range(1, 99, ErrorMessage = "Ä°ndirim oranÄ± 1-99 arasÄ±nda olmalÄ±dÄ±r.")]
+        [Range(1, 99, ErrorMessage = "Indirim orani 1-99 arasinda olmalidir.")]
         public decimal IndirimOrani { get; set; }
 
         public bool AktifMi { get; set; }
 
         public List<int>? UrunIds { get; set; }
 
-        public int? UrunId { get; set; } // Geriye dÃ¶nÃ¼k uyumluluk
+        public int? UrunId { get; set; } // Geriye donuk uyumluluk
     }
 
     // ===== KULLANICI =====
     public class KullaniciFormViewModel
     {
-        [Required(ErrorMessage = "KullanÄ±cÄ± adÄ± zorunludur.")]
+        [Required(ErrorMessage = "Kullanici adi zorunludur.")]
         [MaxLength(50)]
         public string KullaniciAdi { get; set; } = string.Empty;
 
@@ -106,8 +106,8 @@ namespace QRMenu.Web.ViewModels
         [MaxLength(100)]
         public string AdSoyad { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Åifre zorunludur.")]
-        [MinLength(6, ErrorMessage = "Åifre en az 6 karakter olmalÄ±dÄ±r.")]
+        [Required(ErrorMessage = "Sifre zorunludur.")]
+        [MinLength(6, ErrorMessage = "Sifre en az 6 karakter olmalidir.")]
         public string Sifre { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Rol zorunludur.")]
@@ -116,7 +116,7 @@ namespace QRMenu.Web.ViewModels
 
     public class KullaniciGuncelleViewModel
     {
-        [Required(ErrorMessage = "KullanÄ±cÄ± adÄ± zorunludur.")]
+        [Required(ErrorMessage = "Kullanici adi zorunludur.")]
         [MaxLength(50)]
         public string KullaniciAdi { get; set; } = string.Empty;
 
@@ -132,8 +132,8 @@ namespace QRMenu.Web.ViewModels
 
     public class SifreDegistirViewModel
     {
-        [Required(ErrorMessage = "Åifre zorunludur.")]
-        [MinLength(6, ErrorMessage = "Åifre en az 6 karakter olmalÄ±dÄ±r.")]
+        [Required(ErrorMessage = "Sifre zorunludur.")]
+        [MinLength(6, ErrorMessage = "Sifre en az 6 karakter olmalidir.")]
         public string YeniSifre { get; set; } = string.Empty;
     }
 

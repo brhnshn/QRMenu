@@ -45,6 +45,9 @@
             <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Kullanicilar" ? "active" : "")" href="/admin/kullanicilar">
                 <i class="bi bi-people"></i> Personel
             </a>
+            <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "HappyHour" ? "active" : "")" href="/admin/happy-hour">
+                <i class="bi bi-stars"></i> İndirim Saatleri
+            </a>
 
             <div class="nav-label">Operasyon</div>
             <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "GarsonMasalar" ? "active" : "")" href="/Garson/Masalar">
@@ -58,9 +61,6 @@
             </a>
 
             <div class="nav-label">Ayarlar</div>
-            <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "HappyHour" ? "active" : "")" href="/admin/happy-hour">
-                <i class="bi bi-stars"></i> İndirim Saatleri
-            </a>
         </nav>
     </aside>
 
