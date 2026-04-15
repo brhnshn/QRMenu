@@ -216,21 +216,23 @@
         <h1>QR Menu - Hafta 7 Gelistirme Raporu</h1>
         <p class="subtitle">
             Bu hafta urun, masa, siparis ve indirim yonetimi ekranlarinda tasarim/UX odakli iyilestirmeler,
-            TR-EN ceviri akisinin duzenlenmesi, oyunlastirma ozelligi ve derleme kalitesi iyilestirmeleri tamamlandi.
+            TR-EN ceviri akisinin duzenlenmesi, oyunlastirma ozelligi, performans ve canli ekran iyilestirmeleri
+            ile derleme kalitesi iyilestirmeleri tamamlandi.
         </p>
         <div class="meta">
             <div class="meta-box">Durum: Tamamlandi</div>
             <div class="meta-box">Build: 0 Hata / 0 Warning</div>
-            <div class="meta-box">Alan: Admin + Musteri Menu</div>
+            <div class="meta-box">Test: 67/67 Basarili</div>
+            <div class="meta-box">Alan: Admin + Musteri Menu + Canli Paneller</div>
         </div>
     </header>
 
     <main class="container">
         <section class="stats">
-            <div class="stat"><strong>8</strong><span>Ana Baslikta Teslim</span></div>
-            <div class="stat"><strong>35+</strong><span>UI/UX Iyilestirme Kalemi</span></div>
-            <div class="stat"><strong>4</strong><span>TR-EN Akis Duzeltmesi</span></div>
-            <div class="stat"><strong>5</strong><span>Kritik Teknik Iyilestirme</span></div>
+            <div class="stat"><strong>9</strong><span>Ana Baslikta Teslim</span></div>
+            <div class="stat"><strong>40+</strong><span>UI/UX + Performans Iyilestirme Kalemi</span></div>
+            <div class="stat"><strong>6</strong><span>TR-EN Akis Duzeltmesi</span></div>
+            <div class="stat"><strong>9</strong><span>Kritik Teknik Iyilestirme</span></div>
         </section>
 
         <section class="section">
@@ -398,6 +400,47 @@
             </div>
         </section>
 
+        <section class="section">
+            <h2>9) Performans ve Canli Ekran Iyilestirmeleri (Hafta 7 Sonu Ek 2)</h2>
+            <div class="cards">
+                <article class="card">
+                    <h3>Oturum Dogrulama ve Istek Yuku <span class="badge">Kritik</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Token dogrulama akisinda middleware tarafinda 60 sn refresh throttle uygulanarak gereksiz DB write yuku azaltildi.</li>
+                        <li><span class="check">✓</span>Siparis/Sepet akisinda controller ici tekrar token validate adimi kaldirildi, HttpContext uzerinden oturum okuma standardize edildi.</li>
+                        <li><span class="check">✓</span>Personel cookie + musteri token ayni tarayicida oldugunda sepet/siparis 401 sorunu middleware akisi duzeltilerek giderildi.</li>
+                    </ul>
+                </article>
+
+                <article class="card">
+                    <h3>Veri Erisim ve Arsiv Performansi <span class="badge">Iyilestirme</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Admin siparis arsivinde server-side sayfalama (page/pageSize) ve DB-side metrik hesaplama devreye alindi.</li>
+                        <li><span class="check">✓</span>Okuma agirlikli urun sorgularinda AsNoTracking uygulanarak EF tracking maliyeti azaltildi.</li>
+                        <li><span class="check">✓</span>Siparisler tablosu icin (OturumId, OlusturmaTarihi) composite index migration'i eklendi.</li>
+                    </ul>
+                </article>
+
+                <article class="card">
+                    <h3>Canli Panellerde Soft Refresh <span class="badge">Buyuk Guncelleme</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Kasa/Garson/Mutfak/Masa detay ekranlarinda SignalR olaylarinda tam sayfa reload yerine bolgesel soft refresh akisi uygulandi.</li>
+                        <li><span class="check">✓</span>Yalnizca hedef container icerigi yenilenerek flicker azaltilip kullanici akis durumu korundu (aktif tab/overlay).</li>
+                        <li><span class="check">✓</span>Event yogunlugu icin throttle + in-flight korumasi ile ust uste reload kaynakli performans kayiplari onlendi.</li>
+                    </ul>
+                </article>
+
+                <article class="card">
+                    <h3>TR-EN Opsiyon Ceviri Dayanikliligi <span class="badge">Kritik</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Opsiyon ad/grup alanlarinda AdEN/GrupEN bos birakilmis eski kayitlar icin merkezi fallback ceviri helper'i eklendi.</li>
+                        <li><span class="check">✓</span>Ilk render, modal akis ve /menu/json yaniti ayni ceviri mantigina baglandi; "Boyut" gibi metinlerde dil tutarliligi saglandi.</li>
+                        <li><span class="check">✓</span>Razor icindeki JS mesajlarinda entity bozulmasi Json serialize yaklasimi ile giderildi.</li>
+                    </ul>
+                </article>
+            </div>
+        </section>
+
         <section class="summary">
             <strong>Hafta 7 Sonucu:</strong>
             Admin paneli tarafinda urun-opsiyon-kategori ve masa yonetimi ciddi bicimde hizlandirildi,
@@ -407,7 +450,9 @@
             Son guncellemede kazi kazan akisi 9 kart secim deneyimiyle guclendirildi, hafiza oyununda sure asimi sonrasi
             etkilesim hatasi giderildi ve oyun erisim kurali tek-hak yapisi bozulmadan daha esnek hale getirildi.
             Final adimda admin oyun ekranina toast tabanli bildirim dili kazandirildi, oran toplami %100 guvencesi katmanli
-            olarak saglandi ve mobil menu deneyimi hamburger + kategori drawer akisiyla modernize edildi.
+            olarak saglandi ve mobil menu deneyimi hamburger + kategori drawer akisiyla modernize edildi. Ek olarak canli
+            operasyon panellerinde tam reload yerine soft refresh modeline gecilerek performans ve akis surekliligi
+            guclendirildi; oturum dogrulama ile TR-EN opsiyon cevirisinde gorulen kritik hata siniflari kalici olarak giderildi.
         </section>
 
         <footer class="footer">

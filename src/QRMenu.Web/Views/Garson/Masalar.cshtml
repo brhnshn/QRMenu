@@ -48,7 +48,7 @@
     }
 </style>
 
-<div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-4 mt-2">
+<div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-4 mt-2" id="garsonMasalarGrid">
     @foreach(var masa in Model.OrderBy(m => m.MasaNo))
     {
         var doluMu = masa.Siparisler.Any();
@@ -74,13 +74,58 @@
 
 @section Scripts {
     <script>
+        let refreshTimer = null;
+        let lastRefreshAt = 0;
+        let refreshInFlight = false;
+
+        async function softRefreshMasalarGrid() {
+            if (refreshInFlight) return;
+            refreshInFlight = true;
+
+            try {
+                const res = await fetch(window.location.pathname, {
+                    cache: 'no-store',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) throw new Error('Masalar verisi alınamadı.');
+
+                const html = await res.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const yeniGrid = doc.getElementById('garsonMasalarGrid');
+                const mevcutGrid = document.getElementById('garsonMasalarGrid');
+
+                if (yeniGrid && mevcutGrid) {
+                    mevcutGrid.innerHTML = yeniGrid.innerHTML;
+                }
+            } catch (err) {
+                console.error(err);
+                location.reload();
+            } finally {
+                refreshInFlight = false;
+            }
+        }
+
+        function scheduleSoftRefresh(delayMs = 500) {
+            const minIntervalMs = 2500;
+            const elapsed = Date.now() - lastRefreshAt;
+            const waitMs = Math.max(delayMs, minIntervalMs - elapsed);
+
+            if (refreshTimer) return;
+
+            refreshTimer = setTimeout(async () => {
+                refreshTimer = null;
+                lastRefreshAt = Date.now();
+                await softRefreshMasalarGrid();
+            }, Math.max(0, waitMs));
+        }
+
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/hubs/menu")
             .withAutomaticReconnect()
             .build();
 
         connection.on("SiparisEklendi", function () {
-            location.reload();
+            scheduleSoftRefresh(900);
         });
 
         connection.on("SiparisGuncellendi", function () {
@@ -89,7 +134,7 @@
                 console.log("Bildirim açık, reload ertelendi.");
                 return;
             }
-            setTimeout(() => { location.reload(); }, 500);
+            scheduleSoftRefresh(500);
         });
 
         connection.on("GarsonCagrisi", function (masaNo) {
@@ -113,7 +158,7 @@
 
         function closeGarsonNotice() {
             document.getElementById('garsonNoticeOverlay').style.display = 'none';
-            location.reload(); // Bildirim kapandığında verileri tazele
+            scheduleSoftRefresh(100); // Bildirim kapandığında verileri tazele
         }
 
         function playNoticeSound() {

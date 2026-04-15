@@ -181,6 +181,7 @@ namespace QRMenu.Data.Data
                 // Indexes
                 entity.HasIndex(e => e.Durum).HasDatabaseName("IX_Siparisler_Durum");
                 entity.HasIndex(e => e.MasaId).HasDatabaseName("IX_Siparisler_MasaId");
+                entity.HasIndex(e => new { e.OturumId, e.OlusturmaTarihi }).HasDatabaseName("IX_Siparisler_OturumId_OlusturmaTarihi");
 
                 // Foreign Keys
                 entity.HasOne(e => e.Masa)

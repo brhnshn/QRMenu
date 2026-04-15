@@ -241,19 +241,60 @@ namespace QRMenu.Web.Controllers
         // ============================================================
 
         [HttpGet("/admin/siparisler")]
-        public async Task<IActionResult> Siparisler()
+        public async Task<IActionResult> Siparisler([FromQuery] int page = 1, [FromQuery] int pageSize = 100)
         {
             ViewData["ActivePage"] = "Siparisler";
             ViewData["PageTitle"] = "Sipariş Geçmişi & Raporlama";
 
+            if (page < 1) page = 1;
+            pageSize = Math.Clamp(pageSize, 20, 200);
+
+            var siparisBaseQuery = _context.Siparisler.AsNoTracking().AsQueryable();
+
+            var bugunTr = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _turkeyTz).Date;
+            var bugunBaslangicUtc = TimeZoneInfo.ConvertTimeToUtc(bugunTr, _turkeyTz);
+            var bugunBitisUtc = TimeZoneInfo.ConvertTimeToUtc(bugunTr.AddDays(1), _turkeyTz);
+
+            var bugunToplamSayi = await siparisBaseQuery
+                .Where(s => s.OlusturmaTarihi >= bugunBaslangicUtc && s.OlusturmaTarihi < bugunBitisUtc)
+                .CountAsync();
+
+            var bugunCiro = await siparisBaseQuery
+                .Where(s => s.OlusturmaTarihi >= bugunBaslangicUtc
+                            && s.OlusturmaTarihi < bugunBitisUtc
+                            && s.Durum == SiparisDurum.TamOdendi)
+                .SumAsync(s => (decimal?)s.ToplamTutar) ?? 0m;
+
+            var iptalIadeStats = await siparisBaseQuery
+                .Where(s => s.Durum == SiparisDurum.Iptal || s.Durum == SiparisDurum.Iade)
+                .GroupBy(_ => 1)
+                .Select(g => new { Count = g.Count(), Sum = g.Sum(x => x.ToplamTutar) })
+                .FirstOrDefaultAsync();
+
+            var totalCount = await siparisBaseQuery.CountAsync();
+            var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
+            if (page > totalPages) page = totalPages;
+
             var siparisler = await _context.Siparisler
+                .AsNoTracking()
                 .Include(s => s.Masa)
                 .ThenInclude(m => m.Bolge)
                 .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
                 .AsSplitQuery()
                 .OrderByDescending(s => s.OlusturmaTarihi)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            ViewBag.BugunToplamSayi = bugunToplamSayi;
+            ViewBag.BugunCiro = bugunCiro;
+            ViewBag.IptalIadeSayi = iptalIadeStats?.Count ?? 0;
+            ViewBag.IptalIadeCiro = iptalIadeStats?.Sum ?? 0m;
+            ViewBag.CurrentPage = page;
+            ViewBag.PageSize = pageSize;
+            ViewBag.TotalPages = totalPages;
+            ViewBag.TotalCount = totalCount;
 
             return View(siparisler);
         }

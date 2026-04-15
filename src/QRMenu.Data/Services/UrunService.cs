@@ -17,6 +17,7 @@ namespace QRMenu.Data.Services
         public async Task<List<Urun>> GetAllAsync()
         {
             return await _context.Urunler
+                .AsNoTracking()
                 .Include(u => u.Kategori)
                 .Include(u => u.UrunOpsiyonlar)
                     .ThenInclude(uo => uo.Opsiyon)
@@ -28,6 +29,7 @@ namespace QRMenu.Data.Services
         public async Task<List<Urun>> GetAktifAsync()
         {
             return await _context.Urunler
+                .AsNoTracking()
                 .Include(u => u.Kategori)
                 .Include(u => u.UrunOpsiyonlar)
                     .ThenInclude(uo => uo.Opsiyon)
@@ -40,6 +42,7 @@ namespace QRMenu.Data.Services
         public async Task<Urun?> GetByIdAsync(int id)
         {
             return await _context.Urunler
+                .AsNoTracking()
                 .Include(u => u.Kategori)
                 .Include(u => u.UrunOpsiyonlar)
                     .ThenInclude(uo => uo.Opsiyon)

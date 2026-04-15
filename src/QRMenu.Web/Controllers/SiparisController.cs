@@ -20,7 +20,6 @@ namespace QRMenu.Web.Controllers
 
         private readonly ISiparisService _siparisService;
         private readonly ISepetService _sepetService;
-        private readonly ITokenService _tokenService;
         private readonly ILogger<SiparisController> _logger;
         private readonly IHubContext<MenuHub> _menuHub;
         private readonly QRMenu.Data.Data.QRMenuDbContext _db;
@@ -29,7 +28,6 @@ namespace QRMenu.Web.Controllers
         public SiparisController(
             ISiparisService siparisService,
             ISepetService sepetService,
-            ITokenService tokenService,
             ILogger<SiparisController> logger,
             IHubContext<MenuHub> menuHub,
             QRMenu.Data.Data.QRMenuDbContext db,
@@ -37,32 +35,44 @@ namespace QRMenu.Web.Controllers
         {
             _siparisService = siparisService;
             _sepetService = sepetService;
-            _tokenService = tokenService;
             _logger = logger;
             _menuHub = menuHub;
             _db = db;
             _gameTokenProtector = dataProtectionProvider.CreateProtector("QRMenu.Game.Token.v1");
         }
 
-        private async Task<int?> GetOturumIdAsync()
+        private int? GetOturumId()
         {
-            var token = Request.Cookies["qrmenu_token"];
-            if (string.IsNullOrEmpty(token)) return null;
+            if (!HttpContext.Items.TryGetValue("OturumId", out var oturumObj) || oturumObj == null)
+                return null;
 
-            var hash = _tokenService.HashToken(token);
-            var oturum = await _tokenService.ValidateTokenAsync(hash);
-            return oturum?.Id;
+            if (oturumObj is int oturumId)
+                return oturumId;
+
+            return int.TryParse(oturumObj.ToString(), out var parsed) ? parsed : null;
         }
 
-        private async Task<(int oturumId, int masaNo)?> GetOturumBilgiAsync()
+        private (int oturumId, int masaNo)? GetOturumBilgi()
         {
-            var token = Request.Cookies["qrmenu_token"];
-            if (string.IsNullOrEmpty(token)) return null;
+            var oturumId = GetOturumId();
+            if (oturumId == null)
+                return null;
 
-            var hash = _tokenService.HashToken(token);
-            var oturum = await _tokenService.ValidateTokenAsync(hash);
-            if (oturum == null) return null;
-            return (oturum.Id, oturum.Masa?.MasaNo ?? 0);
+            var masaNoObj = HttpContext.Items.TryGetValue("MasaNo", out var mObj) ? mObj : null;
+            var masaIdObj = HttpContext.Items.TryGetValue("MasaId", out var miObj) ? miObj : null;
+
+            int ParseOrZero(object? value) => value switch
+            {
+                int i => i,
+                _ when int.TryParse(value?.ToString(), out var parsed) => parsed,
+                _ => 0
+            };
+
+            var masaNo = ParseOrZero(masaNoObj);
+            if (masaNo == 0)
+                masaNo = ParseOrZero(masaIdObj);
+
+            return (oturumId.Value, masaNo);
         }
 
         private string CreateGameToken(GameTokenPayload payload)
@@ -119,16 +129,15 @@ namespace QRMenu.Web.Controllers
         /// Siparişlerim sayfası: GET /siparislerim
         /// </summary>
         [HttpGet("/siparislerim")]
-        public async Task<IActionResult> SiparislerimSayfa()
+        public IActionResult SiparislerimSayfa()
         {
-            var bilgi = await GetOturumBilgiAsync();
+            var bilgi = GetOturumBilgi();
             if (bilgi == null) 
             {
                 // Just load the view without a session. The JS will handle the "Session not found" state beautifully!
                 return View("Siparislerim"); 
             }
 
-            HttpContext.Items["MasaId"] = bilgi.Value.masaNo;
             return View("Siparislerim");
         }
 
@@ -139,7 +148,7 @@ namespace QRMenu.Web.Controllers
         [EnableRateLimiting("GarsonCagirPolicy")]
         public async Task<IActionResult> GarsonCagir()
         {
-            var bilgi = await GetOturumBilgiAsync();
+            var bilgi = GetOturumBilgi();
             if (bilgi == null) return Unauthorized();
 
             var masaNo = bilgi.Value.masaNo;
@@ -156,7 +165,7 @@ namespace QRMenu.Web.Controllers
         [HttpPost("/siparis/olustur")]
         public async Task<IActionResult> Olustur([FromBody] SiparisOlusturRequest? request)
         {
-            var oturumId = await GetOturumIdAsync();
+            var oturumId = GetOturumId();
             if (oturumId == null) return Unauthorized();
 
             try
@@ -243,7 +252,7 @@ namespace QRMenu.Web.Controllers
         [HttpGet("/siparis/siparislerim")]
         public async Task<IActionResult> Siparislerim()
         {
-            var oturumId = await GetOturumIdAsync();
+            var oturumId = GetOturumId();
             if (oturumId == null) return Unauthorized();
 
             var siparisler = await _siparisService.GetSiparislerByOturumAsync(oturumId.Value);
@@ -276,7 +285,7 @@ namespace QRMenu.Web.Controllers
         {
             try
             {
-                var oturumId = await GetOturumIdAsync();
+                var oturumId = GetOturumId();
                 if (oturumId == null) return Unauthorized();
 
                 var siparis = await _db.Siparisler
@@ -463,7 +472,7 @@ namespace QRMenu.Web.Controllers
         {
             try
             {
-                var oturumId = await GetOturumIdAsync();
+                var oturumId = GetOturumId();
                 if (oturumId == null) return Unauthorized();
 
                 var siparis = await _db.Siparisler

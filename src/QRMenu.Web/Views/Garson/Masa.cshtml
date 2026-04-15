@@ -59,7 +59,7 @@
     </button>
 </div>
 
-<div class="siparis-table-wrap">
+<div class="siparis-table-wrap" id="masaSiparisSection">
     <table class="siparis-table">
         <thead>
             <tr>
@@ -279,7 +279,7 @@
                     body: JSON.stringify({ yeniDurum: durum })
                 });
                 const result = await res.json();
-                if(result.success) location.reload();
+                if(result.success) scheduleSoftRefresh(100);
                 else alert("Hata: " + result.message);
             } catch(e) { console.error(e); }
         }
@@ -331,7 +331,63 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            if((await res.json()).success) location.reload();
+            if((await res.json()).success) {
+                eklenecekUrunler = [];
+                sepetiCiz();
+                const offcanvasEl = document.getElementById('siparisEkleOffcanvas');
+                const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
+                if (offcanvas) offcanvas.hide();
+                scheduleSoftRefresh(150);
+            }
+        }
+
+        let refreshTimer = null;
+        let lastRefreshAt = 0;
+        let refreshInFlight = false;
+
+        async function softRefreshMasaSiparisleri() {
+            if (refreshInFlight) return;
+            refreshInFlight = true;
+
+            try {
+                const res = await fetch(window.location.pathname, {
+                    cache: 'no-store',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) throw new Error('Masa sipariş verisi alınamadı.');
+
+                const html = await res.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const yeniSection = doc.getElementById('masaSiparisSection');
+                const mevcutSection = document.getElementById('masaSiparisSection');
+
+                if (yeniSection && mevcutSection) {
+                    mevcutSection.innerHTML = yeniSection.innerHTML;
+                }
+
+                if (acikSiparisId) {
+                    await siparisDetayAc(acikSiparisId);
+                }
+            } catch (err) {
+                console.error(err);
+                location.reload();
+            } finally {
+                refreshInFlight = false;
+            }
+        }
+
+        function scheduleSoftRefresh(delayMs = 500) {
+            const minIntervalMs = 2500;
+            const elapsed = Date.now() - lastRefreshAt;
+            const waitMs = Math.max(delayMs, minIntervalMs - elapsed);
+
+            if (refreshTimer) return;
+
+            refreshTimer = setTimeout(async () => {
+                refreshTimer = null;
+                lastRefreshAt = Date.now();
+                await softRefreshMasaSiparisleri();
+            }, Math.max(0, waitMs));
         }
 
         // SignalR Entegrasyonu
@@ -344,7 +400,7 @@
             if (document.getElementById('garsonNoticeOverlay').style.display === 'flex') {
                 return;
             }
-            setTimeout(() => { location.reload(); }, 500);
+            scheduleSoftRefresh(500);
         });
 
         connection.on("GarsonCagrisi", function (masaNo) {
@@ -368,7 +424,7 @@
 
         function closeGarsonNotice() {
             document.getElementById('garsonNoticeOverlay').style.display = 'none';
-            location.reload();
+            scheduleSoftRefresh(100);
         }
 
         function playNoticeSound() {

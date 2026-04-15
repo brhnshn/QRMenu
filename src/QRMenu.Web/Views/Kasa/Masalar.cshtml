@@ -176,17 +176,74 @@
 
 @section Scripts {
     <script>
+        let refreshTimer = null;
+        let lastRefreshAt = 0;
+        let refreshInFlight = false;
+
+        async function softRefreshKasaPanels() {
+            if (refreshInFlight) return;
+            refreshInFlight = true;
+
+            try {
+                const activeTabTarget = document.querySelector('#kasaTab .nav-link.active')?.getAttribute('data-bs-target') || '#bekleyen';
+
+                const res = await fetch(window.location.pathname, {
+                    cache: 'no-store',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) throw new Error('Sayfa yenileme verisi alınamadı.');
+
+                const html = await res.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+
+                const yeniIcerik = doc.getElementById('kasaTabContent');
+                const mevcutIcerik = document.getElementById('kasaTabContent');
+                if (yeniIcerik && mevcutIcerik) {
+                    mevcutIcerik.innerHTML = yeniIcerik.innerHTML;
+
+                    // Aktif sekmeyi koru
+                    mevcutIcerik.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('show', 'active'));
+                    const activePane = mevcutIcerik.querySelector(activeTabTarget);
+                    if (activePane) {
+                        activePane.classList.add('show', 'active');
+                    } else {
+                        const firstPane = mevcutIcerik.querySelector('.tab-pane');
+                        if (firstPane) firstPane.classList.add('show', 'active');
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                location.reload();
+            } finally {
+                refreshInFlight = false;
+            }
+        }
+
+        function scheduleSoftRefresh(delayMs = 500) {
+            const minIntervalMs = 3000;
+            const elapsed = Date.now() - lastRefreshAt;
+            const waitMs = Math.max(delayMs, minIntervalMs - elapsed);
+
+            if (refreshTimer) return;
+
+            refreshTimer = setTimeout(async () => {
+                refreshTimer = null;
+                lastRefreshAt = Date.now();
+                await softRefreshKasaPanels();
+            }, Math.max(0, waitMs));
+        }
+
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/hubs/menu")
             .withAutomaticReconnect()
             .build();
 
         connection.on("SiparisEklendi", function () {
-            location.reload();
+            scheduleSoftRefresh(800);
         });
 
         connection.on("SiparisGuncellendi", function () {
-            location.reload();
+            scheduleSoftRefresh(500);
         });
 
         connection.start().then(() => {

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Memory;
 using QRMenu.Core.Interfaces;
 
 namespace QRMenu.Web.Middleware
@@ -6,6 +7,8 @@ namespace QRMenu.Web.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<TokenValidationMiddleware> _logger;
+        private readonly IMemoryCache _cache;
+        private static readonly TimeSpan SessionRefreshInterval = TimeSpan.FromSeconds(60);
 
         private static readonly string[] ExcludedPaths = new[]
         {
@@ -22,10 +25,11 @@ namespace QRMenu.Web.Middleware
             "/hubs"          // SignalR hub bağlantıları
         };
 
-        public TokenValidationMiddleware(RequestDelegate next, ILogger<TokenValidationMiddleware> logger)
+        public TokenValidationMiddleware(RequestDelegate next, ILogger<TokenValidationMiddleware> logger, IMemoryCache cache)
         {
             _next = next;
             _logger = logger;
+            _cache = cache;
         }
 
         public async Task InvokeAsync(HttpContext context, ITokenService tokenService)
@@ -47,15 +51,18 @@ namespace QRMenu.Web.Middleware
                 return;
             }
 
-            // Personel girişi yapmış kullanıcı ise her yere (menü dahil) serbestçe girebilir
-            if (context.User.Identity != null && context.User.Identity.IsAuthenticated)
+            // Müşteri tarafı — cookie'den token oku
+            var rawToken = context.Request.Cookies["qrmenu_token"];
+
+            // Personel girişi varsa ve QR token yoksa erişime izin ver.
+            // Ancak QR token varsa yine de doğrulayıp HttpContext.Items'e yazalım;
+            // böylece müşteri akışı (sepet/sipariş) personel cookie'si açıkken de çalışır.
+            if (context.User.Identity != null && context.User.Identity.IsAuthenticated && string.IsNullOrEmpty(rawToken))
             {
                 await _next(context);
                 return;
             }
 
-            // Müşteri tarafı — cookie'den token oku
-            var rawToken = context.Request.Cookies["qrmenu_token"];
             if (string.IsNullOrEmpty(rawToken))
             {
                 _logger.LogWarning("Token cookie bulunamadı. Path: {Path}", path);
@@ -80,8 +87,13 @@ namespace QRMenu.Web.Middleware
             context.Items["MasaId"] = oturum.MasaId;
             context.Items["MasaNo"] = oturum.Masa?.MasaNo ?? oturum.MasaId;
 
-            // Sliding expiration: Son işlem zamanını güncelle
-            await tokenService.RefreshSessionAsync(oturum.Id);
+            // Sliding expiration: Her istekte yazma yerine 60 sn'de bir güncelle.
+            var refreshKey = $"oturum-refresh:{oturum.Id}";
+            if (!_cache.TryGetValue(refreshKey, out _))
+            {
+                await tokenService.RefreshSessionAsync(oturum.Id);
+                _cache.Set(refreshKey, true, SessionRefreshInterval);
+            }
 
             await _next(context);
         }

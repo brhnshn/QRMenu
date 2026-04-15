@@ -12,14 +12,26 @@
     
     // İstatistikler (Bugüne özel)
     var bugunSiparis = Model.Where(s => TimeZoneInfo.ConvertTimeFromUtc(s.OlusturmaTarihi, turkeyTz).Date == bugun).ToList();
-    var bugunToplamSayi = bugunSiparis.Count;
-    var bugunCiro = bugunSiparis.Where(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.TamOdendi).Sum(s => s.ToplamTutar);
+    var bugunToplamSayi = ViewBag.BugunToplamSayi != null
+        ? Convert.ToInt32(ViewBag.BugunToplamSayi)
+        : bugunSiparis.Count;
+    var bugunCiro = ViewBag.BugunCiro != null
+        ? Convert.ToDecimal(ViewBag.BugunCiro)
+        : bugunSiparis.Where(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.TamOdendi).Sum(s => s.ToplamTutar);
     
     var iptalIadeSiparis = Model.Where(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.Iptal || s.Durum == QRMenu.Core.Enums.SiparisDurum.Iade).ToList();
-    var iptalIadeCiro = iptalIadeSiparis.Sum(s => s.ToplamTutar);
-    var iptalIadeSayi = iptalIadeSiparis.Count;
+    var iptalIadeCiro = ViewBag.IptalIadeCiro != null
+        ? Convert.ToDecimal(ViewBag.IptalIadeCiro)
+        : iptalIadeSiparis.Sum(s => s.ToplamTutar);
+    var iptalIadeSayi = ViewBag.IptalIadeSayi != null
+        ? Convert.ToInt32(ViewBag.IptalIadeSayi)
+        : iptalIadeSiparis.Count;
     
     var masalar = Model.Select(s => s.Masa).Where(m => m != null).DistinctBy(m => m.Id).OrderBy(m => m.MasaNo).ToList();
+    var currentPage = ViewBag.CurrentPage != null ? Convert.ToInt32(ViewBag.CurrentPage) : 1;
+    var totalPages = ViewBag.TotalPages != null ? Convert.ToInt32(ViewBag.TotalPages) : 1;
+    var pageSize = ViewBag.PageSize != null ? Convert.ToInt32(ViewBag.PageSize) : 100;
+    var totalCount = ViewBag.TotalCount != null ? Convert.ToInt32(ViewBag.TotalCount) : Model.Count;
 }
 
 <style>
@@ -151,7 +163,7 @@
                 </tr>
             </thead>
             <tbody id="siparisTbody">
-                @foreach (var siparis in Model.OrderByDescending(s => s.OlusturmaTarihi))
+                @foreach (var siparis in Model)
                 {
                     string durumClass = "bg-soft-secondary";
                     string durumText = siparis.Durum.ToString();
@@ -235,6 +247,19 @@
         </table>
     </div>
 </div>
+
+@if (totalPages > 1)
+{
+    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mt-3 px-1">
+        <small class="text-muted">Toplam @totalCount kayıt, Sayfa @currentPage / @totalPages</small>
+        <div class="btn-group" role="group" aria-label="Sayfalama">
+            <a class="btn btn-sm btn-outline-secondary @(currentPage <= 1 ? "disabled" : "")"
+               href="/admin/siparisler?page=@(currentPage - 1)&pageSize=@pageSize">Önceki</a>
+            <a class="btn btn-sm btn-outline-secondary @(currentPage >= totalPages ? "disabled" : "")"
+               href="/admin/siparisler?page=@(currentPage + 1)&pageSize=@pageSize">Sonraki</a>
+        </div>
+    </div>
+}
 
 <!-- SİPARİŞ DETAY MODALI (YENİ TASARIM) -->
 <div class="modal fade" id="siparisDetayModal" tabindex="-1">
@@ -409,4 +434,3 @@
         }
     </script>
 }
-// End of file

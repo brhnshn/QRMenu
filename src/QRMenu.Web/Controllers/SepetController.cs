@@ -8,18 +8,15 @@ namespace QRMenu.Web.Controllers
     public class SepetController : Controller
     {
         private readonly ISepetService _sepetService;
-        private readonly ITokenService _tokenService;
         private readonly QRMenuDbContext _context;
         private readonly ILogger<SepetController> _logger;
 
         public SepetController(
             ISepetService sepetService,
-            ITokenService tokenService,
             QRMenuDbContext context,
             ILogger<SepetController> logger)
         {
             _sepetService = sepetService;
-            _tokenService = tokenService;
             _context = context;
             _logger = logger;
         }
@@ -27,14 +24,15 @@ namespace QRMenu.Web.Controllers
         /// <summary>
         /// Aktif oturumun ID'sini cookie'deki token'dan bul
         /// </summary>
-        private async Task<int?> GetOturumIdAsync()
+        private int? GetOturumId()
         {
-            var token = Request.Cookies["qrmenu_token"];
-            if (string.IsNullOrEmpty(token)) return null;
+            if (!HttpContext.Items.TryGetValue("OturumId", out var oturumObj) || oturumObj == null)
+                return null;
 
-            var hash = _tokenService.HashToken(token);
-            var oturum = await _tokenService.ValidateTokenAsync(hash);
-            return oturum?.Id;
+            if (oturumObj is int oturumId)
+                return oturumId;
+
+            return int.TryParse(oturumObj.ToString(), out var parsed) ? parsed : null;
         }
 
         /// <summary>
@@ -43,7 +41,7 @@ namespace QRMenu.Web.Controllers
         [HttpGet("/sepet")]
         public async Task<IActionResult> Index()
         {
-            var oturumId = await GetOturumIdAsync();
+            var oturumId = GetOturumId();
             if (oturumId == null) 
             {
                 // Return view with null model so the user sees an empty cart or "Session not found" rather than a confusing redirect.
@@ -54,18 +52,6 @@ namespace QRMenu.Web.Controllers
             if (sepet != null)
             {
                 sepet = await _sepetService.GetSepetWithDetailsAsync(sepet.Id);
-            }
-
-            // MasaId'yi view'a aktar
-            var token = Request.Cookies["qrmenu_token"];
-            if (!string.IsNullOrEmpty(token))
-            {
-                var hash = _tokenService.HashToken(token);
-                var oturum = await _tokenService.ValidateTokenAsync(hash);
-                if (oturum != null)
-                {
-                    HttpContext.Items["MasaId"] = oturum.MasaId;
-                }
             }
 
             var happyHour = await GetActiveHappyHourAsync();
@@ -106,7 +92,7 @@ namespace QRMenu.Web.Controllers
         [HttpPost("/sepet/ekle")]
         public async Task<IActionResult> Ekle([FromBody] SepeteEkleRequest request)
         {
-            var oturumId = await GetOturumIdAsync();
+            var oturumId = GetOturumId();
             if (oturumId == null) return Unauthorized();
 
             try
@@ -144,7 +130,7 @@ namespace QRMenu.Web.Controllers
         [HttpPost("/sepet/cikar/{detayId:int}")]
         public async Task<IActionResult> Cikar(int detayId)
         {
-            var oturumId = await GetOturumIdAsync();
+            var oturumId = GetOturumId();
             if (oturumId == null) return Unauthorized();
 
             var result = await _sepetService.RemoveItemAsync(detayId);
@@ -165,7 +151,7 @@ namespace QRMenu.Web.Controllers
         [HttpPost("/sepet/guncelle/{detayId:int}")]
         public async Task<IActionResult> Guncelle(int detayId, [FromBody] AdetGuncelleRequest request)
         {
-            var oturumId = await GetOturumIdAsync();
+            var oturumId = GetOturumId();
             if (oturumId == null) return Unauthorized();
 
             var result = await _sepetService.UpdateQuantityAsync(detayId, request.Adet);
@@ -186,7 +172,7 @@ namespace QRMenu.Web.Controllers
         [HttpPost("/sepet/temizle")]
         public async Task<IActionResult> Temizle()
         {
-            var oturumId = await GetOturumIdAsync();
+            var oturumId = GetOturumId();
             if (oturumId == null) return Unauthorized();
 
             var sepet = await _sepetService.GetSepetByOturumAsync(oturumId.Value);
@@ -202,7 +188,7 @@ namespace QRMenu.Web.Controllers
         [HttpGet("/sepet/bilgi")]
         public async Task<IActionResult> Bilgi()
         {
-            var oturumId = await GetOturumIdAsync();
+            var oturumId = GetOturumId();
             if (oturumId == null) return Json(new { toplamTutar = 0, urunSayisi = 0 });
 
             var sepet = await _sepetService.GetSepetByOturumAsync(oturumId.Value);
@@ -219,7 +205,7 @@ namespace QRMenu.Web.Controllers
         [HttpGet("/sepet/detay-json")]
         public async Task<IActionResult> DetayJson()
         {
-            var oturumId = await GetOturumIdAsync();
+            var oturumId = GetOturumId();
             if (oturumId == null) return Json(new { success = false });
 
             var sepet = await _sepetService.GetSepetByOturumAsync(oturumId.Value);

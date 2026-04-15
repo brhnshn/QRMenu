@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QRMenu.Core.Entities;
 using QRMenu.Core.Interfaces;
+using QRMenu.Web.Helpers;
 
 namespace QRMenu.Web.Controllers
 {
@@ -36,8 +37,7 @@ namespace QRMenu.Web.Controllers
         /// </summary>
         public async Task<IActionResult> Detay(int id)
         {
-            var urunler = await _urunService.GetAllAsync();
-            var urun = urunler.FirstOrDefault(u => u.Id == id);
+            var urun = await _urunService.GetByIdAsync(id);
             if (urun == null) return NotFound();
 
             var happyHour = await GetActiveHappyHourAsync();
@@ -79,8 +79,8 @@ namespace QRMenu.Web.Controllers
                         Opsiyonlar = (u.UrunOpsiyonlar ?? new List<UrunOpsiyon>()).OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new
                         {
                             id = uo.Opsiyon.Id,
-                            ad = uo.Opsiyon.Ad,
-                            grup = uo.Opsiyon.Grup,
+                            ad = OptionLocalization.LocalizeOptionText(uo.Opsiyon.Ad, uo.Opsiyon.AdEN, isEn),
+                            grup = OptionLocalization.LocalizeOptionText(uo.Opsiyon.Grup, uo.Opsiyon.GrupEN, isEn),
                             ekFiyat = uo.Opsiyon.EkFiyat,
                             zorunlu = uo.Opsiyon.Zorunlu
                         })

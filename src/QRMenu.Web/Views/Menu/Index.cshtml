@@ -1,4 +1,5 @@
 @model List<QRMenu.Core.Entities.Urun>
+@using QRMenu.Web.Helpers
 @{
     ViewData["Title"] = "Menü";
     Layout = null;
@@ -214,7 +215,7 @@
                     @foreach (var urun in urunler)
                     {
                         var isSoldOut = !urun.AktifMi;
-                        var opsiyonList = urun.UrunOpsiyonlar?.OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new { id = uo.Opsiyon.Id, ad = uo.Opsiyon.Ad, grup = uo.Opsiyon.Grup, ekFiyat = uo.Opsiyon.EkFiyat, zorunlu = uo.Opsiyon.Zorunlu }).ToList() ?? new();
+                        var opsiyonList = urun.UrunOpsiyonlar?.OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new { id = uo.Opsiyon.Id, ad = OptionLocalization.LocalizeOptionText(uo.Opsiyon.Ad, uo.Opsiyon.AdEN, isEn), grup = OptionLocalization.LocalizeOptionText(uo.Opsiyon.Grup, uo.Opsiyon.GrupEN, isEn), ekFiyat = uo.Opsiyon.EkFiyat, zorunlu = uo.Opsiyon.Zorunlu }).ToList() ?? new();
                         var opsiyonJson = System.Text.Json.JsonSerializer.Serialize(opsiyonList);
 
                         <div class="group relative bg-surface-container-lowest rounded-3xl overflow-hidden transition-all duration-300 hover:shadow-2xl @(isSoldOut ? "opacity-50 pointer-events-none" : "") cursor-pointer"
@@ -315,18 +316,18 @@
     <div class="stitch-modal-overlay" id="optionsModal">
         <div class="stitch-modal-card">
             <div class="px-6 pt-6 pb-2 flex justify-between items-center">
-                <h5 class="font-headline font-extrabold text-2xl text-on-surface" id="optionsModalTitle">Seçenekler</h5>
+                <h5 class="font-headline font-extrabold text-2xl text-on-surface" id="optionsModalTitle">@L("Seçenekler", "Options")</h5>
                 <button onclick="closeOptionsModal()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
             <div class="px-6 pt-2 pb-4" id="optionsModalBody"></div>
             <div class="px-6 pb-6">
-                <div id="optionWarning" class="text-error text-sm font-semibold text-center mb-3" style="display:none;">Lütfen tüm zorunlu seçenekleri belirleyin.</div>
+                <div id="optionWarning" class="text-error text-sm font-semibold text-center mb-3" style="display:none;">@L("Lütfen tüm zorunlu seçenekleri belirleyin.", "Please select all required options.")</div>
                 <button type="button" id="btnAddToCartModal"
                         class="w-full bg-gradient-to-r from-primary to-primary-container text-white h-14 rounded-2xl font-headline font-bold uppercase tracking-widest shadow-lg shadow-primary/20 transition-transform active:scale-[0.98] flex items-center justify-between px-6"
                         onclick="submitOptionsForm()" disabled style="opacity:0.5; border:none; cursor:pointer;">
-                    <span>Sepete Ekle</span>
+                    <span>@L("Sepete Ekle", "Add to Cart")</span>
                     <span id="modalTotalPrice" class="opacity-80">0.00 ₺</span>
                 </button>
             </div>
@@ -343,6 +344,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script>
         const soldOutLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Tükendi", "Sold Out")));
+        const txtNoActiveOrder = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Henüz aktif bir siparişiniz yok.", "You don't have an active order yet.")));
+        const txtWaiterCalled = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("✅ Garson çağrıldı!", "✅ Waiter has been called!")));
+        const txtGenericError = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Hata.", "Error.")));
+        const txtTryAgain = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("⚠️ Tekrar deneyin.", "⚠️ Please try again.")));
+        const txtDiscountedBadge = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("İNDİRİMLİ", "DISCOUNTED")));
+        const txtRequired = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Zorunlu", "Required")));
+        const txtOptional = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Opsiyonel", "Optional")));
+        const txtIncluded = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Dahil", "Included")));
+        const txtAddedToCart = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("✅ Sepete eklendi!", "✅ Added to cart!")));
+        const txtConnectionError = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("❌ Bağlantı hatası.", "❌ Connection error.")));
+        const txtUnknownError = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Hata oluştu.", "An error occurred.")));
+        const txtHappyHourUpdated = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("🎉 Mükemmel! İndirimler güncellendi!", "🎉 Great! Discounts have been updated!")));
 
         // ===== UTILITY =====
         function scrollToTracker() {
@@ -350,7 +363,7 @@
             if (el && el.style.display !== 'none') {
                 el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } else {
-                showToast('Henüz aktif bir siparişiniz yok.', true);
+                showToast(txtNoActiveOrder, true);
             }
         }
 
@@ -463,9 +476,9 @@
             try {
                 const res = await fetch('/siparis/garson-cagir', { method: 'POST' });
                 const data = await res.json();
-                if (data.success) showToast('✅ Garson çağrıldı!');
-                else showToast('⚠️ ' + (data.message || 'Hata.'), true);
-            } catch(e) { showToast('⚠️ Tekrar deneyin.', true); }
+                if (data.success) showToast(txtWaiterCalled);
+                else showToast('⚠️ ' + (data.message || txtGenericError), true);
+            } catch(e) { showToast(txtTryAgain, true); }
         }
 
         // ===== SEPETE EKLEME =====
@@ -504,7 +517,7 @@
             // Show options modal
             currentUrunId = urunId;
             baseFiyat = fiyat;
-            document.getElementById('optionsModalTitle').innerHTML = urunAd + (isHH ? ' <span class="text-xs bg-primary text-white px-2 py-0.5 rounded-full ml-2">İNDİRİMLİ</span>' : '');
+            document.getElementById('optionsModalTitle').innerHTML = urunAd + (isHH ? ' <span class="text-xs bg-primary text-white px-2 py-0.5 rounded-full ml-2">' + txtDiscountedBadge + '</span>' : '');
             const body = document.getElementById('optionsModalBody');
             body.innerHTML = '';
 
@@ -516,7 +529,7 @@
                 const isZorunlu = opsList[0].zorunlu === true;
                 const isMulti = !isZorunlu;
                 const barColor = isZorunlu ? 'bg-secondary' : 'bg-outline-variant';
-                const tag = isZorunlu ? '<span class="text-error text-xs font-bold">(Zorunlu)</span>' : '<span class="text-on-surface-variant text-xs">(Opsiyonel)</span>';
+                const tag = isZorunlu ? '<span class="text-error text-xs font-bold">(' + txtRequired + ')</span>' : '<span class="text-on-surface-variant text-xs">(' + txtOptional + ')</span>';
                 const nameAttr = isMulti ? '' : 'grup_' + grupAdi.replace(/\s+/g, '');
                 if (!isMulti) requiredGroups.push(nameAttr);
 
@@ -528,7 +541,7 @@
                     const inputName = isMulti ? id : nameAttr;
                     const priceStr = ops.ekFiyat > 0
                         ? `<span class="font-headline font-bold text-secondary">+${ops.ekFiyat.toFixed(2)} ₺</span>`
-                        : `<span class="font-label text-xs uppercase text-on-surface-variant font-bold">Dahil</span>`;
+                        : `<span class="font-label text-xs uppercase text-on-surface-variant font-bold">${txtIncluded}</span>`;
 
                     html += `<label class="flex items-center justify-between p-4 rounded-xl bg-surface-container-low cursor-pointer hover:bg-surface-container-high transition-colors" for="${id}">
                         <div class="flex items-center gap-4">
@@ -609,15 +622,15 @@
                         btn.classList.remove('bg-primary'); btn.classList.add('bg-green-600');
                         setTimeout(() => { btn.innerHTML = origHTML; btn.disabled = false; btn.style.pointerEvents = ''; btn.classList.remove('bg-green-600'); btn.classList.add('bg-primary'); }, 1200);
                     }
-                    showToast('✅ Sepete eklendi!');
+                    showToast(txtAddedToCart);
                 } else {
                     if (btn) { btn.innerHTML = origHTML; btn.disabled = false; btn.style.pointerEvents = ''; }
-                    showToast('❌ ' + (data.message || 'Hata oluştu.'), true);
+                    showToast('❌ ' + (data.message || txtUnknownError), true);
                 }
             } catch (err) {
                 console.error(err);
                 if (btn) { btn.innerHTML = origHTML; btn.disabled = false; btn.style.pointerEvents = ''; }
-                showToast('❌ Bağlantı hatası.', true);
+                showToast(txtConnectionError, true);
             }
             lastClickedBtn = null;
         }
@@ -626,7 +639,7 @@
         const menuConnection = new signalR.HubConnectionBuilder().withUrl('/hubs/menu').withAutomaticReconnect([0,2000,5000,10000,30000]).build();
 
         menuConnection.on('HappyHourGuncellendi', async function() {
-            try { const res = await fetch('/menu/json'); triggerYenidenCiz(await res.json()); showToast("🎉 Mükemmel! İndirimler güncellendi!"); } catch(e) { console.error(e); }
+            try { const res = await fetch('/menu/json'); triggerYenidenCiz(await res.json()); showToast(txtHappyHourUpdated); } catch(e) { console.error(e); }
         });
 
         menuConnection.on('MenuGuncellendi', async function() {

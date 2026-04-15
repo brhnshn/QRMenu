@@ -1,61 +1,20 @@
 @model QRMenu.Core.Entities.Urun
+@using QRMenu.Web.Helpers
 @{
     var currentLang = Context.Request.Cookies["lang"] ?? "tr";
     bool isEn = currentLang == "en";
-    string L(string tr, string? en) => (isEn && !string.IsNullOrEmpty(en)) ? en : tr;
-
-    string L_Opt(string tr)
-    {
-        if (!isEn) return tr;
-        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "BOYUT", "SIZE" },
-            { "SEÇENEK", "OPTION" },
-            { "EKSTRALAR", "EXTRAS" },
-            { "SOSLAR", "SAUCES" },
-            { "İÇECEKLER", "BEVERAGES" },
-            { "Küçük", "Small" },
-            { "Orta", "Medium" },
-            { "Büyük", "Large" },
-            { "Mega", "Extra Large" },
-            { "Buzlu", "Iced" },
-            { "Buzsuz", "No Ice" },
-            { "Az Buzlu", "Light Ice" },
-            { "Şekerli", "Sweetened" },
-            { "Şekersiz", "Unsweetened" },
-            { "Az Şekerli", "Light Sugar" },
-            { "Sıcak", "Hot" },
-            { "Soğuk", "Cold" },
-            { "Az Pişmiş", "Rare" },
-            { "Orta Pişmiş", "Medium" },
-            { "İyi Pişmiş", "Well Done" },
-            { "Ketçap", "Ketchup" },
-            { "Mayonez", "Mayonnaise" },
-            { "Hardal", "Mustard" },
-            { "Ranch Sos", "Ranch Sauce" },
-            { "Barbekü Sos", "BBQ Sauce" },
-            { "Acı Sos", "Hot Sauce" },
-            { "Sarımsaklı Mayonez", "Garlic Mayo" },
-            { "Peynir", "Cheese" },
-            { "Çedar Peyniri", "Cheddar Cheese" },
-            { "Çift Peynir", "Double Cheese" },
-            { "Soğan", "Onion" },
-            { "Domates", "Tomato" },
-            { "Turşu", "Pickles" },
-            { "Marul", "Lettuce" },
-            { "Ketçapsız", "No Ketchup" },
-            { "Mayonezsiz", "No Mayo" },
-            { "Soğansız", "No Onion" },
-            { "Domatessiz", "No Tomato" },
-            { "Turşusuz", "No Pickles" },
-            { "Marulsuz", "No Lettuce" }
-        };
-        return dict.TryGetValue(tr.Trim(), out var en) ? en : tr;
-    }
+    string L(string? tr, string? en) => (isEn && !string.IsNullOrEmpty(en)) ? en : (tr ?? "");
 
     ViewData["Title"] = L(Model.Ad, Model.AdEN);
     Layout = null;
-    var opsiyonlar = Model.UrunOpsiyonlar?.OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new { id = uo.Opsiyon.Id, ad = uo.Opsiyon.Ad, grup = uo.Opsiyon.Grup, ekFiyat = uo.Opsiyon.EkFiyat, zorunlu = uo.Opsiyon.Zorunlu }).ToList() ?? new();
+    var opsiyonlar = Model.UrunOpsiyonlar?.OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new
+    {
+        id = uo.Opsiyon.Id,
+        ad = OptionLocalization.LocalizeOptionText(uo.Opsiyon.Ad, uo.Opsiyon.AdEN, isEn),
+        grup = OptionLocalization.LocalizeOptionText(uo.Opsiyon.Grup, uo.Opsiyon.GrupEN, isEn),
+        ekFiyat = uo.Opsiyon.EkFiyat,
+        zorunlu = uo.Opsiyon.Zorunlu
+    }).ToList() ?? new();
     var gruplar = opsiyonlar.GroupBy(o => o.grup).ToList();
 }
 
@@ -198,7 +157,7 @@
                                 <div class="flex items-center gap-3">
                                     <span class="w-1 h-6 @barColor2 rounded-full"></span>
                                     <h3 class="font-headline font-bold text-xl uppercase tracking-tighter">
-                                        @L_Opt(grup.Key ?? "")
+                                        @grup.Key
                                         @if (isZorunlu2)
                                         {
                                             <span class="text-error text-xs font-bold normal-case">@(L("(Zorunlu)", "(Required)"))</span>
@@ -224,7 +183,7 @@
                                                            onchange="updateDetayPrice()" />
                                                     <span class="material-symbols-outlined absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none text-sm left-1" style="font-variation-settings: 'wght' 700;">check</span>
                                                 </div>
-                                                <span class="font-semibold text-on-surface">@L_Opt(ops.ad)</span>
+                                                                <span class="font-semibold text-on-surface">@ops.ad</span>
                                             </div>
                                             @if (ops.ekFiyat > 0)
                                             {
@@ -294,6 +253,11 @@
         const BASE_PRICE = @unitPrice.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
         const URUN_ID = @Model.Id;
         let detayQty = 1;
+        const MSG_SCAN_QR = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("❌ Lütfen masanızdaki QR kodu okutun.", "❌ Please scan the QR code on your table.")));
+        const MSG_ERROR_PREFIX = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Hata: ", "Error: ")));
+        const MSG_CONNECTION = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Bağlantı hatası veya oturum süresi doldu.", "Connection error or session expired.")));
+        const BTN_ADD_LABEL = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Sepete Ekle", "Add to Cart")));
+        const BTN_ADDING_LABEL = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Ekleniyor...", "Adding...")));
 
         const requiredGroups = [];
         @foreach (var grup in gruplar.Where(g => g.First().zorunlu))
@@ -331,7 +295,7 @@
 
             const btn = document.getElementById('btnDetayAddToCart');
             btn.disabled = true;
-            btn.innerHTML = '<span>@(L("Ekleniyor...", "Adding..."))</span><span></span>';
+            btn.innerHTML = '<span>' + BTN_ADDING_LABEL + '</span><span></span>';
 
             try {
                 const response = await fetch('/sepet/ekle', {
@@ -340,24 +304,24 @@
                     body: JSON.stringify({ UrunId: URUN_ID, Adet: detayQty, OpsiyonIds: selectedOps })
                 });
                 if (response.status === 401 || response.redirected) {
-                    alert('@(L("❌ Lütfen masanızdaki QR kodu okutun.", "❌ Please scan the QR code on your table."))');
+                    alert(MSG_SCAN_QR);
                     btn.disabled = false;
-                    btn.innerHTML = '<span>@(L("Sepete Ekle", "Add to Cart"))</span><span class="text-on-primary/90">' + (BASE_PRICE * detayQty).toFixed(2) + ' ₺</span>';
+                    btn.innerHTML = '<span>' + BTN_ADD_LABEL + '</span><span class="text-on-primary/90">' + (BASE_PRICE * detayQty).toFixed(2) + ' ₺</span>';
                     return;
                 }
                 const data = await response.json();
                 if (data.success) {
                     window.location.href = '/Menu/Index';
                 } else {
-                    alert('@(L("Hata: ", "Error: "))' + data.message);
+                    alert(MSG_ERROR_PREFIX + data.message);
                     btn.disabled = false;
-                    btn.innerHTML = '<span>@(L("Sepete Ekle", "Add to Cart"))</span><span class="text-on-primary/90">' + (BASE_PRICE * detayQty).toFixed(2) + ' ₺</span>';
+                    btn.innerHTML = '<span>' + BTN_ADD_LABEL + '</span><span class="text-on-primary/90">' + (BASE_PRICE * detayQty).toFixed(2) + ' ₺</span>';
                 }
             } catch (err) {
                 console.error(err);
-                alert('@(L("Bağlantı hatası veya oturum süresi doldu.", "Connection error or session expired."))');
+                alert(MSG_CONNECTION);
                 btn.disabled = false;
-                btn.innerHTML = '<span>@(L("Sepete Ekle", "Add to Cart"))</span><span class="text-on-primary/90">' + (BASE_PRICE * detayQty).toFixed(2) + ' ₺</span>';
+                btn.innerHTML = '<span>' + BTN_ADD_LABEL + '</span><span class="text-on-primary/90">' + (BASE_PRICE * detayQty).toFixed(2) + ' ₺</span>';
             }
         }
 
