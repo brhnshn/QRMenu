@@ -2,6 +2,10 @@
     ViewData["Title"] = "Siparişlerim";
     Layout = null;
     var langCookie = Context.Request.Cookies["lang"];
+    var masaId = Context.Items.TryGetValue("MasaId", out var masaIdCtxObj)
+        && int.TryParse(masaIdCtxObj?.ToString(), out var parsedMasaId)
+        ? parsedMasaId
+        : 0;
     bool isEn = langCookie == "en";
     string L(string tr, string en) => isEn ? en : tr;
 }
@@ -169,6 +173,7 @@
             { durum: 'TeslimEdildi', label: '@Html.Raw(L("Teslim Edildi", "Delivered"))', sublabel: '@Html.Raw(L("Afiyet olsun!", "Enjoy your meal!"))', icon: 'celebration' }
         ];
         const stepOrder = { Onaylandi: 1, Hazirlaniyor: 2, Hazir: 3, TeslimEdildi: 4 };
+        const currentTableId = @masaId;
 
         const heroMessages = {
             1: { title: '@Html.Raw(L("Siparişiniz alındı.", "Order received."))', subtitle: '@Html.Raw(L("Mutfak ekibimiz siparişinizi aldı.", "Kitchen team got your order."))' },
@@ -341,9 +346,19 @@
         document.addEventListener('DOMContentLoaded', fetchOrders);
 
         // SignalR
-        const connection = new signalR.HubConnectionBuilder().withUrl('/hubs/menu').withAutomaticReconnect([0,2000,5000,10000,30000]).build();
+        const connection = new signalR.HubConnectionBuilder().withUrl('/hubs/order').withAutomaticReconnect([0,2000,5000,10000,30000]).build();
         connection.on('SiparisGuncellendi', fetchOrders);
-        connection.start().catch(err => console.error('SignalR:', err));
+        connection.start()
+            .then(async () => {
+                if (currentTableId > 0) {
+                    try {
+                        await connection.invoke('JoinTableGroup', currentTableId);
+                    } catch (err) {
+                        console.error('Table group join failed:', err);
+                    }
+                }
+            })
+            .catch(err => console.error('SignalR:', err));
 
         // Garson Çağır
         async function callWaiter() {

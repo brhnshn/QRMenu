@@ -6,16 +6,34 @@
     ViewData["PageTitle"] = "Kasa İşlemleri";
     
     var sonOdemeler = ViewBag.SonOdemeler as List<QRMenu.Core.Entities.Siparis>;
+    var mutfakZamanEsigi = DateTime.UtcNow.AddHours(-24);
 }
 
 @section Styles {
     <link href="~/css/admin-siparisler.css" rel="stylesheet" />
     <style>
+        :root {
+            --cash-bg-1: #f8fafc;
+            --cash-bg-2: #eef7ff;
+            --cash-border: #d7e5f6;
+            --cash-text: #0f172a;
+            --cash-muted: #64748b;
+        }
+
+        .admin-content {
+            background:
+                radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.12), transparent 30%),
+                radial-gradient(circle at 85% 85%, rgba(14, 165, 233, 0.12), transparent 36%),
+                linear-gradient(155deg, var(--cash-bg-1), var(--cash-bg-2));
+        }
+
         .kasa-tabs {
-            background: #fff;
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid var(--cash-border);
+            backdrop-filter: blur(8px);
             padding: 10px 20px 0;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+            border-radius: 16px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
             margin-bottom: 24px;
         }
         .nav-tabs { border-bottom: none; }
@@ -41,29 +59,78 @@
         }
 
         .kare-masa {
-            background: #fff;
+            background: rgba(255, 255, 255, 0.94);
             border-radius: 16px;
             padding: 30px 20px;
             text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
             cursor: pointer;
             transition: all 0.3s;
             text-decoration: none;
-            color: #333;
+            color: var(--cash-text);
             display: block;
-            border: 4px solid transparent;
+            border: 1px solid var(--cash-border);
             position: relative;
         }
         .kare-masa:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+            transform: translateY(-8px) scale(1.01);
+            box-shadow: 0 18px 34px rgba(15, 23, 42, 0.12);
         }
-        .masa-dolu { border-color: #f59e0b; }
-        .masa-bos { border-color: #e2e8f0; opacity: 0.7; }
+        .masa-dolu {
+            border-color: #f59e0b;
+            background: linear-gradient(180deg, #fff9ef, #fff5e6);
+        }
+        .masa-mutfak {
+            border-color: #3b82f6;
+            background: linear-gradient(180deg, #f5faff, #edf5ff);
+        }
+        .masa-garson {
+            border-color: #22c55e;
+            background: linear-gradient(180deg, #f4fff7, #e9fcef);
+        }
+        .masa-odeme {
+            border-color: #f59e0b;
+            background: linear-gradient(180deg, #fff9ef, #fff5e6);
+        }
+        .masa-bos {
+            border-color: #cbd5e1;
+            background: linear-gradient(180deg, #ffffff, #f8fafc);
+            opacity: 0.82;
+        }
         
-        .masa-no { font-size: 1.5rem; font-weight: 900; color: #1e293b; margin-bottom: 8px; }
-        .masa-info { font-size: 0.9rem; font-weight: 700; color: #64748b; }
+        .masa-no { font-size: 1.5rem; font-weight: 900; color: var(--cash-text); margin-bottom: 8px; }
+        .masa-info { font-size: 0.9rem; font-weight: 700; color: var(--cash-muted); }
         .masa-tutar { font-size: 1.1rem; font-weight: 800; color: #b45309; margin-top: 15px; }
+
+        .siparis-table-wrap {
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--cash-border);
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        .siparis-table thead th {
+            background: #eff6ff;
+            color: var(--cash-text);
+            border-bottom: 1px solid var(--cash-border);
+        }
+
+        .siparis-table tbody tr {
+            background: rgba(255, 255, 255, 0.96);
+        }
+
+        .siparis-table tbody tr:hover {
+            background: #f8fbff;
+        }
+
+        @@media (max-width: 576px) {
+            .kare-masa {
+                padding: 20px 12px;
+            }
+            .masa-no {
+                font-size: 1.2rem;
+            }
+        }
     </style>
 }
 
@@ -82,6 +149,16 @@
     </ul>
 </div>
 
+@if (ViewBag.ConnectionWarning != null)
+{
+    <div class="alert alert-warning d-flex align-items-center" role="alert" style="border-radius: 12px;">
+        <i class="bi bi-wifi-off me-2"></i>
+        <span>@ViewBag.ConnectionWarning</span>
+    </div>
+}
+
+<audio id="kasaBellSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
 <div class="tab-content" id="kasaTabContent">
     <!-- BEKLEYEN MASALAR TAB -->
     <div class="tab-pane fade show active" id="bekleyen" role="tabpanel">
@@ -89,7 +166,26 @@
             @foreach(var masa in Model.OrderBy(m => m.MasaNo))
             {
                 var siparisler = masa.Siparisler.Where(s => s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade).ToList();
-                var doluMu = siparisler.Any();
+                var aktifDetayVarmi = siparisler.Any(s => s.SiparisDetaylar.Any(sd =>
+                    sd.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi &&
+                    sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal &&
+                    sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iade));
+
+                var doluMu = aktifDetayVarmi;
+
+                // Kasa etiketleri sipariş ana durumundan hesaplanır.
+                // Sadece Mutfakta etiketi için Mutfak paneliyle aynı 24 saat kuralını uygularız.
+                var mutfaktaVarMi = siparisler.Any(s =>
+                    s.OlusturmaTarihi >= mutfakZamanEsigi &&
+                    (s.Durum == QRMenu.Core.Enums.SiparisDurum.Onaylandi ||
+                     s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor));
+
+                var garsondaVarMi = siparisler.Any(s =>
+                    s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir);
+
+                var odemeBekliyorMu = siparisler.Any(s =>
+                    s.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi ||
+                    s.Durum == QRMenu.Core.Enums.SiparisDurum.KismiOdendi);
                 
                 // Siparişe uygulanan indirimleri kalan bakiyeye oransal yansıtıyoruz.
                 var kalanBakiye = siparisler.Sum(s =>
@@ -107,16 +203,52 @@
                         .Sum(sd => (sd.Adet * sd.BirimFiyat) * oran);
                 });
                 
-                // Eğer bakiye 0 olsa bile bazı siparişler 'aktif' kalmış olabilir (bug önlemi), 
-                // bu durumda da masayı boş kabul etmeliyiz ki kullanıcı kafa karışıklığı yaşamasın.
+                // Eğer bakiye 0 ise masayı boş kabul et.
                 if (kalanBakiye <= 0) doluMu = false;
+
+                var masaDurumSinifi = "masa-bos";
+                var durumMetni = "Hazır";
+                var durumRenkSinifi = "text-muted";
+                var durumIkonu = "bi-check-circle";
+
+                if (doluMu)
+                {
+                    if (odemeBekliyorMu)
+                    {
+                        masaDurumSinifi = "masa-odeme";
+                        durumMetni = "Ödeme Bekliyor";
+                        durumRenkSinifi = "text-warning";
+                        durumIkonu = "bi-credit-card";
+                    }
+                    else if (garsondaVarMi)
+                    {
+                        masaDurumSinifi = "masa-garson";
+                        durumMetni = "Garsonda";
+                        durumRenkSinifi = "text-success";
+                        durumIkonu = "bi-bag-check";
+                    }
+                    else if (mutfaktaVarMi)
+                    {
+                        masaDurumSinifi = "masa-mutfak";
+                        durumMetni = "Mutfakta";
+                        durumRenkSinifi = "text-primary";
+                        durumIkonu = "bi-fire";
+                    }
+                    else
+                    {
+                        masaDurumSinifi = "masa-dolu";
+                        durumMetni = "Sipariş Var";
+                        durumRenkSinifi = "text-secondary";
+                        durumIkonu = "bi-receipt";
+                    }
+                }
                 
                 <div class="col">
-                    <a href="@(doluMu ? $"/Kasa/Odeme/{masa.Id}" : "#")" class="kare-masa @(doluMu ? "masa-dolu" : "masa-bos")">
+                    <a href="@(doluMu ? $"/Kasa/Odeme/{masa.Id}" : "#")" class="kare-masa @masaDurumSinifi">
                         <div class="masa-no">Masa @masa.MasaNo</div>
                         <div class="masa-info">
                             @if(doluMu) {
-                                <span class="text-warning"><i class="bi bi-circle-fill"></i> Ödeme Bekliyor</span>
+                                <span class="@durumRenkSinifi"><i class="bi @durumIkonu"></i> @durumMetni</span>
                             } else {
                                 <span class="text-muted"><i class="bi bi-check-circle"></i> Hazır</span>
                             }
@@ -234,9 +366,13 @@
         }
 
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/hubs/menu")
+            .withUrl("/hubs/order")
             .withAutomaticReconnect()
             .build();
+
+        connection.on("SiparisGeldi", function () {
+            scheduleSoftRefresh(800);
+        });
 
         connection.on("SiparisEklendi", function () {
             scheduleSoftRefresh(800);
@@ -244,6 +380,11 @@
 
         connection.on("SiparisGuncellendi", function () {
             scheduleSoftRefresh(500);
+        });
+
+        connection.on("OdemeYapildi", function () {
+            document.getElementById('kasaBellSound').play().catch(() => {});
+            scheduleSoftRefresh(300);
         });
 
         connection.start().then(() => {

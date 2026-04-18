@@ -18,6 +18,10 @@
     var currentLang = Context.Request.Cookies["lang"] ?? "tr";
     bool isEn = currentLang == "en";
     string L(string? tr, string? en) => (isEn && !string.IsNullOrEmpty(en)) ? en : (tr ?? "");
+    var masaId = Context.Items.TryGetValue("MasaId", out var masaIdCtxObj)
+        && int.TryParse(masaIdCtxObj?.ToString(), out var parsedMasaId)
+        ? parsedMasaId
+        : 0;
     var masaNo = Context.Items.TryGetValue("MasaNo", out var masaNoObj)
         ? masaNoObj?.ToString()
         : (Context.Items.TryGetValue("MasaId", out var masaIdObj) ? masaIdObj?.ToString() : null);
@@ -356,6 +360,7 @@
         const txtConnectionError = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("❌ Bağlantı hatası.", "❌ Connection error.")));
         const txtUnknownError = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Hata oluştu.", "An error occurred.")));
         const txtHappyHourUpdated = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("🎉 Mükemmel! İndirimler güncellendi!", "🎉 Great! Discounts have been updated!")));
+        const currentTableId = @masaId;
 
         // ===== UTILITY =====
         function scrollToTracker() {
@@ -636,7 +641,7 @@
         }
 
         // ===== SIGNALR =====
-        const menuConnection = new signalR.HubConnectionBuilder().withUrl('/hubs/menu').withAutomaticReconnect([0,2000,5000,10000,30000]).build();
+        const menuConnection = new signalR.HubConnectionBuilder().withUrl('/hubs/order').withAutomaticReconnect([0,2000,5000,10000,30000]).build();
 
         menuConnection.on('HappyHourGuncellendi', async function() {
             try { const res = await fetch('/menu/json'); triggerYenidenCiz(await res.json()); showToast(txtHappyHourUpdated); } catch(e) { console.error(e); }
@@ -743,7 +748,17 @@
             window.location.reload();
         }
         
-        menuConnection.start().catch(err => console.error('SignalR:', err));
+        menuConnection.start()
+            .then(async () => {
+                if (currentTableId > 0) {
+                    try {
+                        await menuConnection.invoke('JoinTableGroup', currentTableId);
+                    } catch (err) {
+                        console.error('Table group join failed:', err);
+                    }
+                }
+            })
+            .catch(err => console.error('SignalR:', err));
 
 
     </script>

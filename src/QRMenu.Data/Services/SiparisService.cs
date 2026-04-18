@@ -19,7 +19,7 @@ namespace QRMenu.Data.Services
             [SiparisDurum.Onaylandi]     = new[] { SiparisDurum.Hazirlaniyor, SiparisDurum.Iptal },
             [SiparisDurum.Hazirlaniyor]  = new[] { SiparisDurum.Hazir, SiparisDurum.Iptal },
             [SiparisDurum.Hazir]         = new[] { SiparisDurum.TeslimEdildi },
-            [SiparisDurum.TeslimEdildi]  = new[] { SiparisDurum.KismiOdendi, SiparisDurum.TamOdendi, SiparisDurum.Iade },
+            [SiparisDurum.TeslimEdildi]  = new[] { SiparisDurum.KismiOdendi, SiparisDurum.TamOdendi, SiparisDurum.Iade, SiparisDurum.Iptal },
             [SiparisDurum.KismiOdendi]   = new[] { SiparisDurum.TamOdendi },
             [SiparisDurum.TamOdendi]     = new[] { SiparisDurum.Iade },
             [SiparisDurum.Iptal]         = Array.Empty<SiparisDurum>(),

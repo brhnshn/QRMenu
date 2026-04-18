@@ -12,6 +12,7 @@ using QRMenu.Web.Hubs;
 using QRMenu.Web.Services;
 using QRMenu.Data.Interceptors;
 using Microsoft.AspNetCore.HttpOverrides;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,7 +33,28 @@ builder.Host.UseSerilog();
 // DbContext — PostgreSQL (Supabase) bağlantısı
 builder.Services.AddDbContext<QRMenuDbContext>((sp, options) =>
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+    var rawConnectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("DefaultConnection tanımlı değil.");
+
+    var csb = new NpgsqlConnectionStringBuilder(rawConnectionString)
+    {
+        // İnternet dalgalanmalarında daha hızlı toparlanma için bağlantı/read tarafını sınırla.
+        Timeout = 15,
+        CommandTimeout = 30,
+        KeepAlive = 30,
+        TcpKeepAlive = true,
+        Pooling = true,
+        MaxPoolSize = 100
+    };
+
+    options.UseNpgsql(csb.ConnectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 6,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorCodesToAdd: null);
+        npgsqlOptions.CommandTimeout(30);
+    });
     
     // AuditLogInterceptor'ı DI üzerinden alıp ekle
     var interceptor = sp.GetRequiredService<AuditLogInterceptor>();
@@ -159,7 +181,9 @@ app.MapControllerRoute(
     pattern: "{controller=Menu}/{action=Index}/{id?}");
 
 // SignalR Hub endpoint
-app.MapHub<MenuHub>("/hubs/menu");
+app.MapHub<OrderHub>("/hubs/order");
+// Geriye dönük uyumluluk: eski istemciler bir süre daha /hubs/menu üzerinden bağlanabilir.
+app.MapHub<OrderHub>("/hubs/menu");
 
 // ===== VERİTABANI MIGRATION + IDENTITY SEED =====
 using (var scope = app.Services.CreateScope())

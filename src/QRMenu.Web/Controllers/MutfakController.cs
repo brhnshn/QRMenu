@@ -15,10 +15,10 @@ namespace QRMenu.Web.Controllers
     {
         private readonly QRMenuDbContext _context;
         private readonly ISiparisService _siparisService;
-        private readonly IHubContext<MenuHub> _menuHub;
+        private readonly IHubContext<OrderHub> _menuHub;
         private readonly ILogger<MutfakController> _logger;
 
-        public MutfakController(QRMenuDbContext context, ISiparisService siparisService, IHubContext<MenuHub> menuHub, ILogger<MutfakController> logger)
+        public MutfakController(QRMenuDbContext context, ISiparisService siparisService, IHubContext<OrderHub> menuHub, ILogger<MutfakController> logger)
         {
             _context = context;
             _siparisService = siparisService;
@@ -63,19 +63,25 @@ namespace QRMenu.Web.Controllers
                 
                 _logger.LogInformation("Mutfak sipariş güncelledi. SiparisId={Id}, YeniDurum={Durum}", siparisId, durum);
 
+                var sip = await _context.Siparisler
+                    .Include(s => s.Masa)
+                    .AsSplitQuery()
+                    .FirstOrDefaultAsync(s => s.Id == siparisId);
+
+                var masaId = sip?.MasaId ?? siparis.MasaId;
+                var masaNo = sip?.Masa?.MasaNo ?? 0;
+
                 // Eğer durum "Hazır" ise Garson'a özel bildirim fırlat
                 if (durum == SiparisDurum.Hazir)
                 {
-                    // MasaNo'yu alabilmek için tekrar çekmemiz gerekebilir (Service'den dönen siparişte masa yüklü olmalı)
-                    var sip = await _context.Siparisler.Include(s => s.Masa).AsSplitQuery().FirstOrDefaultAsync(s => s.Id == siparisId);
-                    if (sip != null)
-                    {
-                        await _menuHub.Clients.All.SendAsync("SiparisHazir", sip.Masa.MasaNo);
-                    }
+                    await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisHazir", masaNo);
+                    await _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisHazir", masaNo);
                 }
 
-                // Tüm ekranlara yay (En son gönderiyoruz ki reload bildirimden sonra gelsin)
-                await _menuHub.Clients.All.SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisGuncellendi");
 
                 return Json(new { success = true });
             }

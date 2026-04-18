@@ -8,13 +8,69 @@
 
 @section Styles {
     <style>
-        .admin-content { background-color: #0f172a !important; min-height: 100vh; margin-top: 56px !important; }
-        .ticket-grid { padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; align-items: start; }
+        .admin-content {
+            min-height: 100vh;
+            margin-top: 56px !important;
+            background:
+                radial-gradient(circle at 10% 12%, rgba(245, 158, 11, 0.16), transparent 26%),
+                radial-gradient(circle at 84% 88%, rgba(248, 113, 113, 0.18), transparent 30%),
+                linear-gradient(150deg, #0b1220, #111b2e 55%, #13203a);
+        }
+
+        .ticket-grid {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            align-items: start;
+            animation: kdsFadeIn 0.45s ease;
+        }
+
+        @@keyframes kdsFadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         
-        .ticket-card { background: #ffffff; color: #0f172a; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: 4px solid transparent; transition: border-color 0.3s; }
-        .ticket-header { border-bottom: 2px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; }
-        .masa-badge { background: #e2e8f0; color: #0f172a; font-size: 1.6rem; font-weight: 900; padding: 4px 12px; border-radius: 8px; }
-        .timer-badge { font-size: 1.2rem; font-weight: 800; padding: 4px 10px; border-radius: 6px; background: #f1f5f9; color: #475569; }
+        .ticket-card {
+            background: #ffffff;
+            color: #0f172a;
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32);
+            border: 2px solid #dbe4f1;
+            transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+        }
+        .ticket-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 18px 36px rgba(0, 0, 0, 0.36);
+        }
+        .ticket-header {
+            border-bottom: 2px dashed #cbd5e1;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .masa-badge {
+            background: linear-gradient(180deg, #1e293b, #0f172a);
+            color: #f8fafc;
+            font-size: 1.45rem;
+            font-weight: 900;
+            padding: 6px 12px;
+            border-radius: 10px;
+            letter-spacing: 0.02em;
+        }
+        .timer-badge {
+            font-size: 1.15rem;
+            font-weight: 900;
+            padding: 4px 10px;
+            border-radius: 8px;
+            background: #f1f5f9;
+            color: #334155;
+        }
         
         .urun-list { flex: 1; margin-bottom: 15px; }
         .urun-row { font-size: 1.3rem; font-weight: 800; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; }
@@ -25,10 +81,11 @@
         .action-btns button { flex: 1; font-weight: 800; padding: 12px; font-size: 1.1rem; }
 
         /* Zaman Sınırları ve Animasyonlar */
-        .ticket-warning { border-color: #f59e0b; }
-        .ticket-warning .timer-badge { background: #fef3c7; color: #b45309; }
-        
-        .ticket-danger { border-color: #ef4444; animation: pulseRed 2s infinite; }
+        .ticket-danger {
+            border-color: #ef4444;
+            background: linear-gradient(180deg, #ffffff, #fff7f7);
+            animation: pulseRed 2s infinite;
+        }
         .ticket-danger .timer-badge { background: #fee2e2; color: #b91c1c; }
 
         @@keyframes pulseRed {
@@ -38,6 +95,22 @@
         }
 
         #clock { font-family: monospace; }
+
+        @@media (max-width: 768px) {
+            .ticket-grid {
+                grid-template-columns: 1fr;
+                padding: 12px;
+                gap: 14px;
+            }
+
+            .masa-badge {
+                font-size: 1.2rem;
+            }
+
+            .urun-row {
+                font-size: 1.1rem;
+            }
+        }
     </style>
 }
 
@@ -103,7 +176,7 @@
 
 @section Scripts {
     <script>
-        // Timer Hesaplamaları (5 dk sarı, 8 dk kırmızı sınır)
+        // Timer Hesaplamaları (5 dakikayı geçenler kırmızı)
         function updateTimers() {
             const cards = document.querySelectorAll('.ticket-card');
             const now = new Date();
@@ -122,12 +195,10 @@
                 const secs = diffSec % 60;
                 
                 card.querySelector('.timer-text').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                card.classList.remove('ticket-danger');
 
-                if (mins >= 8) {
-                    card.classList.remove('ticket-warning');
+                if (diffMs > (5 * 60 * 1000)) {
                     card.classList.add('ticket-danger');
-                } else if (mins >= 5) {
-                    card.classList.add('ticket-warning');
                 }
             });
         }
@@ -199,9 +270,14 @@
 
         // SignalR Entegrasyonu
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/hubs/menu")
+            .withUrl("/hubs/order")
             .withAutomaticReconnect()
             .build();
+
+        connection.on("SiparisGeldi", function () {
+            document.getElementById('bellSound').play().catch(e => console.log('Ses çalma hatası:', e));
+            scheduleSoftRefresh(900);
+        });
 
         connection.on("SiparisEklendi", function () {
             document.getElementById('bellSound').play().catch(e => console.log('Ses çalma hatası:', e));

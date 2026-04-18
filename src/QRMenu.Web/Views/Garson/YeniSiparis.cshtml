@@ -1,0 +1,653 @@
+@model QRMenu.Core.Entities.Masa
+@using System.Globalization
+@using System.Text.Json
+@using QRMenu.Core.Entities
+@using QRMenu.Core.Enums
+@{
+    Layout = "~/Views/Shared/_GarsonLayout.cshtml";
+
+    var trCulture = CultureInfo.GetCultureInfo("tr-TR");
+    var kategoriler = ViewBag.Kategoriler as List<Kategori> ?? new List<Kategori>();
+    var aktifSiparisler = ViewBag.AktifSiparisler as List<Siparis> ?? new List<Siparis>();
+
+    var mevcutKalemler = aktifSiparisler
+        .SelectMany(s => s.SiparisDetaylar)
+        .Where(sd => sd.Durum != SiparisDurum.Iptal)
+        .GroupBy(sd => new { sd.UrunId, UrunAd = sd.Urun.Ad, BirimFiyat = sd.BirimFiyat })
+        .Select(g => new
+        {
+            g.Key.UrunId,
+            g.Key.UrunAd,
+            g.Key.BirimFiyat,
+            Adet = g.Sum(x => x.Adet),
+            Toplam = g.Sum(x => x.Adet * x.BirimFiyat)
+        })
+        .OrderBy(x => x.UrunAd)
+        .ToList();
+
+    var mevcutToplam = mevcutKalemler.Sum(x => x.Toplam);
+    var mevcutUrunAdedi = mevcutKalemler.Sum(x => x.Adet);
+
+    ViewData["GarsonPageTitle"] = $"Masa {Model.MasaNo} - Yeni Sipariş";
+    ViewData["GarsonActivePage"] = "Masa";
+    ViewData["GarsonContentClass"] = "p-8 flex-1 overflow-y-auto";
+    ViewData["GarsonMasaLink"] = $"/Garson/Masa/{Model.Id}";
+}
+
+@section GarsonHeaderLeft {
+    <a href="/Garson/Masa/@Model.Id" class="flex items-center gap-2 group hover:bg-stone-200/50 transition-colors p-2 rounded-xl active:scale-95 transition-transform duration-150">
+        <span class="material-symbols-outlined text-stone-500">arrow_back</span>
+        <span class="text-stone-500 font-medium font-label">Masa Detayı</span>
+    </a>
+    <div class="h-6 w-px bg-stone-200/50 mx-1"></div>
+    <h2 class="text-[#2e2f2f] font-['Plus_Jakarta_Sans'] text-lg font-bold">Masa @Model.MasaNo - Yeni Sipariş</h2>
+}
+
+@section GarsonHeaderRight {
+    <div class="flex items-center gap-2 px-4 py-2 bg-surface-container rounded-full">
+        <span class="material-symbols-outlined text-sm">receipt_long</span>
+        <span class="text-sm font-medium">@mevcutUrunAdedi aktif ürün</span>
+    </div>
+}
+
+@section PageStyles {
+    <style>
+        .kategori-btn.active {
+            background: #ffca57;
+            color: #5d4300;
+            box-shadow: 0 10px 18px rgba(255, 202, 87, 0.35);
+        }
+
+        .kategori-btn {
+            min-height: 54px;
+            font-size: 0.95rem;
+        }
+
+        .urun-card {
+            transition: transform .25s ease, box-shadow .25s ease;
+        }
+
+        .urun-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 24px rgba(46, 47, 47, 0.12);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #dedcdc;
+            border-radius: 10px;
+        }
+
+        .opsiyon-row input[type='checkbox'],
+        .opsiyon-row input[type='radio'] {
+            accent-color: #a23718;
+        }
+
+    </style>
+}
+
+<div class="grid grid-cols-12 gap-8 min-h-[calc(100vh-220px)] items-start">
+    <section class="col-span-12 lg:col-span-7 xl:col-span-8 flex flex-col gap-8 pr-2 xl:pr-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <aside class="lg:col-span-4 xl:col-span-3">
+                <div class="bg-surface-container-low rounded-3xl p-4 lg:sticky lg:top-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-headline font-extrabold text-lg text-on-surface">Kategoriler</h3>
+                        <span class="text-xs font-bold text-on-surface-variant">Dokun ve filtrele</span>
+                    </div>
+                    <div id="kategoriPanel" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-3">
+                        <button type="button" class="kategori-btn active px-4 py-3 rounded-2xl bg-secondary-container text-on-secondary-container font-headline font-bold transition-all shadow-sm" data-kategori="all">Tümü</button>
+                        @foreach (var kategori in kategoriler)
+                        {
+                            <button type="button" class="kategori-btn px-4 py-3 rounded-2xl bg-surface-container-lowest text-on-surface-variant font-headline font-bold hover:bg-surface-container-high transition-all" data-kategori="@kategori.Id">@kategori.Ad</button>
+                        }
+                    </div>
+                </div>
+            </aside>
+
+            <div class="lg:col-span-8 xl:col-span-9 flex flex-col gap-4">
+                <div class="bg-surface-container-low rounded-2xl p-4">
+                    <label for="urunAraInput" class="text-xs font-bold uppercase tracking-widest text-on-surface-variant block mb-2">Hızlı Ürün Ara</label>
+                    <div class="flex items-center gap-2 bg-surface-container-lowest rounded-xl px-3 py-2">
+                        <span class="material-symbols-outlined text-on-surface-variant">search</span>
+                        <input id="urunAraInput" type="text" class="w-full bg-transparent outline-none text-base" placeholder="Örn: Tavuk, Cola, Çorba" autocomplete="off" />
+                    </div>
+                </div>
+
+                <div id="urunGrid" class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6 pb-6">
+                    @foreach (var kategori in kategoriler)
+                    {
+                        foreach (var urun in kategori.Urunler.OrderBy(u => u.Ad))
+                        {
+                            var opsiyonlarJson = JsonSerializer.Serialize(
+                                urun.UrunOpsiyonlar
+                                    .Where(uo => uo.Opsiyon != null)
+                                    .Select(uo => new
+                                    {
+                                        id = uo.OpsiyonId,
+                                        ad = uo.Opsiyon.Ad,
+                                        grup = uo.Opsiyon.Grup,
+                                        ekFiyat = uo.Opsiyon.EkFiyat,
+                                        zorunlu = uo.Opsiyon.Zorunlu
+                                    })
+                            ).Replace("'", "&#39;");
+
+                            <div class="urun-card group bg-surface-container-lowest rounded-xl overflow-hidden flex flex-col cursor-pointer active:scale-[0.99]" data-kategori="@kategori.Id" data-urunad="@urun.Ad.ToLower(trCulture)" data-id="@urun.Id" data-ad="@urun.Ad" data-fiyat="@urun.Fiyat.ToString("F2", CultureInfo.InvariantCulture)" data-opsiyonlar='@Html.Raw(opsiyonlarJson)'>
+                                <div class="relative h-44 w-full overflow-hidden bg-gradient-to-br from-[#fd7954]/20 to-[#ffca57]/30">
+                                    <img src="/Garson/UrunGorsel/@urun.Id" alt="@urun.Ad" class="w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                                    <div class="absolute inset-0 hidden items-center justify-center bg-gradient-to-br from-[#fd7954]/20 to-[#ffca57]/30">
+                                        <span class="material-symbols-outlined text-primary text-5xl">restaurant</span>
+                                    </div>
+                                    <div class="absolute top-3 right-3 bg-surface-variant/80 backdrop-blur-md px-3 py-1 rounded-md">
+                                        <span class="text-sm font-bold text-on-surface">@urun.Fiyat.ToString("C0", trCulture)</span>
+                                    </div>
+                                </div>
+                                <div class="p-5 flex flex-col gap-2">
+                                    <h3 class="font-headline font-bold text-on-surface text-lg leading-tight">@urun.Ad</h3>
+                                    <p class="text-sm text-on-surface-variant line-clamp-2">Kategori: @kategori.Ad</p>
+                                    <div class="mt-2 flex items-center justify-between">
+                                        <span class="text-xs font-bold text-secondary tracking-widest uppercase">Ürün</span>
+                                        <button type="button" class="add-product w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center active:scale-95" data-id="@urun.Id" data-ad="@urun.Ad" data-fiyat="@urun.Fiyat.ToString("F2", CultureInfo.InvariantCulture)" data-opsiyonlar='@Html.Raw(opsiyonlarJson)'>
+                                            <span class="material-symbols-outlined text-2xl">add</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+                <div id="urunFiltreBos" class="hidden bg-surface-container-low rounded-2xl p-8 text-center text-on-surface-variant text-sm">
+                    Bu filtreye uyan ürün bulunamadı. Başka bir kategori veya arama deneyin.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="col-span-12 lg:col-span-5 xl:col-span-4 bg-surface-container rounded-[2rem] flex flex-col overflow-hidden shadow-sm lg:self-start lg:-mt-8 lg:sticky lg:top-0 lg:h-[calc(100dvh-7rem)] lg:max-h-[calc(100dvh-7rem)]">
+        <div class="p-6 pb-3 border-b border-surface-container-high">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="font-headline font-extrabold text-2xl text-on-surface">Yeni Sipariş Sepeti</h2>
+                <span id="cartCountBadge" class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">0 Ürün</span>
+            </div>
+            <p class="text-sm text-on-surface-variant opacity-70">Masa: @Model.MasaNo</p>
+        </div>
+
+        <div id="cartItems" class="flex-1 min-h-0 overflow-y-auto px-6 space-y-3 py-3">
+            <div class="text-sm text-on-surface-variant text-center py-6">Sepet boş. Soldaki ürünlerden ekleyin.</div>
+        </div>
+
+        <div class="p-6 bg-surface-container-lowest border-t border-surface-container">
+            <div class="space-y-2 mb-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-on-surface-variant text-sm">Açık Sipariş Toplamı</span>
+                    <span class="font-medium">@mevcutToplam.ToString("C2", trCulture)</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-on-surface-variant text-sm">Yeni Sepet Toplamı</span>
+                    <span id="cartTotalText" class="font-medium">TL 0,00</span>
+                </div>
+                <div class="flex justify-between items-center pt-2 border-t border-surface-container">
+                    <span class="font-headline font-extrabold text-lg text-on-surface">Yeni Genel Toplam</span>
+                    <span id="grandTotalText" class="font-headline font-extrabold text-2xl text-primary">@mevcutToplam.ToString("C2", trCulture)</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <button id="btnCartReset" type="button" class="py-4 px-6 rounded-2xl border-2 border-outline-variant/20 font-bold text-on-surface hover:bg-surface-container transition-colors active:scale-[0.98]">
+                    Temizle
+                </button>
+                <button id="btnMutfagaGonder" type="button" class="py-4 px-6 rounded-2xl bg-primary text-on-primary font-headline font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:bg-primary-dim transition-all active:scale-[0.98]">
+                    <span class="material-symbols-outlined text-xl">restaurant_menu</span>
+                    Mutfağa Gönder
+                </button>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div id="opsiyonModal" class="hidden fixed inset-0 z-[120] bg-black/60 items-center justify-center p-4" onclick="if(event.target===this) closeOpsiyonModal()">
+    <div class="bg-white rounded-3xl w-[min(760px,96vw)] max-h-[92vh] overflow-hidden shadow-2xl">
+        <div class="px-6 py-4 border-b border-surface-container-high flex items-center justify-between">
+            <h3 id="opsiyonModalTitle" class="font-headline font-extrabold text-xl text-on-surface">Opsiyon Seç</h3>
+            <button type="button" class="text-on-surface-variant hover:text-on-surface" onclick="closeOpsiyonModal()">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div id="opsiyonModalBody" class="px-6 py-4 overflow-y-auto max-h-[62vh]"></div>
+        <div class="px-6 py-4 border-t border-surface-container-high bg-surface-container-low flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <div>
+                <p class="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Toplam</p>
+                <p id="opsiyonModalToplam" class="font-headline text-2xl font-extrabold text-primary">0,00 TL</p>
+                <p id="opsiyonUyari" class="text-xs text-error mt-1 hidden">Lütfen zorunlu opsiyonları seçin.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" class="px-4 py-2 rounded-xl border border-outline-variant text-on-surface font-semibold" onclick="closeOpsiyonModal()">Vazgeç</button>
+                <button id="btnOpsiyonSepeteEkle" type="button" class="px-5 py-2 rounded-xl bg-primary text-on-primary font-bold" onclick="confirmOpsiyonEkle()">Sepete Ekle</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section PageScripts {
+    <script>
+        const masaId = @Model.Id;
+        const mevcutToplam = @mevcutToplam.ToString("F2", CultureInfo.InvariantCulture);
+        let cart = [];
+        let aktifOpsiyonUrun = null;
+        let zorunluRadioGruplari = [];
+        let mutfagaGonderInFlight = false;
+        let mutfagaGonderCooldownUntil = 0;
+        const MUTFAK_GONDER_COOLDOWN_MS = 1800;
+
+        function escapeHtml(value) {
+            if (!value) return '';
+            const div = document.createElement('div');
+            div.textContent = value;
+            return div.innerHTML;
+        }
+
+        function parseOpsiyonlar(raw) {
+            if (!raw) return [];
+            try {
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function normalizeOpsiyonlar(opsiyonlar) {
+            return (opsiyonlar || [])
+                .map(o => ({
+                    id: Number(o.id),
+                    ad: o.ad || '',
+                    grup: o.grup || '',
+                    ekFiyat: Number(o.ekFiyat || 0),
+                    zorunlu: o.zorunlu === true
+                }))
+                .filter(o => Number.isFinite(o.id) && o.id > 0)
+                .sort((a, b) => a.id - b.id);
+        }
+
+        function opsiyonToplam(opsiyonlar) {
+            return (opsiyonlar || []).reduce((sum, o) => sum + Number(o.ekFiyat || 0), 0);
+        }
+
+        function satirBirimFiyat(item) {
+            return Number(item.fiyat) + opsiyonToplam(item.opsiyonlar);
+        }
+
+        function cartKeyOlustur(urunId, opsiyonIds) {
+            const sorted = [...(opsiyonIds || [])].sort((a, b) => a - b);
+            return `${urunId}:${sorted.join('-')}`;
+        }
+
+        function trCurrency(value) {
+            return value.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+        }
+
+        function setMutfagaGonderButtonState(loading, text) {
+            const btn = document.getElementById('btnMutfagaGonder');
+            if (!btn) return;
+
+            btn.disabled = loading;
+            btn.classList.toggle('opacity-70', loading);
+            btn.classList.toggle('cursor-not-allowed', loading);
+
+            if (text) {
+                btn.innerHTML = `<span class="material-symbols-outlined text-xl">${loading ? 'progress_activity' : 'restaurant_menu'}</span>${text}`;
+            } else {
+                btn.innerHTML = '<span class="material-symbols-outlined text-xl">restaurant_menu</span>Mutfağa Gönder';
+            }
+        }
+
+        function updateCartView() {
+            const cartItemsEl = document.getElementById('cartItems');
+            const cartCountBadge = document.getElementById('cartCountBadge');
+            const cartTotalText = document.getElementById('cartTotalText');
+            const grandTotalText = document.getElementById('grandTotalText');
+
+            const adetToplam = cart.reduce((sum, x) => sum + x.adet, 0);
+            const cartToplam = cart.reduce((sum, x) => sum + (satirBirimFiyat(x) * x.adet), 0);
+
+            cartCountBadge.textContent = `${adetToplam} Ürün`;
+            cartTotalText.textContent = trCurrency(cartToplam);
+            grandTotalText.textContent = trCurrency(parseFloat(mevcutToplam) + cartToplam);
+
+            if (cart.length === 0) {
+                cartItemsEl.innerHTML = '<div class="text-sm text-on-surface-variant text-center py-10">Sepet boş. Soldaki ürünlerden ekleyin.</div>';
+                return;
+            }
+
+            cartItemsEl.innerHTML = '';
+            cart.forEach(item => {
+                const birimFiyat = satirBirimFiyat(item);
+                const satirToplam = birimFiyat * item.adet;
+                const opsiyonMetni = (item.opsiyonlar && item.opsiyonlar.length > 0)
+                    ? `<p class="text-[11px] text-on-surface-variant mt-1">${item.opsiyonlar.map(o => escapeHtml(o.ad)).join(', ')}</p>`
+                    : '';
+
+                const satir = document.createElement('div');
+                satir.className = 'flex items-center gap-4 bg-surface-container-lowest p-4 rounded-2xl';
+                satir.innerHTML = `
+                    <div class="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-surface-container flex items-center justify-center">
+                        <span class="material-symbols-outlined text-on-surface-variant">restaurant</span>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-on-surface text-sm">${item.ad}</h4>
+                        ${opsiyonMetni}
+                        <p class="font-bold text-primary text-sm mt-1">${trCurrency(satirToplam)}</p>
+                    </div>
+                    <div class="flex items-center gap-3 bg-surface-container-low p-1 rounded-full">
+                        <button class="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center text-on-surface shadow-sm active:scale-90" data-azalt="${item.cartKey}">
+                            <span class="material-symbols-outlined text-sm">remove</span>
+                        </button>
+                        <span class="font-bold text-sm min-w-[20px] text-center">${item.adet}</span>
+                        <button class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm active:scale-90" data-arttir="${item.cartKey}">
+                            <span class="material-symbols-outlined text-sm">add</span>
+                        </button>
+                    </div>
+                `;
+                cartItemsEl.appendChild(satir);
+            });
+
+            cartItemsEl.querySelectorAll('[data-azalt]').forEach(btn => {
+                btn.addEventListener('click', () => azaltUrun(btn.getAttribute('data-azalt') || ''));
+            });
+
+            cartItemsEl.querySelectorAll('[data-arttir]').forEach(btn => {
+                btn.addEventListener('click', () => arttirUrun(btn.getAttribute('data-arttir') || ''));
+            });
+        }
+
+        function addUrun(urunId, ad, fiyat, opsiyonlar = []) {
+            const normalizedOpsiyonlar = normalizeOpsiyonlar(opsiyonlar);
+            const opsiyonIds = normalizedOpsiyonlar.map(o => o.id);
+            const cartKey = cartKeyOlustur(urunId, opsiyonIds);
+            const mevcut = cart.find(x => x.cartKey === cartKey);
+
+            if (mevcut) {
+                mevcut.adet += 1;
+            } else {
+                cart.push({
+                    cartKey,
+                    urunId,
+                    ad,
+                    fiyat,
+                    adet: 1,
+                    opsiyonIds,
+                    opsiyonlar: normalizedOpsiyonlar
+                });
+            }
+            updateCartView();
+        }
+
+        function azaltUrun(cartKey) {
+            const mevcut = cart.find(x => x.cartKey === cartKey);
+            if (!mevcut) return;
+            mevcut.adet -= 1;
+            if (mevcut.adet <= 0) {
+                cart = cart.filter(x => x.cartKey !== cartKey);
+            }
+            updateCartView();
+        }
+
+        function arttirUrun(cartKey) {
+            const mevcut = cart.find(x => x.cartKey === cartKey);
+            if (!mevcut) return;
+            mevcut.adet += 1;
+            updateCartView();
+        }
+
+        function urunEklemeAkisi(urunId, ad, fiyat, opsiyonlar) {
+            const mevcutOpsiyonlar = normalizeOpsiyonlar(opsiyonlar);
+            if (mevcutOpsiyonlar.length === 0) {
+                addUrun(urunId, ad, fiyat, []);
+                return;
+            }
+
+            aktifOpsiyonUrun = { urunId, ad, fiyat, opsiyonlar: mevcutOpsiyonlar };
+            showOpsiyonModal();
+        }
+
+        function showOpsiyonModal() {
+            if (!aktifOpsiyonUrun) return;
+
+            const title = document.getElementById('opsiyonModalTitle');
+            const body = document.getElementById('opsiyonModalBody');
+            const modal = document.getElementById('opsiyonModal');
+            const grouped = {};
+            zorunluRadioGruplari = [];
+
+            aktifOpsiyonUrun.opsiyonlar.forEach(o => {
+                if (!grouped[o.grup]) grouped[o.grup] = [];
+                grouped[o.grup].push(o);
+            });
+
+            title.textContent = `${aktifOpsiyonUrun.ad} - Opsiyon Seç`;
+            body.innerHTML = '';
+
+            let grupIndex = 0;
+            Object.entries(grouped).forEach(([grupAdi, opsiyonList]) => {
+                const zorunlu = opsiyonList[0]?.zorunlu === true;
+                const inputType = zorunlu ? 'radio' : 'checkbox';
+                const nameAttr = zorunlu ? `opsiyon_grup_${grupIndex++}` : '';
+                if (zorunlu) zorunluRadioGruplari.push(nameAttr);
+
+                let html = `
+                    <div class="mb-5">
+                        <div class="flex items-center gap-2 mb-3">
+                            <h4 class="font-bold text-on-surface">${escapeHtml(grupAdi)}</h4>
+                            <span class="text-xs ${zorunlu ? 'text-error font-bold' : 'text-on-surface-variant'}">${zorunlu ? '(Zorunlu)' : '(İsteğe bağlı)'}</span>
+                        </div>
+                        <div class="grid gap-2">
+                `;
+
+                opsiyonList.forEach(o => {
+                    const priceTag = o.ekFiyat > 0
+                        ? `+${Number(o.ekFiyat).toFixed(2)} TL`
+                        : 'Dahil';
+                    html += `
+                        <label class="opsiyon-row flex items-center justify-between bg-surface-container-low rounded-xl px-3 py-3 cursor-pointer hover:bg-surface-container-high">
+                            <div class="flex items-center gap-3">
+                                <input class="opsiyon-input" type="${inputType}" ${nameAttr ? `name="${nameAttr}"` : ''} value="${o.id}" data-ekfiyat="${o.ekFiyat}" />
+                                <span class="font-medium">${escapeHtml(o.ad)}</span>
+                            </div>
+                            <span class="text-sm font-bold text-secondary">${priceTag}</span>
+                        </label>
+                    `;
+                });
+
+                html += '</div></div>';
+                body.innerHTML += html;
+            });
+
+            body.querySelectorAll('.opsiyon-input').forEach(input => {
+                input.addEventListener('change', updateOpsiyonModalToplam);
+            });
+
+            updateOpsiyonModalToplam();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeOpsiyonModal() {
+            const modal = document.getElementById('opsiyonModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            aktifOpsiyonUrun = null;
+            zorunluRadioGruplari = [];
+        }
+
+        function updateOpsiyonModalToplam() {
+            if (!aktifOpsiyonUrun) return;
+
+            const totalEl = document.getElementById('opsiyonModalToplam');
+            const warningEl = document.getElementById('opsiyonUyari');
+            const submitBtn = document.getElementById('btnOpsiyonSepeteEkle');
+
+            let toplam = Number(aktifOpsiyonUrun.fiyat);
+            document.querySelectorAll('#opsiyonModalBody .opsiyon-input:checked').forEach(input => {
+                toplam += Number(input.getAttribute('data-ekfiyat') || 0);
+            });
+
+            const zorunluTamam = zorunluRadioGruplari.every(groupName =>
+                document.querySelector(`#opsiyonModalBody input[name="${groupName}"]:checked`)
+            );
+
+            totalEl.textContent = trCurrency(toplam);
+            warningEl.classList.toggle('hidden', zorunluTamam);
+            submitBtn.disabled = !zorunluTamam;
+            submitBtn.classList.toggle('opacity-50', !zorunluTamam);
+            submitBtn.classList.toggle('cursor-not-allowed', !zorunluTamam);
+        }
+
+        function confirmOpsiyonEkle() {
+            if (!aktifOpsiyonUrun) return;
+
+            const selectedIds = Array.from(document.querySelectorAll('#opsiyonModalBody .opsiyon-input:checked'))
+                .map(input => Number(input.value));
+            const selectedOpsiyonlar = aktifOpsiyonUrun.opsiyonlar.filter(o => selectedIds.includes(o.id));
+
+            addUrun(aktifOpsiyonUrun.urunId, aktifOpsiyonUrun.ad, Number(aktifOpsiyonUrun.fiyat), selectedOpsiyonlar);
+            closeOpsiyonModal();
+        }
+
+        function setupKategoriFiltre() {
+            const kategoriBtns = Array.from(document.querySelectorAll('.kategori-btn'));
+            const urunCards = Array.from(document.querySelectorAll('.urun-card'));
+            const urunAraInput = document.getElementById('urunAraInput');
+            const urunFiltreBos = document.getElementById('urunFiltreBos');
+            let seciliKategori = 'all';
+
+            function filtreUygula() {
+                const aranan = (urunAraInput?.value || '').trim().toLocaleLowerCase('tr-TR');
+                let gorunenAdet = 0;
+
+                urunCards.forEach(card => {
+                    const kategori = card.getAttribute('data-kategori') || '';
+                    const urunAd = (card.getAttribute('data-urunad') || '').toLocaleLowerCase('tr-TR');
+                    const kategoriUyumlu = seciliKategori === 'all' || seciliKategori === kategori;
+                    const metinUyumlu = aranan.length === 0 || urunAd.includes(aranan);
+                    const goster = kategoriUyumlu && metinUyumlu;
+
+                    card.style.display = goster ? '' : 'none';
+                    if (goster) gorunenAdet += 1;
+                });
+
+                urunFiltreBos?.classList.toggle('hidden', gorunenAdet !== 0);
+            }
+
+            kategoriBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    kategoriBtns.forEach(x => x.classList.remove('active'));
+                    btn.classList.add('active');
+                    seciliKategori = btn.getAttribute('data-kategori') || 'all';
+                    filtreUygula();
+                });
+            });
+
+            urunAraInput?.addEventListener('input', filtreUygula);
+            filtreUygula();
+        }
+
+        async function mutfagaGonder() {
+            const now = Date.now();
+            if (mutfagaGonderInFlight) {
+                return;
+            }
+
+            if (now < mutfagaGonderCooldownUntil) {
+                return;
+            }
+
+            if (cart.length === 0) {
+                alert('Lütfen en az bir ürün ekleyin.');
+                return;
+            }
+
+            mutfagaGonderInFlight = true;
+            mutfagaGonderCooldownUntil = now + MUTFAK_GONDER_COOLDOWN_MS;
+            setMutfagaGonderButtonState(true, 'Gönderiliyor...');
+
+            const payload = {
+                masaId: masaId,
+                urunler: cart.map(x => ({ urunId: x.urunId, adet: x.adet, opsiyonIds: x.opsiyonIds }))
+            };
+
+            try {
+                const res = await fetch('/Garson/Masa/ManuelSiparis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (!data.success) {
+                    alert(data.message || 'Sipariş gönderilirken hata oluştu.');
+                    setMutfagaGonderButtonState(false, 'Mutfağa Gönder');
+                    mutfagaGonderInFlight = false;
+                    return;
+                }
+
+                window.location.href = `/Garson/Masa/${masaId}`;
+            } catch (err) {
+                console.error(err);
+                alert('Sipariş gönderilirken hata oluştu.');
+                setMutfagaGonderButtonState(false, 'Mutfağa Gönder');
+                mutfagaGonderInFlight = false;
+            } finally {
+                if (!mutfagaGonderInFlight) {
+                    setTimeout(() => {
+                        if (!mutfagaGonderInFlight) {
+                            setMutfagaGonderButtonState(false, 'Mutfağa Gönder');
+                        }
+                    }, 250);
+                }
+            }
+        }
+
+        function setupUrunButonlari() {
+            document.querySelectorAll('.add-product').forEach(btn => {
+                btn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    const urunId = parseInt(btn.getAttribute('data-id'));
+                    const ad = btn.getAttribute('data-ad') || '';
+                    const fiyat = parseFloat(btn.getAttribute('data-fiyat') || '0');
+                    const opsiyonlar = parseOpsiyonlar(btn.getAttribute('data-opsiyonlar'));
+                    urunEklemeAkisi(urunId, ad, fiyat, opsiyonlar);
+                });
+            });
+        }
+
+        function setupUrunKartTiklama() {
+            document.querySelectorAll('.urun-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const urunId = parseInt(card.getAttribute('data-id') || '0');
+                    if (!urunId) return;
+                    const ad = card.getAttribute('data-ad') || '';
+                    const fiyat = parseFloat(card.getAttribute('data-fiyat') || '0');
+                    const opsiyonlar = parseOpsiyonlar(card.getAttribute('data-opsiyonlar'));
+                    urunEklemeAkisi(urunId, ad, fiyat, opsiyonlar);
+                });
+            });
+        }
+
+        document.getElementById('btnMutfagaGonder').addEventListener('click', mutfagaGonder);
+        document.getElementById('btnCartReset').addEventListener('click', () => {
+            cart = [];
+            updateCartView();
+        });
+
+        setupKategoriFiltre();
+        setupUrunButonlari();
+        setupUrunKartTiklama();
+        updateCartView();
+    </script>
+}

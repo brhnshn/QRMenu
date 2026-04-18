@@ -1,16 +1,18 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QRMenu.Core.Entities;
+using QRMenu.Core.Enums;
 using QRMenu.Core.Interfaces;
 using QRMenu.Data.Data;
 using QRMenu.Web.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Hosting;
 
 using Microsoft.AspNetCore.Authorization;
 
 namespace QRMenu.Web.Controllers
 {
-    [Authorize(Roles = "Admin,Garson,Kasa,Mutfak")]
+    [Authorize(Roles = "Admin,Garson")]
     public class GarsonController : Controller
     {
         private static readonly TimeZoneInfo _turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(
@@ -19,18 +21,34 @@ namespace QRMenu.Web.Controllers
             TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), _turkeyTz).ToString("dd.MM.yyyy HH:mm");
         private static string? ToTurkeyTime(DateTime? utc) =>
             utc.HasValue ? ToTurkeyTime(utc.Value) : null;
+        private static (DateTime startUtc, DateTime endUtc) TodayUtcRange()
+        {
+            var nowTr = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _turkeyTz);
+            var startTr = nowTr.Date;
+            var endTr = startTr.AddDays(1);
+            var startUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(startTr, DateTimeKind.Unspecified), _turkeyTz);
+            var endUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(endTr, DateTimeKind.Unspecified), _turkeyTz);
+            return (startUtc, endUtc);
+        }
 
         private readonly QRMenuDbContext _context;
         private readonly ISiparisService _siparisService;
-        private readonly IHubContext<MenuHub> _menuHub;
+        private readonly IHubContext<OrderHub> _menuHub;
         private readonly ILogger<GarsonController> _logger;
+        private readonly IWebHostEnvironment _env;
 
-        public GarsonController(QRMenuDbContext context, ISiparisService siparisService, IHubContext<MenuHub> menuHub, ILogger<GarsonController> logger)
+        public GarsonController(
+            QRMenuDbContext context,
+            ISiparisService siparisService,
+            IHubContext<OrderHub> menuHub,
+            ILogger<GarsonController> logger,
+            IWebHostEnvironment env)
         {
             _context = context;
             _siparisService = siparisService;
             _menuHub = menuHub;
             _logger = logger;
+            _env = env;
         }
 
         // GET: /Garson/Masalar
@@ -39,9 +57,16 @@ namespace QRMenu.Web.Controllers
         {
             ViewData["ActivePage"] = "GarsonMasalar";
             ViewData["PageTitle"] = "Garson Paneli - Masalar";
+            var (startUtc, endUtc) = TodayUtcRange();
 
             var masalar = await _context.Masalar
-                .Include(m => m.Siparisler.Where(s => s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade))
+                .Where(m => m.AktifMi)
+                .Include(m => m.Bolge)
+                .Include(m => m.Siparisler.Where(s => s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal
+                    && s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi
+                    && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade
+                    && s.OlusturmaTarihi >= startUtc
+                    && s.OlusturmaTarihi < endUtc))
                     .ThenInclude(s => s.SiparisDetaylar)
                 .AsSplitQuery()
                 .OrderBy(m => m.MasaNo)
@@ -54,7 +79,13 @@ namespace QRMenu.Web.Controllers
         [HttpGet("/Garson/Masa/{id:int}")]
         public async Task<IActionResult> Masa(int id)
         {
-            var masa = await _context.Masalar.FirstOrDefaultAsync(m => m.Id == id);
+            var (startUtc, endUtc) = TodayUtcRange();
+            var aktifDurumlar = new[] { SiparisDurum.Onaylandi, SiparisDurum.Hazirlaniyor, SiparisDurum.Hazir, SiparisDurum.TeslimEdildi };
+            var gecmisDurumlar = new[] { SiparisDurum.KismiOdendi, SiparisDurum.TamOdendi, SiparisDurum.Iade, SiparisDurum.Iptal };
+
+            var masa = await _context.Masalar
+                .Include(m => m.Bolge)
+                .FirstOrDefaultAsync(m => m.Id == id);
             if (masa == null)
                 return NotFound();
 
@@ -65,11 +96,26 @@ namespace QRMenu.Web.Controllers
                 .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
                 .AsSplitQuery()
-                .Where(s => s.MasaId == id && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
+                .Where(s => s.MasaId == id
+                    && aktifDurumlar.Contains(s.Durum)
+                    && s.OlusturmaTarihi >= startUtc
+                    && s.OlusturmaTarihi < endUtc)
+                .OrderByDescending(s => s.OlusturmaTarihi)
+                .ToListAsync();
+
+            var gecmisSiparisler = await _context.Siparisler
+                .Include(s => s.SiparisDetaylar)
+                    .ThenInclude(sd => sd.Urun)
+                .AsSplitQuery()
+                .Where(s => s.MasaId == id
+                    && gecmisDurumlar.Contains(s.Durum)
+                    && s.OlusturmaTarihi >= startUtc
+                    && s.OlusturmaTarihi < endUtc)
                 .OrderByDescending(s => s.OlusturmaTarihi)
                 .ToListAsync();
 
             ViewBag.AktifSiparisler = aktifSiparisler;
+            ViewBag.GecmisSiparisler = gecmisSiparisler;
 
             // Offcanvas için kategorileri alalım
             var kategoriler = await _context.Kategoriler
@@ -86,6 +132,87 @@ namespace QRMenu.Web.Controllers
             return View(masa);
         }
 
+        // GET: /Garson/Masa/{id}/YeniSiparis
+        [HttpGet("/Garson/Masa/{id:int}/YeniSiparis")]
+        public async Task<IActionResult> YeniSiparis(int id)
+        {
+            var (startUtc, endUtc) = TodayUtcRange();
+
+            var masa = await _context.Masalar
+                .Include(m => m.Bolge)
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (masa == null)
+                return NotFound();
+
+            ViewData["ActivePage"] = "GarsonMasalar";
+            ViewData["PageTitle"] = $"Masa {masa.MasaNo} - Yeni Sipariş";
+
+            var aktifSiparisler = await _context.Siparisler
+                .Include(s => s.SiparisDetaylar)
+                    .ThenInclude(sd => sd.Urun)
+                .AsSplitQuery()
+                .Where(s => s.MasaId == id
+                    && s.Durum != SiparisDurum.Iptal
+                    && s.Durum != SiparisDurum.TamOdendi
+                    && s.Durum != SiparisDurum.Iade
+                    && s.OlusturmaTarihi >= startUtc
+                    && s.OlusturmaTarihi < endUtc)
+                .OrderByDescending(s => s.OlusturmaTarihi)
+                .ToListAsync();
+
+            var kategoriler = await _context.Kategoriler
+                .Include(k => k.Urunler.Where(u => u.AktifMi))
+                    .ThenInclude(u => u.UrunOpsiyonlar)
+                        .ThenInclude(uo => uo.Opsiyon)
+                .AsSplitQuery()
+                .Where(k => k.AktifMi)
+                .OrderBy(k => k.SiraNo)
+                .ToListAsync();
+
+            ViewBag.AktifSiparisler = aktifSiparisler;
+            ViewBag.Kategoriler = kategoriler;
+
+            return View(masa);
+        }
+
+        // GET: /Garson/UrunGorsel/{id}
+        [HttpGet("/Garson/UrunGorsel/{id:int}")]
+        [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)]
+        public async Task<IActionResult> UrunGorsel(int id)
+        {
+            var dbGorsel = await _context.UrunGorseller
+                .Where(g => g.UrunId == id)
+                .Select(g => new { g.Data, g.ContentType })
+                .FirstOrDefaultAsync();
+
+            if (dbGorsel?.Data != null && !string.IsNullOrWhiteSpace(dbGorsel.ContentType))
+            {
+                return File(dbGorsel.Data, dbGorsel.ContentType);
+            }
+
+            var urun = await _context.Urunler
+                .Where(u => u.Id == id)
+                .Select(u => u.GorselUrl)
+                .FirstOrDefaultAsync();
+
+            if (!string.IsNullOrWhiteSpace(urun))
+            {
+                return Redirect(urun);
+            }
+
+            var uploadsDir = Path.Combine(_env.WebRootPath, "uploads", "urunler");
+            var staticFiles = Directory.Exists(uploadsDir)
+                ? Directory.GetFiles(uploadsDir, $"{id}.*")
+                : Array.Empty<string>();
+
+            if (staticFiles.Length > 0)
+            {
+                return Redirect($"/uploads/urunler/{Path.GetFileName(staticFiles[0])}");
+            }
+
+            return NotFound();
+        }
+
         // POST: /Garson/Masa/ManuelSiparis
         [HttpPost("/Garson/Masa/ManuelSiparis")]
         public async Task<IActionResult> ManuelSiparis([FromBody] ManuelSiparisRequest request)
@@ -100,11 +227,18 @@ namespace QRMenu.Web.Controllers
                 }).ToList();
 
                 var siparis = await _siparisService.ManuelSiparisOlusturAsync(request.MasaId, dtos, "Garson " + User?.Identity?.Name);
+                var masaNo = await _context.Masalar
+                    .Where(m => m.Id == request.MasaId)
+                    .Select(m => m.MasaNo)
+                    .FirstOrDefaultAsync();
                 
-                // Mutfağa uyarı gönder
-                await _menuHub.Clients.All.SendAsync("SiparisEklendi");
-                // Diğer panellere (Kasa, Admin) güncelleme gönder
-                await _menuHub.Clients.All.SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGeldi", siparis.Id, masaNo);
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisEklendi");
+                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisEklendi");
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Table(request.MasaId)).SendAsync("SiparisGuncellendi");
 
                 return Json(new { success = true, siparisId = siparis.Id });
             }
@@ -121,6 +255,7 @@ namespace QRMenu.Web.Controllers
         {
             var detay = await _context.SiparisDetaylar
                 .Include(sd => sd.Siparis)
+                    .ThenInclude(s => s.Masa)
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(sd => sd.Id == detayId);
 
@@ -129,6 +264,9 @@ namespace QRMenu.Web.Controllers
 
             if (detay.Durum == QRMenu.Core.Enums.SiparisDurum.Iptal)
                 return Json(new { success = false, message = "Ürün zaten iptal edilmiş." });
+
+            if (detay.Siparis.Durum != QRMenu.Core.Enums.SiparisDurum.Hazir && detay.Siparis.Durum != QRMenu.Core.Enums.SiparisDurum.TeslimEdildi)
+                return Json(new { success = false, message = "Yalnızca hazır veya teslim edilmiş sipariş iptal edilebilir." });
 
             detay.Durum = QRMenu.Core.Enums.SiparisDurum.Iptal;
             
@@ -145,8 +283,17 @@ namespace QRMenu.Web.Controllers
 
             _logger.LogInformation("Garson ürünü iptal etti. SiparisDetayId={DetayId}", detayId);
 
-            // Mutfak ekranını canlı güncellemek için
-            await _menuHub.Clients.All.SendAsync("SiparisGuncellendi");
+            var masaId = detay.Siparis.MasaId;
+            var masaNo = detay.Siparis.Masa?.MasaNo ?? 0;
+
+            await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisIptal", masaNo);
+            await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisIptal", masaNo);
+            await _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisIptal", masaNo);
+
+            await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
+            await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
+            await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
+            await _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisGuncellendi");
 
             return Json(new { success = true });
         }
@@ -186,9 +333,44 @@ namespace QRMenu.Web.Controllers
             try
             {
                 var enumDurum = Enum.Parse<QRMenu.Core.Enums.SiparisDurum>(request.YeniDurum);
-                await _siparisService.DurumGuncelleAsync(id, enumDurum);
+
+                if (enumDurum == SiparisDurum.Iptal)
+                {
+                    var mevcutDurum = await _context.Siparisler
+                        .Where(s => s.Id == id)
+                        .Select(s => (SiparisDurum?)s.Durum)
+                        .FirstOrDefaultAsync();
+
+                    if (mevcutDurum == null)
+                    {
+                        return Json(new { success = false, message = "Sipariş bulunamadı." });
+                    }
+
+                    if (mevcutDurum != SiparisDurum.Hazir && mevcutDurum != SiparisDurum.TeslimEdildi)
+                    {
+                        return Json(new { success = false, message = "Yalnızca hazır veya teslim edilmiş sipariş iptal edilebilir." });
+                    }
+                }
+
+                var siparis = await _siparisService.DurumGuncelleAsync(id, enumDurum);
                 
-                await _menuHub.Clients.All.SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisGuncellendi");
+
+                if (enumDurum == SiparisDurum.Iptal)
+                {
+                    var masaNo = await _context.Masalar
+                        .Where(m => m.Id == siparis.MasaId)
+                        .Select(m => m.MasaNo)
+                        .FirstOrDefaultAsync();
+
+                    await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisIptal", masaNo);
+                    await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisIptal", masaNo);
+                    await _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisIptal", masaNo);
+                }
+
                 return Json(new { success = true });
             }
             catch (Exception ex)

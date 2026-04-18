@@ -21,7 +21,7 @@ namespace QRMenu.Web.Controllers
         private readonly ISiparisService _siparisService;
         private readonly ISepetService _sepetService;
         private readonly ILogger<SiparisController> _logger;
-        private readonly IHubContext<MenuHub> _menuHub;
+        private readonly IHubContext<OrderHub> _menuHub;
         private readonly QRMenu.Data.Data.QRMenuDbContext _db;
         private readonly IDataProtector _gameTokenProtector;
 
@@ -29,7 +29,7 @@ namespace QRMenu.Web.Controllers
             ISiparisService siparisService,
             ISepetService sepetService,
             ILogger<SiparisController> logger,
-            IHubContext<MenuHub> menuHub,
+            IHubContext<OrderHub> menuHub,
             QRMenu.Data.Data.QRMenuDbContext db,
             IDataProtectionProvider dataProtectionProvider)
         {
@@ -154,7 +154,7 @@ namespace QRMenu.Web.Controllers
             var masaNo = bilgi.Value.masaNo;
             _logger.LogInformation("Garson çağrıldı! Masa={MasaNo}", masaNo);
 
-            await _menuHub.Clients.All.SendAsync("GarsonCagrisi", masaNo);
+            await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("GarsonCagrisi", masaNo);
 
             return Json(new { success = true, message = "Garson çağrıldı!" });
         }
@@ -176,8 +176,19 @@ namespace QRMenu.Web.Controllers
 
                 var siparis = await _siparisService.SiparisOlusturAsync(sepet.Id, request?.Notlar);
 
-                await _menuHub.Clients.All.SendAsync("SiparisGuncellendi");
-                await _menuHub.Clients.All.SendAsync("SiparisEklendi");
+                var masaNo = await _db.Masalar
+                    .Where(m => m.Id == siparis.MasaId)
+                    .Select(m => m.MasaNo)
+                    .FirstOrDefaultAsync();
+
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGeldi", siparis.Id, masaNo);
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisEklendi");
+                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisEklendi");
+
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisGuncellendi");
 
                 return Json(new
                 {
@@ -616,7 +627,10 @@ namespace QRMenu.Web.Controllers
                 });
 
                 await _db.SaveChangesAsync();
-                await _menuHub.Clients.All.SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisGuncellendi");
 
                 return Json(new
                 {
@@ -645,6 +659,21 @@ namespace QRMenu.Web.Controllers
             try
             {
                 var siparis = await _siparisService.IptalEtAsync(id);
+
+                var masaNo = await _db.Masalar
+                    .Where(m => m.Id == siparis.MasaId)
+                    .Select(m => m.MasaNo)
+                    .FirstOrDefaultAsync();
+
+                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisIptal", masaNo);
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisIptal", masaNo);
+                await _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisIptal", masaNo);
+
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisGuncellendi");
+
                 return Json(new
                 {
                     success = true,

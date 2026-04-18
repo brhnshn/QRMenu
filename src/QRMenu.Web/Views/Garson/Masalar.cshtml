@@ -1,78 +1,194 @@
 @model List<QRMenu.Core.Entities.Masa>
+@using System.Globalization
 @{
-    Layout = "~/Views/Shared/_AdminLayout.cshtml";
-    ViewData["Title"] = "Garson Panel - Masalar";
-    ViewData["ActivePage"] = "GarsonMasalar";
-    ViewData["PageTitle"] = "Aktif Masalar";
+    Layout = "~/Views/Shared/_GarsonLayout.cshtml";
+    ViewData["GarsonPageTitle"] = "Masa Yönetimi";
+    ViewData["GarsonActivePage"] = "Masalar";
+    ViewData["GarsonContentClass"] = "p-8 flex-1 overflow-y-auto";
+
+    var trCulture = CultureInfo.GetCultureInfo("tr-TR");
+
+    var musaitMasaSayisi = 0;
+    var doluMasaSayisi = 0;
+    var hesapBekleyenMasaSayisi = 0;
+    var toplamMasaSayisi = Model.Count;
+
+    foreach (var masa in Model)
+    {
+        var aktifSiparisler = masa.Siparisler
+            .Where(s => s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi
+                        && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal
+                        && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
+            .ToList();
+
+        var siparisVarMi = aktifSiparisler.Any();
+        var hesapBekliyorMu = aktifSiparisler.Any(s =>
+            s.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi ||
+            s.Durum == QRMenu.Core.Enums.SiparisDurum.KismiOdendi);
+
+        if (siparisVarMi)
+            doluMasaSayisi++;
+        else
+            musaitMasaSayisi++;
+
+        if (hesapBekliyorMu)
+            hesapBekleyenMasaSayisi++;
+    }
 }
 
-<style>
-    .kare-masa {
-        background: #fff;
-        border-radius: 12px;
-        padding: 24px 16px;
-        text-align: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        cursor: pointer;
-        transition: all 0.2s;
-        text-decoration: none;
-        color: #333;
-        display: block;
-        border: 2px solid transparent;
-        position: relative;
-    }
-    .kare-masa:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        color: #333;
-    }
-    .masa-dolu { border-color: #f87171; }
-    .masa-bos { border-color: #34d399; }
-    .masa-label { font-size: 1.25rem; font-weight: 800; margin-bottom: 8px; color: #2c3e50; }
-    .masa-status { font-size: 0.85rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; display: inline-block; }
-    .status-dolu { background: #fee2e2; color: #b91c1c; }
-    .status-bos { background: #d1fae5; color: #047857; }
+@section PageStyles {
+    <style>
+        .table-card {
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 24px rgba(46, 47, 47, 0.06);
+        }
 
-    /* Zil Animasyonu */
-    .zil-box {
-        position: absolute;
-        top: 10px;
-        right: 15px;
-        color: #ef4444;
-        font-size: 1.4rem;
-        animation: zilPulse 1s infinite alternate;
-    }
-    @@keyframes zilPulse {
-        from { transform: scale(1); opacity: 1; text-shadow: 0 0 0 rgba(239, 68, 68, 0); }
-        to { transform: scale(1.2); opacity: 0.8; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
-    }
-</style>
+        .table-card:hover {
+            transform: translateY(-4px) scale(1.015);
+            box-shadow: 0 16px 30px rgba(46, 47, 47, 0.11);
+        }
 
-<div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-4 mt-2" id="garsonMasalarGrid">
-    @foreach(var masa in Model.OrderBy(m => m.MasaNo))
+        .table-card-hazir {
+            border-left: 5px solid #f59e0b;
+            animation: hazirPulse 1.4s ease-in-out infinite alternate;
+        }
+
+        .table-card-dolu {
+            border-left: 5px solid #a23718;
+        }
+
+        .table-card-hesap {
+            border-left: 5px solid #765600;
+        }
+
+        .table-card-bos {
+            border-left: 5px solid #16a34a;
+        }
+
+        @@keyframes hazirPulse {
+            from {
+                box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.22);
+            }
+            to {
+                box-shadow: 0 0 0 10px rgba(245, 158, 11, 0.03);
+            }
+        }
+
+        @@keyframes garsonNoticePulse {
+            from {
+                transform: scale(1);
+            }
+            to {
+                transform: scale(1.05);
+            }
+        }
+    </style>
+}
+
+<div id="garsonSummaryStats" class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+    <div class="bg-surface-container-lowest p-6 rounded-xl border-b-4 border-green-500/30">
+        <p class="text-sm font-label text-on-surface-variant mb-1">Müsait</p>
+        <p class="text-3xl font-headline font-bold text-on-surface">@musaitMasaSayisi</p>
+    </div>
+    <div class="bg-surface-container-lowest p-6 rounded-xl border-b-4 border-primary/30">
+        <p class="text-sm font-label text-on-surface-variant mb-1">Dolu</p>
+        <p class="text-3xl font-headline font-bold text-on-surface">@doluMasaSayisi</p>
+    </div>
+    <div class="bg-surface-container-lowest p-6 rounded-xl border-b-4 border-secondary/30">
+        <p class="text-sm font-label text-on-surface-variant mb-1">Hesap Bekleyen</p>
+        <p class="text-3xl font-headline font-bold text-on-surface">@hesapBekleyenMasaSayisi</p>
+    </div>
+    <div class="bg-surface-container-lowest p-6 rounded-xl border-b-4 border-tertiary/30">
+        <p class="text-sm font-label text-on-surface-variant mb-1">Toplam Masa</p>
+        <p class="text-3xl font-headline font-bold text-on-surface">@toplamMasaSayisi</p>
+    </div>
+</div>
+
+<div id="garsonMasalarGrid" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+    @foreach (var masa in Model.OrderBy(m => m.MasaNo))
     {
-        var doluMu = masa.Siparisler.Any();
-        <div class="col">
-            <a href="/Garson/Masa/@masa.Id" class="kare-masa @(doluMu ? "masa-dolu" : "masa-bos")">
-                <div class="masa-label">Masa @masa.MasaNo</div>
-                <div class="masa-status @(doluMu ? "status-dolu" : "status-bos")">
-                    @(doluMu ? "Dolu" : "Boş")
+        var aktifSiparisler = masa.Siparisler
+            .Where(s => s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi
+                        && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal
+                        && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
+            .ToList();
+
+        var siparisVarMi = aktifSiparisler.Any();
+        var hesapBekliyorMu = aktifSiparisler.Any(s =>
+            s.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi ||
+            s.Durum == QRMenu.Core.Enums.SiparisDurum.KismiOdendi);
+        var hazirBekliyorMu = aktifSiparisler.Any(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir);
+
+        var kartSinif = "table-card-bos";
+        var badgeSinif = "bg-green-100 text-green-700";
+        var badgeYazi = "BOŞ";
+
+        if (hesapBekliyorMu)
+        {
+            kartSinif = "table-card-hesap";
+            badgeSinif = "bg-secondary/10 text-secondary";
+            badgeYazi = "HESAP";
+        }
+        else if (siparisVarMi)
+        {
+            kartSinif = hazirBekliyorMu ? "table-card-hazir" : "table-card-dolu";
+            badgeSinif = "bg-primary/10 text-primary";
+            badgeYazi = "DOLU";
+        }
+
+        var toplamTutar = aktifSiparisler.Sum(s => s.ToplamTutar);
+        var ilkSiparis = aktifSiparisler.OrderBy(s => s.OlusturmaTarihi).FirstOrDefault();
+        var gecenDakika = ilkSiparis == null ? 0 : Math.Max(1, (int)(DateTime.UtcNow - ilkSiparis.OlusturmaTarihi).TotalMinutes);
+
+        <a href="/Garson/Masa/@masa.Id" class="group relative bg-surface-container-lowest rounded-xl p-6 table-card @kartSinif cursor-pointer text-decoration-none text-on-surface">
+            <div class="flex justify-between items-start mb-12">
+                <div class="w-12 h-12 rounded-lg @(siparisVarMi ? "bg-primary-container/20 text-primary" : "bg-surface-container") flex items-center justify-center font-headline font-extrabold text-xl">
+                    @masa.MasaNo.ToString("00")
                 </div>
-                @if(doluMu)
+                <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest @badgeSinif">@badgeYazi</span>
+            </div>
+            <div class="space-y-1">
+                @if (!siparisVarMi)
                 {
-                    <div class="zil-box">
-                        <i class="bi bi-bell-fill"></i>
-                    </div>
-                    <div style="font-size:0.8rem; color:#888; margin-top:12px; font-weight:600;">
-                        @masa.Siparisler.SelectMany(s => s.SiparisDetaylar).Sum(d => d.Adet) Ürün
+                    <p class="text-on-surface-variant text-sm font-medium">Bekleyen sipariş yok</p>
+                }
+                else if (hesapBekliyorMu)
+                {
+                    <p class="text-on-surface font-semibold text-sm">@toplamTutar.ToString("C2", trCulture)</p>
+                    <div class="flex items-center gap-1.5 text-secondary text-xs font-bold">
+                        <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">payments</span>
+                        <span>Ödeme bekleniyor</span>
                     </div>
                 }
-            </a>
-        </div>
+                else
+                {
+                    <p class="text-on-surface font-semibold text-sm">@toplamTutar.ToString("C2", trCulture)</p>
+                    <div class="flex items-center gap-1.5 text-on-surface-variant text-xs">
+                        <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">schedule</span>
+                        <span>@gecenDakika dk.</span>
+                    </div>
+                    @if (hazirBekliyorMu)
+                    {
+                        <div class="flex items-center gap-1.5 text-error text-xs font-bold">
+                            <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">warning</span>
+                            <span>Servis bekliyor</span>
+                        </div>
+                    }
+                }
+            </div>
+        </a>
     }
 </div>
 
-@section Scripts {
+<div id="garsonNoticeOverlay" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; flex-direction:column; cursor:pointer;" onclick="closeGarsonNotice()">
+    <div style="text-align:center; animation: garsonNoticePulse 0.6s ease-in-out infinite alternate;">
+        <div style="font-size:4.5rem; color:#fcd34d;">🔔</div>
+        <h1 style="color:#fff; font-size:2.4rem; margin:1rem 0; font-weight:800;" id="garsonNoticeText">Masa</h1>
+        <p style="color:rgba(255,255,255,0.72); font-size:1.05rem;">Kapatmak için tıklayın</p>
+    </div>
+</div>
+
+@section PageScripts {
     <script>
         let refreshTimer = null;
         let lastRefreshAt = 0;
@@ -93,9 +209,15 @@
                 const doc = new DOMParser().parseFromString(html, 'text/html');
                 const yeniGrid = doc.getElementById('garsonMasalarGrid');
                 const mevcutGrid = document.getElementById('garsonMasalarGrid');
+                const yeniOzet = doc.getElementById('garsonSummaryStats');
+                const mevcutOzet = document.getElementById('garsonSummaryStats');
 
                 if (yeniGrid && mevcutGrid) {
                     mevcutGrid.innerHTML = yeniGrid.innerHTML;
+                }
+
+                if (yeniOzet && mevcutOzet) {
+                    mevcutOzet.innerHTML = yeniOzet.innerHTML;
                 }
             } catch (err) {
                 console.error(err);
@@ -120,45 +242,60 @@
         }
 
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/hubs/menu")
+            .withUrl('/hubs/order')
             .withAutomaticReconnect()
             .build();
 
-        connection.on("SiparisEklendi", function () {
+        connection.on('SiparisGeldi', function () {
             scheduleSoftRefresh(900);
         });
 
-        connection.on("SiparisGuncellendi", function () {
-            // Eğer bir bildirim (overlay) açıksa, reload'u ertele veya yapma ki kullanıcı okuyabilsin
-            if (document.getElementById('garsonNoticeOverlay').style.display === 'flex') {
-                console.log("Bildirim açık, reload ertelendi.");
+        connection.on('SiparisEklendi', function () {
+            scheduleSoftRefresh(900);
+        });
+
+        connection.on('SiparisGuncellendi', function () {
+            const overlay = document.getElementById('garsonNoticeOverlay');
+            if (overlay && overlay.style.display === 'flex') {
                 return;
             }
             scheduleSoftRefresh(500);
         });
 
-        connection.on("GarsonCagrisi", function (masaNo) {
-            showGarsonNotice(`🔔 Masa ${masaNo} Garson Çağırıyor!`);
+        connection.on('GarsonCagrisi', function () {
+            scheduleSoftRefresh(400);
+        });
+
+        connection.on('SiparisHazir', function (masaNo) {
+            showGarsonNotice('Masa ' + masaNo + ' siparişi hazır!');
             playNoticeSound();
         });
 
-        connection.on("SiparisHazir", function (masaNo) {
-            showGarsonNotice(`✅ Masa ${masaNo} Siparişi Hazır!`);
-            playNoticeSound();
+        connection.on('SiparisIptal', function () {
+            scheduleSoftRefresh(400);
         });
 
-        connection.start().then(() => {
-            console.log("Garson Masalar SignalR Bağlantısı başarılı.");
-        }).catch(err => console.error("SignalR Hatası:", err));
+        connection.on('OdemeYapildi', function () {
+            scheduleSoftRefresh(300);
+        });
+
+        connection.start().catch(err => console.error('SignalR hatası:', err));
 
         function showGarsonNotice(text) {
-            document.getElementById('garsonNoticeText').textContent = text;
-            document.getElementById('garsonNoticeOverlay').style.display = 'flex';
+            const textNode = document.getElementById('garsonNoticeText');
+            const overlay = document.getElementById('garsonNoticeOverlay');
+            if (!textNode || !overlay) return;
+
+            textNode.textContent = text;
+            overlay.style.display = 'flex';
         }
 
         function closeGarsonNotice() {
-            document.getElementById('garsonNoticeOverlay').style.display = 'none';
-            scheduleSoftRefresh(100); // Bildirim kapandığında verileri tazele
+            const overlay = document.getElementById('garsonNoticeOverlay');
+            if (!overlay) return;
+
+            overlay.style.display = 'none';
+            scheduleSoftRefresh(100);
         }
 
         function playNoticeSound() {
@@ -171,27 +308,14 @@
                 osc.type = 'sine';
                 const now = ctx.currentTime;
                 osc.frequency.setValueAtTime(880, now);
-                osc.frequency.exponentialRampToValueAtTime(440, now + 0.5);
-                gain.gain.setValueAtTime(0.5, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                osc.frequency.exponentialRampToValueAtTime(440, now + 0.45);
+                gain.gain.setValueAtTime(0.45, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
                 osc.start(now);
-                osc.stop(now + 0.5);
-            } catch(e) { console.log("Ses çalınamadı"); }
+                osc.stop(now + 0.45);
+            } catch (e) {
+                console.log('Bildirim sesi çalınamadı.');
+            }
         }
     </script>
 }
-
-<!-- GARSON BİLDİRİM OVERLAY -->
-<div id="garsonNoticeOverlay" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; flex-direction:column; cursor:pointer;" onclick="closeGarsonNotice()">
-    <div style="text-align:center; animation: garsonNoticePulse 0.6s ease-in-out infinite alternate;">
-        <div style="font-size:5rem;">🔔</div>
-        <h1 style="color:#fff; font-size:2.5rem; margin:1rem 0; font-weight:800;" id="garsonNoticeText">Masa ?</h1>
-        <p style="color:rgba(255,255,255,0.7); font-size:1.1rem;">Kapatmak için tıklayın</p>
-    </div>
-</div>
-<style>
-    @@keyframes garsonNoticePulse {
-        from { transform: scale(1); }
-        to { transform: scale(1.05); }
-    }
-</style>

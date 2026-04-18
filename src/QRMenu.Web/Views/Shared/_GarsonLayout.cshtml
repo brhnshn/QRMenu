@@ -1,0 +1,229 @@
+@{
+    var pageTitle = ViewData["GarsonPageTitle"] as string ?? "Garson Paneli";
+    var activePage = ViewData["GarsonActivePage"] as string ?? "Masalar";
+    var contentClass = ViewData["GarsonContentClass"] as string ?? "p-8 flex-1 overflow-y-auto";
+    var masaLink = ViewData["GarsonMasaLink"] as string;
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@pageTitle</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@300;400;500;600&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-error": "#ffefee",
+                        "error-container": "#fb5151",
+                        "primary": "#a23718",
+                        "tertiary-fixed": "#ffffff",
+                        "surface-container-high": "#e4e2e2",
+                        "error": "#b31b25",
+                        "outline-variant": "#aeadac",
+                        "on-primary-fixed": "#000000",
+                        "on-tertiary-fixed": "#505050",
+                        "on-tertiary-fixed-variant": "#6e6d6d",
+                        "surface-container-highest": "#dedcdc",
+                        "on-background": "#2e2f2f",
+                        "on-secondary-container": "#5d4300",
+                        "surface-container-low": "#f2f0f0",
+                        "on-secondary-fixed-variant": "#694c00",
+                        "background": "#f8f6f5",
+                        "primary-dim": "#922c0c",
+                        "on-secondary": "#fff1dc",
+                        "inverse-surface": "#0e0e0e",
+                        "on-error-container": "#570008",
+                        "tertiary": "#5c5b5b",
+                        "on-surface-variant": "#5c5b5b",
+                        "surface-tint": "#a23718",
+                        "secondary-fixed": "#ffca57",
+                        "secondary": "#765600",
+                        "inverse-primary": "#fd7954",
+                        "tertiary-container": "#ffffff",
+                        "primary-container": "#fd7954",
+                        "on-tertiary": "#f5f2f1",
+                        "on-primary-fixed-variant": "#581200",
+                        "secondary-dim": "#674b00",
+                        "on-primary": "#ffefec",
+                        "inverse-on-surface": "#9e9d9c",
+                        "surface-container": "#eae8e7",
+                        "error-dim": "#9f0519",
+                        "tertiary-fixed-dim": "#f3f0f0",
+                        "on-primary-container": "#480d00",
+                        "on-secondary-fixed": "#453100",
+                        "secondary-fixed-dim": "#f6ba2d",
+                        "surface-dim": "#d5d4d4",
+                        "tertiary-dim": "#504f4f",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#f8f6f5",
+                        "on-tertiary-container": "#636262",
+                        "on-surface": "#2e2f2f",
+                        "primary-fixed-dim": "#ec6d49",
+                        "surface-bright": "#f8f6f5",
+                        "surface-variant": "#dedcdc",
+                        "secondary-container": "#ffca57",
+                        "outline": "#777776",
+                        "primary-fixed": "#fd7954"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    fontFamily: {
+                        headline: ["Plus Jakarta Sans"],
+                        body: ["Be Vietnam Pro"],
+                        label: ["Plus Jakarta Sans"]
+                    }
+                }
+            }
+        };
+    </script>
+
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('garsonSidebarCollapsed') === '1') {
+                    document.documentElement.classList.add('sidebar-collapsed');
+                }
+            } catch (e) {
+                // localStorage erişilemiyorsa varsayılan düzenle devam et
+            }
+        })();
+    </script>
+
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            min-height: 100dvh;
+        }
+
+        h1,
+        h2,
+        h3,
+        .font-headline {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        #waiterSidebar {
+            transition: transform 0.28s ease;
+        }
+
+        #waiterMain {
+            transition: margin-left 0.28s ease;
+        }
+
+        body.sidebar-collapsed #waiterSidebar,
+        html.sidebar-collapsed #waiterSidebar {
+            transform: translateX(-100%);
+        }
+
+        body.sidebar-collapsed #waiterMain,
+        html.sidebar-collapsed #waiterMain {
+            margin-left: 0;
+        }
+    </style>
+
+    @RenderSection("PageStyles", required: false)
+</head>
+<body class="bg-background text-on-background antialiased overflow-x-hidden">
+    <aside id="waiterSidebar" class="fixed left-0 top-0 h-screen flex flex-col py-8 bg-[#f8f6f5] h-full w-72 rounded-r-[1.5rem] z-50 border-r border-[#e6e2e2]">
+        <div class="px-8 mb-12">
+        </div>
+        <div class="flex items-center gap-4 px-8 mb-10">
+            <div class="w-12 h-12 rounded-full overflow-hidden bg-surface-container-high">
+                <img alt="Garson" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPs-qeVu8nh4qQ6bMP2mKtBm72ij0lPK2cvvMW0oVcN-apMxHERJYAiKI_PsAcxLR5ukTaWgLcOWRQo2-1RBGt5daUUDJNoO7Gp5zq9yulJFqK4h8qwMFAHPY-LswJVSSOmoQbkXGVmnQJV4m7x5e5_rwz-AwfNjVLjtegg0T8Y17URz1wI7QD1huAZk5b6TUBsU0WeLpsi_8vL9ExgzXZe2INpHVY3KLzb5mvIo2LIt5nKAimqcdLD7MHsSQ-2G8az9WSgnZCg5k" />
+            </div>
+            <div>
+                <p class="text-[#2e2f2f] font-['Plus_Jakarta_Sans'] font-semibold tracking-tight">Garson Paneli</p>
+                <p class="text-sm opacity-60 font-['Plus_Jakarta_Sans']">Aktif Servis</p>
+            </div>
+        </div>
+        <nav class="flex-1 space-y-2">
+            <a href="/Garson/Masalar" class="@(activePage == "Masalar" ? "bg-[#eae8e7] text-[#a23718]" : "text-[#2e2f2f] opacity-60 hover:bg-[#eae8e7]") rounded-xl flex items-center gap-4 px-6 py-4 mx-2 font-['Plus_Jakarta_Sans'] font-semibold tracking-tight transition-all duration-300">
+                <span class="material-symbols-outlined">grid_view</span>
+                <span>Masalar</span>
+            </a>
+            @if (!string.IsNullOrWhiteSpace(masaLink))
+            {
+                <a href="@masaLink" class="@(activePage == "Masa" ? "bg-[#eae8e7] text-[#a23718]" : "text-[#2e2f2f] opacity-60 hover:bg-[#eae8e7]") rounded-xl flex items-center gap-4 px-6 py-4 mx-2 font-['Plus_Jakarta_Sans'] font-semibold tracking-tight transition-all duration-300">
+                    <span class="material-symbols-outlined">table_restaurant</span>
+                    <span>Masa Detayı</span>
+                </a>
+            }
+            <a href="/Auth/Logout" class="text-[#2e2f2f] opacity-60 flex items-center gap-4 px-6 py-4 mx-2 font-['Plus_Jakarta_Sans'] font-semibold tracking-tight hover:bg-[#eae8e7] rounded-xl transition-all duration-300">
+                <span class="material-symbols-outlined">logout</span>
+                <span>Çıkış</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main id="waiterMain" class="ml-72 flex flex-col min-h-screen">
+        <header class="sticky top-0 w-full z-40 flex items-center justify-between px-8 py-4 bg-[#f8f6f5]/80 backdrop-blur-xl border-b border-[#ece8e7]">
+            <div class="flex items-center gap-4">
+                <button id="toggleSidebarBtn" type="button" class="material-symbols-outlined text-[#a23718] hover:opacity-70 transition-opacity">menu</button>
+                @if (IsSectionDefined("GarsonHeaderLeft"))
+                {
+                    @RenderSection("GarsonHeaderLeft", required: false)
+                }
+                else
+                {
+                    <h2 class="text-[#2e2f2f] font-['Plus_Jakarta_Sans'] text-lg font-bold">@pageTitle</h2>
+                }
+            </div>
+            @if (IsSectionDefined("GarsonHeaderRight"))
+            {
+                <div class="flex items-center gap-4">
+                    @RenderSection("GarsonHeaderRight", required: false)
+                </div>
+            }
+        </header>
+
+        <div class="@contentClass">
+            @RenderBody()
+        </div>
+    </main>
+
+    <script>
+        const sidebarStorageKey = 'garsonSidebarCollapsed';
+
+        function applySidebarState(isCollapsed) {
+            document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+            document.documentElement.classList.toggle('sidebar-collapsed', isCollapsed);
+            try {
+                localStorage.setItem(sidebarStorageKey, isCollapsed ? '1' : '0');
+            } catch (e) {
+                // localStorage erişilemiyorsa yalnızca anlık sınıf değiştir
+            }
+        }
+
+        (function initSidebarState() {
+            const isCollapsed = document.documentElement.classList.contains('sidebar-collapsed');
+            applySidebarState(isCollapsed);
+        })();
+
+        const toggleBtn = document.getElementById('toggleSidebarBtn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function () {
+                const isCollapsed = !document.body.classList.contains('sidebar-collapsed');
+                applySidebarState(isCollapsed);
+            });
+        }
+    </script>
+
+    @RenderSection("PageScripts", required: false)
+</body>
+</html>

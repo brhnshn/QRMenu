@@ -28,7 +28,7 @@ namespace QRMenu.Web.Controllers
         private readonly ILogger<AdminController> _logger;
         private readonly IWebHostEnvironment _env;
         private readonly ISiparisService _siparisService;
-        private readonly IHubContext<MenuHub> _menuHub;
+        private readonly IHubContext<OrderHub> _menuHub;
         private readonly UserManager<Kullanici> _userManager;
 
         public AdminController(
@@ -36,7 +36,7 @@ namespace QRMenu.Web.Controllers
             ILogger<AdminController> logger,
             IWebHostEnvironment env,
             ISiparisService siparisService,
-            IHubContext<MenuHub> menuHub,
+            IHubContext<OrderHub> menuHub,
             UserManager<Kullanici> userManager)
         {
             _context = context;
@@ -339,7 +339,28 @@ namespace QRMenu.Web.Controllers
                 var siparis = await _siparisService.DurumGuncelleAsync(id, yeniDurum);
                 _logger.LogInformation("Admin sipariş durumu güncelledi. SiparisId={Id}, YeniDurum={Durum}", id, yeniDurum);
 
-                await _menuHub.Clients.All.SendAsync("SiparisGuncellendi");
+                var masaNo = await _context.Masalar
+                    .Where(m => m.Id == siparis.MasaId)
+                    .Select(m => m.MasaNo)
+                    .FirstOrDefaultAsync();
+
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisGuncellendi");
+
+                if (yeniDurum == SiparisDurum.Hazir)
+                {
+                    await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisHazir", masaNo);
+                    await _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisHazir", masaNo);
+                }
+
+                if (yeniDurum == SiparisDurum.Iptal)
+                {
+                    await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisIptal", masaNo);
+                    await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisIptal", masaNo);
+                    await _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisIptal", masaNo);
+                }
 
                 return Json(new { success = true, durum = siparis.Durum.ToString(), durumInt = (int)siparis.Durum });
             }
