@@ -389,7 +389,7 @@ namespace QRMenu.Data.Services
         }
 
         /// <summary>
-        /// Siparişi iptal eder — sadece Onaylandı veya Hazırlanıyor durumlarından iptal edilebilir
+        /// Siparişi iptal eder — Onaylandı, Hazırlanıyor veya TeslimEdildi durumlarından iptal edilebilir
         /// </summary>
         public async Task<Siparis> IptalEtAsync(int siparisId)
         {

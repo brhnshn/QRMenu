@@ -159,6 +159,7 @@ namespace QRMenu.Tests
         [InlineData(SiparisDurum.KismiOdendi, SiparisDurum.TamOdendi)]
         [InlineData(SiparisDurum.Onaylandi, SiparisDurum.Iptal)]
         [InlineData(SiparisDurum.Hazirlaniyor, SiparisDurum.Iptal)]
+        [InlineData(SiparisDurum.TeslimEdildi, SiparisDurum.Iptal)]
         [InlineData(SiparisDurum.TeslimEdildi, SiparisDurum.Iade)]
         [InlineData(SiparisDurum.TamOdendi, SiparisDurum.Iade)]
         public async Task DurumGuncelle_GecerliGecis_Basarili(SiparisDurum mevcutDurum, SiparisDurum yeniDurum)
@@ -258,7 +259,7 @@ namespace QRMenu.Tests
         }
 
         [Fact]
-        public async Task IptalEt_TeslimEdildiDurumundan_HataFirlatir()
+        public async Task IptalEt_TeslimEdildiDurumundan_Basarili()
         {
             var context = CreateInMemoryContext();
             var service = CreateService(context);
@@ -277,8 +278,9 @@ namespace QRMenu.Tests
             context.Siparisler.Add(siparis);
             await context.SaveChangesAsync();
 
-            await Assert.ThrowsAsync<InvalidOperationException>(
-                () => service.IptalEtAsync(siparis.Id));
+            var result = await service.IptalEtAsync(siparis.Id);
+
+            Assert.Equal(SiparisDurum.Iptal, result.Durum);
         }
 
         // ============================
