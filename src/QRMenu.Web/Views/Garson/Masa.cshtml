@@ -18,10 +18,46 @@
     var masaDurumYazi = acikSiparisler.Any() ? (hazirSiparisSayisi > 0 ? "Servis Bekliyor" : "Dolu") : "Boş";
     var masaDurumSinif = acikSiparisler.Any() ? "text-secondary" : "text-emerald-700";
     var masaDurumDot = acikSiparisler.Any() ? "bg-secondary" : "bg-emerald-600";
+    var bugunTr = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, turkeyTz).Date;
+
+    DateTime toTRDate(DateTime utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), turkeyTz).Date;
+
+    string? MusteriNotunuAyikla(string? notlar)
+    {
+        if (string.IsNullOrWhiteSpace(notlar)) return null;
+
+        var trimmed = notlar.Trim();
+        var parts = trimmed.Split('|', 2, StringSplitOptions.TrimEntries);
+        if (parts.Length == 2 && !string.IsNullOrWhiteSpace(parts[1]))
+            return parts[1];
+
+        if (trimmed.StartsWith("🎉 Happy Hour", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        return trimmed;
+    }
+
+    var notluSiparisler = siparisler
+        .Concat(gecmisSiparisler)
+        .Where(s => toTRDate(s.OlusturmaTarihi) == bugunTr)
+        .Select(s => new
+        {
+            Siparis = s,
+            MusteriNotu = MusteriNotunuAyikla(s.Notlar)
+        })
+        .Where(x => !string.IsNullOrWhiteSpace(x.MusteriNotu))
+        .OrderByDescending(x => x.Siparis.OlusturmaTarihi)
+        .ToList();
+
+    var gorunenSiparisler = siparisler.Take(5).ToList();
+    var gizliSiparisSayisi = Math.Max(0, siparisler.Count - gorunenSiparisler.Count);
+    var yanPanelNotlari = notluSiparisler.Take(4).ToList();
+    var gizliYanNotSayisi = Math.Max(0, notluSiparisler.Count - yanPanelNotlari.Count);
 
     ViewData["GarsonPageTitle"] = $"Masa {Model.MasaNo}";
     ViewData["GarsonActivePage"] = "Masa";
-    ViewData["GarsonContentClass"] = "p-8 flex-1 overflow-y-auto";
+    ViewData["GarsonContentClass"] = "px-5 py-3 flex-1 min-h-0 overflow-hidden";
     ViewData["GarsonMasaLink"] = $"/Garson/Masa/{Model.Id}";
 }
 
@@ -57,18 +93,126 @@
             from { transform: scale(1); }
             to { transform: scale(1.05); }
         }
+
+        #waiterMain {
+            height: 100dvh;
+            min-height: 100dvh;
+            overflow: hidden;
+        }
+
+        #waiterMain > div {
+            min-height: 0;
+        }
+
+        .masa-fit-layout {
+            height: 100%;
+            min-height: 0;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            gap: 0.55rem;
+        }
+
+        .masa-main-grid {
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 4.15fr) minmax(220px, 0.85fr);
+            gap: 0.6rem;
+            align-items: stretch;
+        }
+
+        #masaSiparisSection {
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #masaSiparisSection .masa-table-wrap {
+            min-height: 0;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #masaSiparisSection thead th {
+            padding-top: 0.85rem;
+            padding-bottom: 0.85rem;
+        }
+
+        #masaSiparisSection tbody td {
+            padding-top: 0.7rem;
+            padding-bottom: 0.7rem;
+        }
+
+        #masaYanPanel {
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+        }
+
+        #masaNotPaneli {
+            min-height: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .yan-not-list {
+            display: grid;
+            gap: 0.45rem;
+        }
+
+        @@media (max-height: 860px) {
+            .masa-fit-layout {
+                gap: 0.45rem;
+            }
+
+            #masaDurumHeader {
+                margin-bottom: 0;
+            }
+
+            #masaDurumHeader h2 {
+                font-size: 1.45rem;
+            }
+
+            .masa-main-grid {
+                gap: 0.45rem;
+            }
+
+            #masaDurumHeader p {
+                display: none;
+            }
+        }
+
+        @@media (max-width: 1200px) {
+            .masa-main-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            #masaYanPanel {
+                display: none;
+            }
+        }
     </style>
 }
 
-<div class="max-w-7xl mx-auto">
-    <div id="masaDurumHeader" class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+<div class="w-full h-full masa-fit-layout">
+    <div id="masaDurumHeader" class="flex flex-col md:flex-row md:items-center justify-between gap-2">
         <div class="flex flex-col">
-            <h2 class="text-3xl font-bold font-headline text-on-surface tracking-tight">Masa Detayı</h2>
-            <p class="text-on-surface-variant text-sm mt-1">Aktif masa durumunu ve bekleyen siparişleri buradan yönetin.</p>
+            <h2 class="text-xl font-bold font-headline text-on-surface tracking-tight">Masa Detayı</h2>
+            <p class="text-on-surface-variant text-xs mt-1">Aktif masa durumunu ve bekleyen siparişleri buradan yönetin.</p>
         </div>
         <div class="flex flex-wrap items-center justify-end gap-3">
+            <button type="button"
+                    onclick="topluTeslimEt(@Model.Id)"
+                    class="px-3 py-1 rounded-xl border border-sky-300 bg-sky-50 text-sky-700 text-xs font-bold flex items-center gap-1.5 hover:bg-sky-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    @(hazirSiparisSayisi == 0 ? "disabled" : null)>
+                <span class="material-symbols-outlined text-[16px]">done_all</span>
+                <span>Toplu Teslim Et</span>
+                <span class="px-1.5 py-0.5 rounded-full bg-sky-100 text-[11px]">@hazirSiparisSayisi</span>
+            </button>
+
             <div id="gecmisSiparisWidget" class="relative">
-                <button type="button" onclick="toggleGecmisPanel()" class="px-4 py-2 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-sm font-semibold flex items-center gap-2 hover:bg-surface-container transition-colors">
+                <button type="button" onclick="toggleGecmisPanel()" class="px-2.5 py-1 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-xs font-semibold flex items-center gap-2 hover:bg-surface-container transition-colors">
                     <span class="material-symbols-outlined text-[18px]">history</span>
                     <span>Geçmiş İşlemler</span>
                     <span class="text-xs bg-surface-container-high px-2 py-0.5 rounded-full">@gecmisSiparisler.Count</span>
@@ -105,114 +249,139 @@
                 </div>
             </div>
 
-            <div class="bg-surface-container-low px-4 py-2 rounded-xl flex items-center gap-2">
-                <span class="material-symbols-outlined text-secondary text-[20px]">event_seat</span>
-                <span class="text-sm font-semibold font-label">Kapasite: Bilinmiyor</span>
+            <div class="bg-surface-container-low px-2.5 py-1 rounded-xl flex items-center gap-2">
+                <span class="material-symbols-outlined text-secondary text-[18px]">event_seat</span>
+                <span class="text-xs font-semibold font-label">Kapasite: Bilinmiyor</span>
             </div>
-            <div class="bg-secondary-container/20 @masaDurumSinif px-4 py-2 rounded-xl flex items-center gap-2">
+            <div class="bg-secondary-container/20 @masaDurumSinif px-2.5 py-1 rounded-xl flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full @masaDurumDot"></span>
-                <span class="text-sm font-bold font-label uppercase tracking-wider">@masaDurumYazi</span>
+                <span class="text-xs font-bold font-label uppercase tracking-wider">@masaDurumYazi</span>
             </div>
         </div>
     </div>
 
-    <div id="masaSiparisSection" class="bg-surface-container-lowest rounded-3xl overflow-hidden shadow-[0_12px_32px_rgba(46,47,47,0.04)] ring-1 ring-outline-variant/10">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-surface-container-low/50">
-                        <th class="px-6 py-5 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">#</th>
-                        <th class="px-6 py-5 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Ürünler</th>
-                        <th class="px-6 py-5 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Tutar</th>
-                        <th class="px-6 py-5 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Durum</th>
-                        <th class="px-6 py-5 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Saat</th>
-                        <th class="px-6 py-5 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em] text-right">Aksiyon</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-surface-container/30">
-                    @if (!siparisler.Any())
-                    {
-                        <tr>
-                            <td class="py-24" colspan="6">
-                                <div class="flex flex-col items-center justify-center text-center px-4">
-                                    <div class="w-20 h-20 bg-surface-container rounded-full flex items-center justify-center mb-6 ring-8 ring-surface-container-low">
-                                        <span class="material-symbols-outlined text-stone-400 text-4xl">assignment</span>
-                                    </div>
-                                    <h3 class="text-xl font-bold font-headline text-on-surface mb-2">Aktif sipariş bulunamadı</h3>
-                                    <p class="text-on-surface-variant max-w-sm mx-auto mb-8">Bu masa için henüz bir sipariş girişi yapılmamış. Yeni bir sipariş başlatmak için üstteki butonu kullanın.</p>
-                                </div>
-                            </td>
+    <div id="masaMainGrid" class="masa-main-grid">
+        <div id="masaSiparisSection" class="bg-surface-container-lowest rounded-3xl overflow-hidden shadow-[0_12px_32px_rgba(46,47,47,0.04)] ring-1 ring-outline-variant/10">
+            <div class="masa-table-wrap overflow-x-auto">
+                <table class="w-full table-fixed text-left border-collapse">
+                    <thead>
+                        <tr class="bg-surface-container-low/50">
+                            <th class="w-[7%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">#</th>
+                            <th class="w-[39%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Ürünler</th>
+                            <th class="w-[14%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Tutar</th>
+                            <th class="w-[14%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Durum</th>
+                            <th class="w-[10%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Saat</th>
+                            <th class="w-[16%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em] text-right">İşlem</th>
                         </tr>
-                    }
-                    else
-                    {
-                        @foreach (var s in siparisler)
+                    </thead>
+                    <tbody class="divide-y divide-surface-container/30">
+                        @if (!gorunenSiparisler.Any())
                         {
-                            var detayOzet = string.Join(", ", s.SiparisDetaylar.Select(sd => $"{sd.Adet}x {sd.Urun.Ad}"));
-                            var iptalEdilebilir = s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir || s.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi;
-
-                            <tr class="hover:bg-surface-container-low/50" onclick="siparisDetayAc(@s.Id)">
-                                <td class="px-6 py-4 font-bold">#@s.Id</td>
-                                <td class="px-6 py-4">@detayOzet</td>
-                                <td class="px-6 py-4 font-semibold">@s.ToplamTutar.ToString("N2") TL</td>
-                                <td class="px-6 py-4"><span class="durum-chip durum-@s.Durum">@DurumLabel(s.Durum.ToString())</span></td>
-                                <td class="px-6 py-4">@toTR(s.OlusturmaTarihi)</td>
-                                <td class="px-6 py-4 text-right">
-                                    <div class="inline-flex flex-col items-end gap-2.5">
-                                        @if (s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir)
-                                        {
-                                            <button class="min-w-[156px] px-4 py-2.5 rounded-2xl bg-sky-600 text-white text-sm font-extrabold tracking-tight shadow-sm hover:bg-sky-700 active:scale-95 transition-all" onclick="event.stopPropagation(); durumGuncelle(@s.Id, 'TeslimEdildi')">Teslim Edildi</button>
-                                        }
-                                        @if (iptalEdilebilir)
-                                        {
-                                            <button class="min-w-[156px] px-4 py-2.5 rounded-2xl border-2 border-red-300 bg-red-50 text-red-700 text-sm font-extrabold tracking-tight shadow-sm hover:bg-red-100 active:scale-95 transition-all" onclick="event.stopPropagation(); siparisIptalEt(@s.Id)">Siparişi İptal Et</button>
-                                        }
+                            <tr>
+                                <td class="py-8" colspan="6">
+                                    <div class="flex flex-col items-center justify-center text-center px-4">
+                                        <div class="w-12 h-12 bg-surface-container rounded-full flex items-center justify-center mb-2 ring-4 ring-surface-container-low">
+                                            <span class="material-symbols-outlined text-stone-400 text-3xl">assignment</span>
+                                        </div>
+                                        <h3 class="text-base font-bold font-headline text-on-surface mb-1">Aktif sipariş bulunamadı</h3>
+                                        <p class="text-on-surface-variant text-sm max-w-sm mx-auto">Bu masa için henüz sipariş girişi yapılmamış.</p>
                                     </div>
                                 </td>
                             </tr>
                         }
-                    }
-                </tbody>
-            </table>
-        </div>
-    </div>
+                        else
+                        {
+                            @foreach (var s in gorunenSiparisler)
+                            {
+                                var detayOzet = string.Join(", ", s.SiparisDetaylar.Select(sd => $"{sd.Adet}x {sd.Urun.Ad}"));
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8" id="masaMetaSummary">
-        <div class="bg-stone-900 rounded-3xl p-6 text-white relative overflow-hidden group">
-            <div class="relative z-10">
-                <span class="text-orange-400 font-label text-xs font-bold uppercase tracking-widest block mb-2">Hızlı Özet</span>
-                <h4 class="text-xl font-bold mb-1">Aktif Sipariş Tutarı</h4>
-                <p class="text-stone-400 text-sm mb-4">Masa @Model.MasaNo için anlık açık sipariş toplamı.</p>
-                <div class="text-2xl font-bold font-headline text-orange-200">@toplamAktifTutar.ToString("N2") TL</div>
+                                <tr class="hover:bg-surface-container-low/50 cursor-pointer" onclick="siparisDetayAc(@s.Id)">
+                                    <td class="px-4 py-3 font-bold text-sm">#@s.Id</td>
+                                    <td class="px-4 py-3 text-sm line-clamp-1">@detayOzet</td>
+                                    <td class="px-4 py-3 font-semibold text-sm">@s.ToplamTutar.ToString("N2") TL</td>
+                                    <td class="px-4 py-3"><span class="durum-chip durum-@s.Durum">@DurumLabel(s.Durum.ToString())</span></td>
+                                    <td class="px-4 py-3 text-sm">@toTR(s.OlusturmaTarihi)</td>
+                                    <td class="px-4 py-3">
+                                        @{
+                                            var teslimAktif = s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir;
+                                            var iptalAktif = s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir || s.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi;
+
+                                            var teslimClass = teslimAktif
+                                                ? "min-w-[112px] px-3.5 py-2 rounded-xl bg-sky-600 text-white text-sm font-extrabold tracking-tight hover:bg-sky-700 transition-colors"
+                                                : "min-w-[112px] px-3.5 py-2 rounded-xl bg-slate-100 text-slate-400 text-sm font-extrabold tracking-tight cursor-not-allowed";
+
+                                            var iptalClass = iptalAktif
+                                                ? "min-w-[112px] px-3.5 py-2 rounded-xl border border-red-300 bg-red-50 text-red-700 text-sm font-extrabold tracking-tight hover:bg-red-100 transition-colors"
+                                                : "min-w-[112px] px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 text-sm font-extrabold tracking-tight cursor-not-allowed";
+                                        }
+                                        <div class="flex items-center justify-end gap-2">
+                                            <button type="button"
+                                                    class="@teslimClass"
+                                                    disabled="@(!teslimAktif)"
+                                                    onclick="event.stopPropagation(); durumGuncelle(@s.Id, 'TeslimEdildi')">
+                                                Teslim Et
+                                            </button>
+                                            <button type="button"
+                                                    class="@iptalClass"
+                                                    disabled="@(!iptalAktif)"
+                                                    onclick="event.stopPropagation(); siparisIptalEt(@s.Id)">
+                                                İptal
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
             </div>
-            <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
-                <span class="material-symbols-outlined text-[120px]">monitoring</span>
-            </div>
-        </div>
-        <div class="bg-surface-container-low rounded-3xl p-6 border border-white/40">
-            <span class="text-secondary font-label text-xs font-bold uppercase tracking-widest block mb-3">Masa Notları</span>
-            <div class="flex items-start gap-3">
-                <span class="material-symbols-outlined text-stone-400 mt-1">stylus</span>
-                <p class="text-sm italic text-on-surface-variant leading-relaxed">"Sipariş detayını görmek için satıra tıklayın. Hazır siparişi buradan teslim edebilirsiniz."</p>
-            </div>
-        </div>
-        <div class="bg-surface-container rounded-3xl p-6 flex flex-col justify-between">
-            <div>
-                <h4 class="font-bold font-headline mb-2">Operasyon</h4>
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm bg-surface-container-low flex items-center justify-center">
-                        <span class="material-symbols-outlined text-sm">person</span>
-                    </div>
-                    <div>
-                        <p class="text-sm font-bold">Garson</p>
-                        <p class="text-xs text-on-surface-variant">Hazır bekleyen sipariş: @hazirSiparisSayisi</p>
-                    </div>
+
+            @if (gizliSiparisSayisi > 0)
+            {
+                <div class="px-4 py-2 text-xs font-semibold text-on-surface-variant bg-surface-container-low/70 border-t border-outline-variant/20">
+                    +@gizliSiparisSayisi sipariş daha var. Tam liste için Geçmiş İşlemler'i açın.
                 </div>
-            </div>
-            <a href="/Garson/Masa/@Model.Id/YeniSiparis" class="mt-4 text-primary font-bold text-xs uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
-                Yeni sipariş al <span class="material-symbols-outlined text-sm">chevron_right</span>
-            </a>
+            }
         </div>
+
+        <aside id="masaYanPanel">
+            <div class="bg-stone-900 rounded-2xl px-4 py-3 text-white">
+                <span class="text-orange-300 font-label text-[10px] font-bold uppercase tracking-widest block">Özet</span>
+                <div class="mt-2 text-sm font-bold">Aktif Sipariş Tutarı</div>
+                <div class="text-xl font-bold font-headline text-orange-200 mt-1">@toplamAktifTutar.ToString("N2") TL</div>
+                <div class="mt-2 text-[11px] text-orange-100/85">Hazır bekleyen sipariş: @hazirSiparisSayisi</div>
+                <a href="/Garson/Masa/@Model.Id/YeniSiparis" class="mt-3 inline-flex items-center gap-1 text-orange-200 font-bold text-[11px] uppercase tracking-widest hover:gap-2 transition-all">
+                    Yeni sipariş al <span class="material-symbols-outlined text-sm">chevron_right</span>
+                </a>
+            </div>
+
+            <div id="masaNotPaneli" class="bg-surface-container-low rounded-2xl px-4 py-3 border border-white/40">
+                <span class="text-secondary font-label text-[10px] font-bold uppercase tracking-widest block mb-2">Masa Notları</span>
+                @if (!yanPanelNotlari.Any())
+                {
+                    <p class="text-xs italic text-on-surface-variant leading-relaxed">Bugün için müşteri notu yok.</p>
+                }
+                else
+                {
+                    <div class="yan-not-list">
+                        @foreach (var item in yanPanelNotlari)
+                        {
+                            <button type="button" class="w-full text-left rounded-xl border border-outline-variant/25 bg-white/70 px-2.5 py-2 hover:bg-white transition-colors" onclick="siparisDetayAc(@item.Siparis.Id)">
+                                <div class="flex items-center justify-between gap-2 mb-0.5">
+                                    <span class="text-[11px] font-extrabold text-on-surface">#@item.Siparis.Id</span>
+                                    <span class="durum-chip durum-@item.Siparis.Durum">@DurumLabel(item.Siparis.Durum.ToString())</span>
+                                </div>
+                                <p class="text-xs text-on-surface-variant leading-relaxed line-clamp-1 break-all">@item.MusteriNotu</p>
+                            </button>
+                        }
+                    </div>
+                    @if (gizliYanNotSayisi > 0)
+                    {
+                        <p class="text-[11px] font-semibold text-on-surface-variant mt-1">+@gizliYanNotSayisi not daha var.</p>
+                    }
+                }
+            </div>
+        </aside>
     </div>
 </div>
 
@@ -236,12 +405,43 @@
     </div>
 </div>
 
+<div id="garsonConfirmModal" class="fixed inset-0 z-[110] hidden items-center justify-center p-4 bg-black/45 backdrop-blur-[2px]">
+    <div class="w-[min(430px,92vw)] rounded-2xl bg-white border border-outline-variant/20 shadow-2xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-surface-container-high flex items-center justify-between gap-3">
+            <h3 id="garsonConfirmTitle" class="font-headline font-bold text-lg text-on-surface">İşlemi Onayla</h3>
+            <button type="button" class="text-on-surface-variant hover:text-on-surface" onclick="closeGarsonConfirm(false)">
+                <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
+        </div>
+        <div class="px-5 py-4">
+            <p id="garsonConfirmMessage" class="text-sm text-on-surface-variant leading-relaxed">Bu işlem uygulanacak. Devam etmek istiyor musunuz?</p>
+        </div>
+        <div class="px-5 py-4 bg-surface-container-low flex items-center justify-end gap-2">
+            <button id="garsonConfirmCancelBtn" type="button" class="px-4 py-2 rounded-xl border border-outline-variant/35 bg-white text-on-surface text-sm font-bold hover:bg-surface-container transition-colors" onclick="closeGarsonConfirm(false)">
+                Vazgeç
+            </button>
+            <button id="garsonConfirmOkBtn" type="button" class="px-4 py-2 rounded-xl bg-sky-600 text-white text-sm font-bold hover:bg-sky-700 transition-colors" onclick="closeGarsonConfirm(true)">
+                Onayla
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="garsonToast" class="fixed bottom-6 right-6 z-[120] opacity-0 pointer-events-none translate-y-3 transition-all duration-300">
+    <div id="garsonToastCard" class="max-w-[360px] flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 shadow-xl">
+        <span id="garsonToastIcon" class="material-symbols-outlined text-[18px] mt-0.5">error</span>
+        <span id="garsonToastMessage" class="text-sm font-semibold leading-relaxed">İşlem sırasında bir hata oluştu.</span>
+    </div>
+</div>
+
 @section PageScripts {
     <script>
         let acikSiparisId = null;
         let refreshTimer = null;
         let lastRefreshAt = 0;
         let refreshInFlight = false;
+        let garsonToastTimer = null;
+        let garsonConfirmResolver = null;
 
         function DurumLabel(d) {
             const map = {
@@ -254,6 +454,69 @@
                 Iptal: 'İptal'
             };
             return map[d] || d;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+        }
+
+        function parseSeciliOpsiyonlar(rawOpsiyonlar) {
+            if (!rawOpsiyonlar || rawOpsiyonlar === '[]') return [];
+
+            try {
+                const parsed = typeof rawOpsiyonlar === 'string'
+                    ? JSON.parse(rawOpsiyonlar)
+                    : rawOpsiyonlar;
+
+                if (!Array.isArray(parsed)) return [];
+
+                return parsed
+                    .map(o => ({
+                        ad: o?.Ad ?? o?.ad ?? '',
+                        grup: o?.Grup ?? o?.grup ?? '',
+                        ekFiyat: Number(o?.EkFiyat ?? o?.ekFiyat ?? 0)
+                    }))
+                    .filter(o => o.ad);
+            } catch {
+                return [];
+            }
+        }
+
+        function formatOpsiyonlarHtml(rawOpsiyonlar) {
+            const opsiyonlar = parseSeciliOpsiyonlar(rawOpsiyonlar);
+            if (!opsiyonlar.length) return '';
+
+            const secimler = opsiyonlar.map(o => {
+                const grupPrefix = o.grup ? `${escapeHtml(o.grup)}: ` : '';
+                const fiyatText = o.ekFiyat > 0 ? ` (+${o.ekFiyat.toFixed(2)} TL)` : '';
+                return `${grupPrefix}${escapeHtml(o.ad)}${fiyatText}`;
+            }).join(' · ');
+
+            return `<div class="mt-1 text-xs text-on-surface-variant">Seçimler: ${secimler}</div>`;
+        }
+
+        function musteriNotunuAyikla(rawNotlar) {
+            if (!rawNotlar) return '';
+
+            const trimmed = String(rawNotlar).trim();
+            if (!trimmed) return '';
+
+            const parts = trimmed.split('|');
+            if (parts.length > 1) {
+                const customNote = parts.slice(1).join('|').trim();
+                return customNote || '';
+            }
+
+            if (trimmed.startsWith('🎉 Happy Hour')) {
+                return '';
+            }
+
+            return trimmed;
         }
 
         async function siparisDetayAc(id) {
@@ -278,12 +541,24 @@
         function renderFis(data) {
             let urunlerHtml = '';
             data.detaylar.forEach(d => {
+                const opsiyonlarHtml = formatOpsiyonlarHtml(d.opsiyonlar);
                 urunlerHtml += `
                     <div class="flex items-start justify-between py-3 border-b border-dashed">
-                        <div class="font-semibold">${d.adet}x ${d.urunAd}</div>
+                        <div>
+                            <div class="font-semibold">${d.adet}x ${escapeHtml(d.urunAd)}</div>
+                            ${opsiyonlarHtml}
+                        </div>
                         <div class="font-bold">${(d.adet * d.birimFiyat).toFixed(2)} TL</div>
                     </div>`;
             });
+
+            const musteriNotu = musteriNotunuAyikla(data.notlar);
+            const notHtml = musteriNotu
+                ? `<div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                        <div class="text-[11px] font-bold uppercase tracking-wider text-amber-700">Müşteri Notu</div>
+                        <div class="text-sm text-amber-900 mt-1 whitespace-pre-line break-all overflow-hidden">${escapeHtml(musteriNotu)}</div>
+                   </div>`
+                : '';
 
             const iptalEdilebilir = data.durum === 'Hazir' || data.durum === 'TeslimEdildi';
             let aksiyonlar = '';
@@ -300,6 +575,7 @@
                         <div class="text-2xl font-extrabold">#${data.id}</div>
                         <span class="durum-chip durum-${data.durum}">${DurumLabel(data.durum)}</span>
                     </div>
+                    ${notHtml}
                     <div class="rounded-2xl border p-4">${urunlerHtml}</div>
                     <div class="flex items-center justify-between text-lg font-extrabold">
                         <span>Toplam</span>
@@ -313,6 +589,85 @@
             document.getElementById('fisOverlay').style.display = 'none';
         }
 
+        function showGarsonToast(message, type = 'error') {
+            const toast = document.getElementById('garsonToast');
+            const card = document.getElementById('garsonToastCard');
+            const icon = document.getElementById('garsonToastIcon');
+            const msg = document.getElementById('garsonToastMessage');
+            if (!toast || !card || !icon || !msg) return;
+
+            const themes = {
+                success: {
+                    cardClass: 'max-w-[360px] flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700 shadow-xl',
+                    icon: 'check_circle'
+                },
+                info: {
+                    cardClass: 'max-w-[360px] flex items-start gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sky-700 shadow-xl',
+                    icon: 'info'
+                },
+                error: {
+                    cardClass: 'max-w-[360px] flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 shadow-xl',
+                    icon: 'error'
+                }
+            };
+
+            const theme = themes[type] || themes.error;
+            card.className = theme.cardClass;
+            icon.textContent = theme.icon;
+            msg.textContent = message;
+
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-3');
+
+            if (garsonToastTimer) clearTimeout(garsonToastTimer);
+            garsonToastTimer = setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-3');
+            }, 3200);
+        }
+
+        function showGarsonConfirm({ title, message, okText = 'Onayla', cancelText = 'Vazgeç', tone = 'primary' }) {
+            const modal = document.getElementById('garsonConfirmModal');
+            const titleEl = document.getElementById('garsonConfirmTitle');
+            const messageEl = document.getElementById('garsonConfirmMessage');
+            const okBtn = document.getElementById('garsonConfirmOkBtn');
+            const cancelBtn = document.getElementById('garsonConfirmCancelBtn');
+
+            if (!modal || !titleEl || !messageEl || !okBtn || !cancelBtn) {
+                return Promise.resolve(false);
+            }
+
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            okBtn.textContent = okText;
+            cancelBtn.textContent = cancelText;
+
+            if (tone === 'danger') {
+                okBtn.className = 'px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors';
+            } else {
+                okBtn.className = 'px-4 py-2 rounded-xl bg-sky-600 text-white text-sm font-bold hover:bg-sky-700 transition-colors';
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            return new Promise((resolve) => {
+                garsonConfirmResolver = resolve;
+            });
+        }
+
+        function closeGarsonConfirm(accepted) {
+            const modal = document.getElementById('garsonConfirmModal');
+            if (!modal) return;
+
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+
+            if (garsonConfirmResolver) {
+                const resolve = garsonConfirmResolver;
+                garsonConfirmResolver = null;
+                resolve(Boolean(accepted));
+            }
+        }
+
         async function durumGuncelle(id, durum) {
             try {
                 const res = await fetch(`/Garson/DurumGuncelle/${id}`, {
@@ -322,14 +677,54 @@
                 });
                 const result = await res.json();
                 if (result.success) scheduleSoftRefresh(120);
-                else alert('Hata: ' + result.message);
+                else showGarsonToast('Hata: ' + result.message, 'error');
             } catch (e) {
                 console.error(e);
+                showGarsonToast('Bağlantı hatası. Lütfen tekrar deneyin.', 'error');
             }
         }
 
-        function siparisIptalEt(id) {
-            if (!confirm('Bu siparişi iptal etmek istediğinize emin misiniz?')) return;
+        async function topluTeslimEt(masaId) {
+            const onay = await showGarsonConfirm({
+                title: 'Toplu Teslim Onayı',
+                message: 'Hazır durumdaki tüm siparişler teslim edildi olarak işaretlenecek. Devam edilsin mi?',
+                okText: 'Toplu Teslim Et',
+                cancelText: 'Vazgeç',
+                tone: 'primary'
+            });
+            if (!onay) return;
+
+            try {
+                const res = await fetch(`/Garson/Masa/${masaId}/TopluTeslimEt`, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const result = await res.json();
+
+                if (!result.success) {
+                    showGarsonToast('Hata: ' + result.message, 'error');
+                    return;
+                }
+
+                const teslimEdilen = Number(result.affectedCount || 0);
+                showGarsonToast(`${teslimEdilen} sipariş teslim edildi.`, 'success');
+                scheduleSoftRefresh(120);
+            } catch (e) {
+                console.error(e);
+                showGarsonToast('Toplu teslim işlemi sırasında bağlantı hatası oluştu.', 'error');
+            }
+        }
+
+        async function siparisIptalEt(id) {
+            const onay = await showGarsonConfirm({
+                title: 'Sipariş İptal Onayı',
+                message: 'Bu siparişi iptal etmek istediğinize emin misiniz?',
+                okText: 'Siparişi İptal Et',
+                cancelText: 'Vazgeç',
+                tone: 'danger'
+            });
+            if (!onay) return;
+
             durumGuncelle(id, 'Iptal');
         }
 
@@ -353,6 +748,23 @@
             }
         });
 
+        document.addEventListener('click', (event) => {
+            const modal = document.getElementById('garsonConfirmModal');
+            if (!modal || modal.classList.contains('hidden')) return;
+            if (event.target === modal) {
+                closeGarsonConfirm(false);
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+
+            const modal = document.getElementById('garsonConfirmModal');
+            if (!modal || modal.classList.contains('hidden')) return;
+
+            closeGarsonConfirm(false);
+        });
+
         async function softRefreshMasaSiparisleri() {
             if (refreshInFlight) return;
             refreshInFlight = true;
@@ -362,7 +774,7 @@
 
                 const html = await res.text();
                 const doc = new DOMParser().parseFromString(html, 'text/html');
-                const sectionIds = ['masaDurumHeader', 'masaSiparisSection', 'masaMetaSummary'];
+                const sectionIds = ['masaDurumHeader', 'masaMainGrid'];
                 let updatedCount = 0;
 
                 sectionIds.forEach((id) => {

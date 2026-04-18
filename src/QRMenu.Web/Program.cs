@@ -36,6 +36,8 @@ builder.Services.AddDbContext<QRMenuDbContext>((sp, options) =>
     var rawConnectionString = builder.Configuration.GetConnectionString("DefaultConnection")
         ?? throw new InvalidOperationException("DefaultConnection tanımlı değil.");
 
+    var configuredMaxPoolSize = builder.Configuration.GetValue<int?>("Database:MaxPoolSize");
+
     var csb = new NpgsqlConnectionStringBuilder(rawConnectionString)
     {
         // İnternet dalgalanmalarında daha hızlı toparlanma için bağlantı/read tarafını sınırla.
@@ -44,7 +46,11 @@ builder.Services.AddDbContext<QRMenuDbContext>((sp, options) =>
         KeepAlive = 30,
         TcpKeepAlive = true,
         Pooling = true,
-        MaxPoolSize = 100
+        MaxPoolSize = configuredMaxPoolSize
+            ?? (rawConnectionString.Contains("pooler.supabase.com", StringComparison.OrdinalIgnoreCase) ? 10 : 100),
+        MinPoolSize = 0,
+        ConnectionIdleLifetime = 60,
+        ConnectionPruningInterval = 10
     };
 
     options.UseNpgsql(csb.ConnectionString, npgsqlOptions =>

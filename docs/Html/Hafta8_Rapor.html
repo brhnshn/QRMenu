@@ -371,10 +371,15 @@
         <section class="section">
             <h2>5) Değişikliklerin Teknik Yansıması</h2>
             <div class="files">
+                src/QRMenu.Web/Program.cs
+                src/QRMenu.Web/appsettings.Example.json
+                src/QRMenu.Web/Controllers/SiparisController.cs
                 src/QRMenu.Web/Views/Shared/_GarsonLayout.cshtml
                 src/QRMenu.Web/Views/Garson/YeniSiparis.cshtml
                 src/QRMenu.Web/Views/Garson/Masa.cshtml
                 src/QRMenu.Web/Controllers/GarsonController.cs
+                src/QRMenu.Web/Views/Sepet/Index.cshtml
+                src/QRMenu.Web/Views/Mutfak/Panel.cshtml
                 src/QRMenu.Core/DTOs/ManuelSiparisDetayDto.cs
                 src/QRMenu.Data/Services/SiparisService.cs
             </div>
@@ -391,6 +396,42 @@
             <div class="warn">
                 Not: Rapor kapsamı; bu hafta boyunca Garson ekranları için alınan canlı geri bildirimler doğrultusunda
                 tamamlanan iyileştirmelerin toplu özetidir.
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>7) Hafta 8 Ek Revizyonlar (Canlı Geri Bildirim)</h2>
+            <div class="cards">
+                <article class="card">
+                    <h3>Müşteri Notu Standardizasyonu <span class="badge">Güncellendi</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Müşteri sipariş notu alanı 50 karakter sınırına çekildi ve anlık sayaç eklendi.</li>
+                        <li><span class="check">✓</span>Sunucu tarafında da aynı sınır doğrulandı; farklı istemci davranışlarına karşı veri bütünlüğü korundu.</li>
+                    </ul>
+                </article>
+                <article class="card">
+                    <h3>Garson Masa Hızlı Operasyon <span class="badge">Yeni</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Toplu Teslim Et endpoint'i eklenerek hazır siparişlerin tek aksiyonla teslim edilmesi sağlandı.</li>
+                        <li><span class="check">✓</span>Masa satırında büyük ve yan yana işlem butonları ile tek bakışta aksiyon modeli tamamlandı.</li>
+                        <li><span class="check">✓</span>Native alert/confirm yerine tasarıma uyumlu toast + onay modalı ile operasyon akışı standartlaştırıldı.</li>
+                    </ul>
+                </article>
+                <article class="card">
+                    <h3>Ekrana Sığdırma ve İç Scroll <span class="badge">İyileştirildi</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Masa ekranı sol hizaya çekilerek tablo alanı genişletildi; saat ve işlem kolonlarında taşma azaltıldı.</li>
+                        <li><span class="check">✓</span>Yeni Sipariş ekranında ürün listesi kendi panelinde scroll alacak şekilde fit-layout güçlendirildi.</li>
+                        <li><span class="check">✓</span>Dış sayfa kayması azaltılarak tablet kullanımında sabit aksiyon alanı korunmuş oldu.</li>
+                    </ul>
+                </article>
+                <article class="card">
+                    <h3>Altyapı ve Dayanıklılık <span class="badge">Güncellendi</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Supabase/PostgreSQL pool ayarları ortam konfigürasyonuyla yönetilebilir hale getirildi.</li>
+                        <li><span class="check">✓</span>Bağlantı idle/pruning parametreleriyle yoğun kullanımda bağlantı havuzu stabilitesi artırıldı.</li>
+                    </ul>
+                </article>
             </div>
         </section>
 

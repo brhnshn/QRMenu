@@ -379,6 +379,46 @@ namespace QRMenu.Web.Controllers
             }
         }
 
+        // POST: /Garson/Masa/{id}/TopluTeslimEt
+        [HttpPost("/Garson/Masa/{id:int}/TopluTeslimEt")]
+        public async Task<IActionResult> TopluTeslimEt(int id)
+        {
+            try
+            {
+                var (startUtc, endUtc) = TodayUtcRange();
+
+                var hazirSiparisIds = await _context.Siparisler
+                    .Where(s => s.MasaId == id
+                        && s.Durum == SiparisDurum.Hazir
+                        && s.OlusturmaTarihi >= startUtc
+                        && s.OlusturmaTarihi < endUtc)
+                    .Select(s => s.Id)
+                    .ToListAsync();
+
+                if (!hazirSiparisIds.Any())
+                {
+                    return Json(new { success = false, message = "Teslim edilecek hazır sipariş bulunamadı." });
+                }
+
+                foreach (var siparisId in hazirSiparisIds)
+                {
+                    await _siparisService.DurumGuncelleAsync(siparisId, SiparisDurum.TeslimEdildi);
+                }
+
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Table(id)).SendAsync("SiparisGuncellendi");
+
+                return Json(new { success = true, affectedCount = hazirSiparisIds.Count });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Toplu teslim hatası. MasaId={MasaId}", id);
+                return Json(new { success = false, message = "Toplu teslim işlemi sırasında hata oluştu." });
+            }
+        }
+
         public class DurumGuncelleRequest
         {
             public string YeniDurum { get; set; } = "";

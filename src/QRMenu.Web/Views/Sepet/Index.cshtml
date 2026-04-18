@@ -195,6 +195,19 @@
                     </div>
                 </div>
 
+                <div class="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
+                    <label for="siparisNotuInput" class="block text-sm font-bold font-headline text-on-surface mb-2">@(L("Sipariş Notu (İsteğe Bağlı)", "Order Note (Optional)"))</label>
+                    <textarea id="siparisNotuInput"
+                              maxlength="50"
+                              rows="3"
+                              class="w-full resize-none rounded-xl border border-outline-variant/35 bg-white px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/70 focus:border-primary focus:ring-0"
+                              placeholder="@(L("Örn: Soğan olmasın... (en fazla 50 karakter)", "Ex: No onions... (max 50 chars)"))"></textarea>
+                    <div class="mt-2 flex items-center justify-between text-xs text-on-surface-variant font-medium">
+                        <span>@(L("Bu not mutfak ve garson ekranında görünecektir.", "This note will be visible on kitchen and waiter screens."))</span>
+                        <span id="siparisNotuCounter">0/50</span>
+                    </div>
+                </div>
+
                 <!-- Sepeti Temizle -->
                 <div class="flex justify-center">
                     <button onclick="clearCart()" class="flex items-center gap-2 px-5 py-2.5 bg-surface-container-high rounded-full hover:bg-surface-container-highest transition-colors active:scale-95 border-0 cursor-pointer">
@@ -277,6 +290,9 @@
     </div>
 
     <script>
+        const SIPARIS_NOTU_MAX_CHARS = 50;
+        const SIPARIS_NOTU_STORAGE_KEY = 'qrmenu:siparisNotu';
+
         // ===== STITCH MODAL HELPERS =====
         function showConfirm(icon, title, message, okLabel, onConfirm) {
             document.getElementById('confirmIcon').textContent = icon;
@@ -306,6 +322,45 @@
             document.getElementById('toastMsg').textContent = msg;
             el.style.opacity = '1'; el.style.transform = 'translateY(0)';
             setTimeout(function(){ el.style.opacity = '0'; el.style.transform = 'translateY(16px)'; }, 3500);
+        }
+
+        function siparisNotuTextArea() {
+            return document.getElementById('siparisNotuInput');
+        }
+
+        function updateSiparisNotuCounter() {
+            const input = siparisNotuTextArea();
+            const counter = document.getElementById('siparisNotuCounter');
+            if (!input || !counter) return;
+            counter.textContent = `${input.value.length}/${SIPARIS_NOTU_MAX_CHARS}`;
+        }
+
+        function setupSiparisNotu() {
+            const input = siparisNotuTextArea();
+            if (!input) return;
+
+            const saved = localStorage.getItem(SIPARIS_NOTU_STORAGE_KEY);
+            if (saved) {
+                input.value = saved.slice(0, SIPARIS_NOTU_MAX_CHARS);
+            }
+
+            updateSiparisNotuCounter();
+
+            input.addEventListener('input', function () {
+                if (input.value.length > SIPARIS_NOTU_MAX_CHARS) {
+                    input.value = input.value.slice(0, SIPARIS_NOTU_MAX_CHARS);
+                }
+
+                updateSiparisNotuCounter();
+                localStorage.setItem(SIPARIS_NOTU_STORAGE_KEY, input.value);
+            });
+        }
+
+        function getSiparisNotu() {
+            const input = siparisNotuTextArea();
+            if (!input) return null;
+            const val = input.value.trim();
+            return val.length ? val : null;
         }
 
         // ===== SEPET İŞLEMLERİ =====
@@ -342,10 +397,21 @@
         function siparisGonder() {
             showConfirm('restaurant', 'Siparişi Onayla', 'Siparişiniz mutfağa gönderilecek. Onaylıyor musunuz?', 'Gönder', async function(){
                 const btn = document.getElementById('completeOrderBtn');
+                const siparisNotu = getSiparisNotu();
+
+                if (siparisNotu && siparisNotu.length > SIPARIS_NOTU_MAX_CHARS) {
+                    showErrorToast(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Sipariş notu en fazla 50 karakter olabilir.", "Order note can be at most 50 chars."))));
+                    return;
+                }
+
                 btn.disabled = true;
                 btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Gönderiliyor...';
                 try {
-                    const res = await fetch('/siparis/olustur', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({}) });
+                    const res = await fetch('/siparis/olustur', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: JSON.stringify({ notlar: siparisNotu })
+                    });
                     if (res.status === 401 || res.redirected) {
                         showErrorToast('@Html.Raw(L("Oturumunuz bulunamadı. Lütfen QR kodu okutun.", "Session not found. Please scan the QR code."))');
                         btn.disabled = false;
@@ -354,6 +420,7 @@
                     }
                     const data = await res.json();
                     if (data.success) {
+                        localStorage.removeItem(SIPARIS_NOTU_STORAGE_KEY);
                         showSuccess('@Html.Raw(L("Afiyet Olsun! 🎉", "Enjoy your meal! 🎉"))', '@Html.Raw(L("Siparişiniz mutfağa iletildi. Kısa sürede hazırlanacaktır.", "Your order has been sent to the kitchen. It will be prepared shortly."))', '/siparislerim', 2500);
                     } else {
                         showErrorToast('Hata: ' + data.message);
@@ -368,6 +435,8 @@
                 }
             });
         }
+
+        setupSiparisNotu();
     </script>
 </body>
 </html>

@@ -8,11 +8,14 @@ using QRMenu.Core.Enums;
 using QRMenu.Core.Interfaces;
 using QRMenu.Web.Hubs;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace QRMenu.Web.Controllers
 {
     public class SiparisController : Controller
     {
+        private const int SiparisNotMaxLength = 50;
+
         private static readonly TimeZoneInfo _turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(
             OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
         private static string ToTurkeyTime(DateTime utc) =>
@@ -174,7 +177,20 @@ namespace QRMenu.Web.Controllers
                 if (sepet == null)
                     return Json(new { success = false, message = "Sepet bulunamadı." });
 
-                var siparis = await _siparisService.SiparisOlusturAsync(sepet.Id, request?.Notlar);
+                var normalizeNot = request?.Notlar?.Trim();
+                if (string.IsNullOrWhiteSpace(normalizeNot))
+                    normalizeNot = null;
+
+                if (normalizeNot != null && normalizeNot.Length > SiparisNotMaxLength)
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = $"Sipariş notu en fazla {SiparisNotMaxLength} karakter olabilir."
+                    });
+                }
+
+                var siparis = await _siparisService.SiparisOlusturAsync(sepet.Id, normalizeNot);
 
                 var masaNo = await _db.Masalar
                     .Where(m => m.Id == siparis.MasaId)

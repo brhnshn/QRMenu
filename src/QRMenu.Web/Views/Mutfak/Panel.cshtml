@@ -4,6 +4,21 @@
     ViewData["Title"] = "Mutfak KDS";
     ViewData["ActivePage"] = "MutfakPaneli";
     ViewData["PageTitle"] = "Mutfak Ekranı (KDS)";
+
+    string? MusteriNotunuAyikla(string? notlar)
+    {
+        if (string.IsNullOrWhiteSpace(notlar)) return null;
+
+        var trimmed = notlar.Trim();
+        var parts = trimmed.Split('|', 2, StringSplitOptions.TrimEntries);
+        if (parts.Length == 2 && !string.IsNullOrWhiteSpace(parts[1]))
+            return parts[1];
+
+        if (trimmed.StartsWith("🎉 Happy Hour", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        return trimmed;
+    }
 }
 
 @section Styles {
@@ -76,6 +91,28 @@
         .urun-row { font-size: 1.3rem; font-weight: 800; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; }
         .urun-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
         .opsiyon-text { font-size: 0.95rem; font-weight: 600; color: #ef4444; margin-left: 24px; display: block; }
+
+        .musteri-notu {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #92400e;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+        }
+        .musteri-notu-title {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .musteri-notu-text {
+            font-size: 0.95rem;
+            font-weight: 700;
+            white-space: pre-line;
+        }
         
         .action-btns { display: flex; gap: 8px; margin-top: auto; }
         .action-btns button { flex: 1; font-weight: 800; padding: 12px; font-size: 1.1rem; }
@@ -122,11 +159,20 @@
     {
         foreach (var siparis in Model)
         {
+            var musteriNotu = MusteriNotunuAyikla(siparis.Notlar);
+
             <div class="ticket-card shadow-sm" data-id="@siparis.Id" data-tarih="@siparis.OlusturmaTarihi.ToString("o")">
                 <div class="ticket-header">
                     <div class="masa-badge">Masa @siparis.Masa.MasaNo</div>
                     <div class="timer-badge timer-text">00:00</div>
                 </div>
+                @if (!string.IsNullOrWhiteSpace(musteriNotu))
+                {
+                    <div class="musteri-notu">
+                        <span class="musteri-notu-title">Müşteri Notu</span>
+                        <span class="musteri-notu-text">@musteriNotu</span>
+                    </div>
+                }
                 <div class="urun-list">
                     @foreach(var detay in siparis.SiparisDetaylar.Where(d => d.Durum == QRMenu.Core.Enums.SiparisDurum.Onaylandi || d.Durum == QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor))
                     {
