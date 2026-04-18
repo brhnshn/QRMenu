@@ -1,0 +1,385 @@
+@using QRMenu.Core.Enums
+@model List<QRMenu.Core.Entities.Siparis>
+@{
+    Layout = "~/Views/Shared/_KasaLayout.cshtml";
+    ViewData["Title"] = "Ödenen Siparişler";
+    ViewData["ActivePage"] = "KasaOdenen";
+    ViewData["PageTitle"] = "Ödenen Siparişler";
+
+    var gunlukCiro = ViewBag.GunlukCiro is decimal gc ? gc : 0m;
+    var islemSayisi = ViewBag.IslemSayisi is int islem ? islem : 0;
+    var ortalamaMasaTutari = ViewBag.OrtalamaMasaTutari is decimal ort ? ort : 0m;
+
+    string odemeTipLabel(QRMenu.Core.Entities.Siparis siparis)
+    {
+        var tip = siparis.Odemeler
+            .OrderByDescending(x => x.OdemeTarihi)
+            .Select(x => x.OdemeTipi)
+            .FirstOrDefault();
+
+        return tip switch
+        {
+            OdemeTipi.Nakit => "Nakit",
+            OdemeTipi.Kart => "Kart",
+            _ => "Bilinmiyor"
+        };
+    }
+
+    string odemeTipClass(string tip)
+    {
+        return tip switch
+        {
+            "Kart" => "chip chip-card",
+            "Nakit" => "chip chip-cash",
+            _ => "chip"
+        };
+    }
+}
+
+@section Styles {
+    <style>
+        .kasa-report-root {
+            height: 100%;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 1.4rem 1.4rem 1.8rem;
+            background:
+                radial-gradient(circle at 0% 8%, rgba(236, 109, 73, 0.12), transparent 27%),
+                radial-gradient(circle at 94% 96%, rgba(255, 202, 87, 0.16), transparent 32%),
+                #f8f6f5;
+        }
+
+        .report-wrap {
+            max-width: 1320px;
+            margin: 0 auto;
+            display: grid;
+            gap: 1rem;
+        }
+
+        .report-head {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: .85rem;
+            flex-wrap: wrap;
+        }
+
+        .report-title {
+            font-size: clamp(1.8rem, 2.6vw, 2.35rem);
+            font-weight: 900;
+            letter-spacing: -.02em;
+            margin: 0;
+            color: #2e2f2f;
+        }
+
+        .report-sub {
+            font-size: .74rem;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            font-weight: 800;
+            color: #a23718;
+            margin-bottom: .35rem;
+            display: block;
+        }
+
+        .report-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .42rem;
+            border: 1px solid #dfd9d5;
+            border-radius: .85rem;
+            background: #fff;
+            color: #2e2f2f;
+            padding: .58rem .92rem;
+            font-size: .8rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .report-btn:hover {
+            background: #f6f3f2;
+            color: #2e2f2f;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+            gap: .9rem;
+        }
+
+        .summary-card {
+            border-radius: 1.35rem;
+            padding: 1.2rem;
+            background: #fff;
+            border: 1px solid #ede7e3;
+            box-shadow: 0 10px 24px rgba(46, 47, 47, 0.06);
+            min-height: 144px;
+        }
+
+        .summary-card h3,
+        .summary-card h4,
+        .summary-card p {
+            margin: 0;
+        }
+
+        .summary-main-value {
+            margin-top: .42rem;
+            font-size: clamp(1.9rem, 3vw, 2.8rem);
+            font-weight: 900;
+            letter-spacing: -.03em;
+            color: #2e2f2f;
+        }
+
+        .summary-label {
+            color: #5c5b5b;
+            font-size: .83rem;
+            font-weight: 700;
+        }
+
+        .summary-mini-value {
+            margin-top: .52rem;
+            font-size: 1.72rem;
+            font-weight: 900;
+            letter-spacing: -.02em;
+            color: #2e2f2f;
+        }
+
+        .orders-box {
+            border-radius: 1.4rem;
+            overflow: hidden;
+            background: #fff;
+            border: 1px solid #e8e2de;
+            box-shadow: 0 10px 24px rgba(46, 47, 47, 0.06);
+        }
+
+        .orders-head {
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid #efeae7;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .5rem;
+        }
+
+        .orders-title {
+            font-size: 1.06rem;
+            font-weight: 800;
+            letter-spacing: -.01em;
+            margin: 0;
+            color: #2e2f2f;
+        }
+
+        .orders-table-wrap {
+            overflow-x: auto;
+        }
+
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 920px;
+        }
+
+        .orders-table th {
+            background: #f6f3f2;
+            color: #5c5b5b;
+            font-size: .69rem;
+            text-transform: uppercase;
+            letter-spacing: .09em;
+            font-weight: 800;
+            padding: .86rem .94rem;
+        }
+
+        .orders-table td {
+            padding: .98rem .94rem;
+            border-top: 1px solid #f2efed;
+            color: #2e2f2f;
+            font-size: .87rem;
+            vertical-align: middle;
+        }
+
+        .orders-table tr:hover td {
+            background: #fcfbfa;
+        }
+
+        .order-id {
+            color: #a23718;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .order-amount {
+            font-weight: 900;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            padding: .2rem .58rem;
+            border-radius: 999px;
+            border: 1px solid #dedcdc;
+            background: #f2f0f0;
+            color: #5c5b5b;
+            font-size: .68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            white-space: nowrap;
+        }
+
+        .chip-cash {
+            background: #ecfdf3;
+            border-color: #bde7cd;
+            color: #146c43;
+        }
+
+        .chip-card {
+            background: #eef3ff;
+            border-color: #cedcff;
+            color: #2f4ea6;
+        }
+
+        .status-paid {
+            background: rgba(34, 197, 94, .14);
+            color: #166534;
+            border-color: rgba(34, 197, 94, .24);
+        }
+
+        .status-refund {
+            background: rgba(179, 27, 37, .14);
+            color: #991b1b;
+            border-color: rgba(179, 27, 37, .24);
+        }
+
+        .connection-warning {
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            background: rgba(255, 243, 205, 0.9);
+            color: #92400e;
+            border-radius: 12px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        @@media (max-width: 1100px) {
+            .summary-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @@media (max-width: 700px) {
+            .kasa-report-root {
+                padding: 1rem .75rem 1.2rem;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+}
+
+<section class="kasa-report-root">
+    <div class="report-wrap">
+        @if (ViewBag.ConnectionWarning != null)
+        {
+            <div class="connection-warning">
+                <i class="bi bi-wifi-off"></i>
+                <span>@ViewBag.ConnectionWarning</span>
+            </div>
+        }
+
+        <header class="report-head">
+            <div>
+                <span class="report-sub">Raporlama Paneli</span>
+                <h2 class="report-title">Ödenen Siparişler</h2>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <a href="/Kasa/Masalar" class="report-btn">
+                    <i class="bi bi-grid-3x3-gap"></i>
+                    Bekleyen Masalar
+                </a>
+            </div>
+        </header>
+
+        <section class="summary-grid">
+            <article class="summary-card" style="background:#fff;">
+                <p class="summary-label">Günlük Toplam Ciro</p>
+                <h3 class="summary-main-value">@gunlukCiro.ToString("N2") TL</h3>
+                <p class="summary-label" style="margin-top:.42rem;">Bugün tamamlanan ödemeler</p>
+            </article>
+
+            <article class="summary-card" style="background:#f2f0f0;">
+                <p class="summary-label">İşlem Sayısı</p>
+                <h4 class="summary-mini-value">@islemSayisi</h4>
+            </article>
+
+            <article class="summary-card" style="background:#eae8e7;">
+                <p class="summary-label">Ortalama Masa Tutarı</p>
+                <h4 class="summary-mini-value">@ortalamaMasaTutari.ToString("N2") TL</h4>
+            </article>
+        </section>
+
+        <section class="orders-box">
+            <div class="orders-head">
+                <h3 class="orders-title">Son Tamamlanan Ödemeler</h3>
+                <span class="summary-label">Toplam @Model.Count kayıt</span>
+            </div>
+
+            <div class="orders-table-wrap">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Sipariş ID</th>
+                            <th>Masa</th>
+                            <th>Ödeme Yöntemi</th>
+                            <th>Zaman</th>
+                            <th>Durum</th>
+                            <th class="text-end">Tutar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-5">Henüz ödenmiş sipariş yok.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var s in Model)
+                            {
+                                var tip = odemeTipLabel(s);
+                                var durumClass = s.Durum == SiparisDurum.Iade ? "chip status-refund" : "chip status-paid";
+                                <tr>
+                                    <td><span class="order-id">#ORD-@s.Id</span></td>
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold">Masa @s.Masa?.MasaNo</span>
+                                            <span class="text-muted" style="font-size:.72rem;">@((s.Masa?.Bolge?.Ad) ?? "Salon")</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="@odemeTipClass(tip)">
+                                            <i class="bi @(tip == "Kart" ? "bi-credit-card" : "bi-cash-stack")"></i>
+                                            @tip
+                                        </span>
+                                    </td>
+                                    <td class="text-muted fw-semibold">@((s.GuncellemeTarihi ?? s.OlusturmaTarihi).ToString("HH:mm"))</td>
+                                    <td>
+                                        <span class="@durumClass">@(s.Durum == SiparisDurum.Iade ? "İade" : "Tam Ödendi")</span>
+                                    </td>
+                                    <td class="order-amount">@s.ToplamTutar.ToString("N2") TL</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</section>

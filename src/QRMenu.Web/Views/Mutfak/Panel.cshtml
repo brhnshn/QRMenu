@@ -1,9 +1,26 @@
+@using System.Text.Json
+@using QRMenu.Core.Enums
 @model List<QRMenu.Core.Entities.Siparis>
 @{
-    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    Layout = "~/Views/Shared/_MutfakLayout.cshtml";
     ViewData["Title"] = "Mutfak KDS";
     ViewData["ActivePage"] = "MutfakPaneli";
     ViewData["PageTitle"] = "Mutfak Ekranı (KDS)";
+    ViewData["MutfakPageTitle"] = "Mutfak KDS";
+    ViewData["MutfakActivePage"] = "CanliSiparisler";
+    ViewData["MutfakContentClass"] = "p-5 lg:p-8 pb-28 md:pb-8 flex-1 overflow-y-auto";
+
+    var aktifSiparisler = (Model ?? new List<QRMenu.Core.Entities.Siparis>())
+        .Where(s => s.SiparisDetaylar.Any(d => d.Durum == SiparisDurum.Onaylandi || d.Durum == SiparisDurum.Hazirlaniyor))
+        .OrderBy(s => s.OlusturmaTarihi)
+        .ToList();
+
+    var now = DateTime.UtcNow;
+    var aktifBiletSayisi = aktifSiparisler.Count;
+    var ortalamaSaniye = aktifBiletSayisi > 0
+        ? (int)Math.Round(aktifSiparisler.Average(s => (now - s.OlusturmaTarihi).TotalSeconds))
+        : 0;
+    var hazardakiSiparisSayisi = aktifSiparisler.Count(s => s.Durum == SiparisDurum.Hazirlaniyor);
 
     string? MusteriNotunuAyikla(string? notlar)
     {
@@ -14,266 +31,301 @@
         if (parts.Length == 2 && !string.IsNullOrWhiteSpace(parts[1]))
             return parts[1];
 
-        if (trimmed.StartsWith("🎉 Happy Hour", StringComparison.OrdinalIgnoreCase))
+        if (trimmed.StartsWith("Happy Hour", StringComparison.OrdinalIgnoreCase))
             return null;
 
         return trimmed;
     }
+
+    string SureyiYaz(int saniye)
+    {
+        if (saniye < 0) saniye = 0;
+        var dakika = saniye / 60;
+        var sn = saniye % 60;
+        return $"{dakika:D2}:{sn:D2}";
+    }
+
+    List<string> OpsiyonlariCoz(string? opsiyonJson)
+    {
+        var sonuc = new List<string>();
+        if (string.IsNullOrWhiteSpace(opsiyonJson) || opsiyonJson == "[]")
+            return sonuc;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(opsiyonJson);
+            foreach (var item in doc.RootElement.EnumerateArray())
+            {
+                if (item.TryGetProperty("Ad", out var adProp))
+                {
+                    var ad = adProp.GetString();
+                    if (!string.IsNullOrWhiteSpace(ad))
+                    {
+                        sonuc.Add(ad);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Geçersiz opsiyon JSON'u ekran akışını bozmasın.
+        }
+
+        return sonuc;
+    }
 }
 
-@section Styles {
+@section PageStyles {
     <style>
-        .admin-content {
-            min-height: 100vh;
-            margin-top: 56px !important;
-            background:
-                radial-gradient(circle at 10% 12%, rgba(245, 158, 11, 0.16), transparent 26%),
-                radial-gradient(circle at 84% 88%, rgba(248, 113, 113, 0.18), transparent 30%),
-                linear-gradient(150deg, #0b1220, #111b2e 55%, #13203a);
+        .kds-panel-root {
+            min-height: 100%;
         }
 
-        .ticket-grid {
-            padding: 20px;
+        .kds-order-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 20px;
-            align-items: start;
-            animation: kdsFadeIn 0.45s ease;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 1.5rem;
         }
 
-        @@keyframes kdsFadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .ticket-card {
-            background: #ffffff;
-            color: #0f172a;
-            border-radius: 16px;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32);
-            border: 2px solid #dbe4f1;
-            transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
-        }
-        .ticket-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 18px 36px rgba(0, 0, 0, 0.36);
-        }
-        .ticket-header {
-            border-bottom: 2px dashed #cbd5e1;
-            padding-bottom: 12px;
-            margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-        .masa-badge {
-            background: linear-gradient(180deg, #1e293b, #0f172a);
-            color: #f8fafc;
-            font-size: 1.45rem;
-            font-weight: 900;
-            padding: 6px 12px;
-            border-radius: 10px;
-            letter-spacing: 0.02em;
-        }
-        .timer-badge {
-            font-size: 1.15rem;
-            font-weight: 900;
-            padding: 4px 10px;
-            border-radius: 8px;
-            background: #f1f5f9;
-            color: #334155;
-        }
-        
-        .urun-list { flex: 1; margin-bottom: 15px; }
-        .urun-row { font-size: 1.3rem; font-weight: 800; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; }
-        .urun-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-        .opsiyon-text { font-size: 0.95rem; font-weight: 600; color: #ef4444; margin-left: 24px; display: block; }
-
-        .musteri-notu {
-            background: #fffbeb;
-            border: 1px solid #fde68a;
-            color: #92400e;
-            border-radius: 10px;
-            padding: 10px 12px;
-            margin-bottom: 12px;
-        }
-        .musteri-notu-title {
-            display: block;
-            font-size: 0.72rem;
-            font-weight: 900;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            margin-bottom: 2px;
-        }
-        .musteri-notu-text {
-            font-size: 0.95rem;
-            font-weight: 700;
-            white-space: pre-line;
-        }
-        
-        .action-btns { display: flex; gap: 8px; margin-top: auto; }
-        .action-btns button { flex: 1; font-weight: 800; padding: 12px; font-size: 1.1rem; }
-
-        /* Zaman Sınırları ve Animasyonlar */
-        .ticket-danger {
-            border-color: #ef4444;
-            background: linear-gradient(180deg, #ffffff, #fff7f7);
-            animation: pulseRed 2s infinite;
-        }
-        .ticket-danger .timer-badge { background: #fee2e2; color: #b91c1c; }
-
-        @@keyframes pulseRed {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        .kds-danger {
+            animation: kdsPulse 2s infinite;
         }
 
-        #clock { font-family: monospace; }
+        @@keyframes kdsPulse {
+            0% { box-shadow: 0 0 0 0 rgba(251, 81, 81, 0.32); }
+            70% { box-shadow: 0 0 0 12px rgba(251, 81, 81, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(251, 81, 81, 0); }
+        }
 
-        @@media (max-width: 768px) {
-            .ticket-grid {
+        @@media (max-width: 767px) {
+            .kds-order-grid {
                 grid-template-columns: 1fr;
-                padding: 12px;
-                gap: 14px;
-            }
-
-            .masa-badge {
-                font-size: 1.2rem;
-            }
-
-            .urun-row {
-                font-size: 1.1rem;
+                gap: 1rem;
             }
         }
     </style>
 }
 
-<!-- Alarm sesi (gizli) -->
 <audio id="bellSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
 
-<div class="ticket-grid" id="kdsGrid">
-    @if(Model != null && Model.Any())
-    {
-        foreach (var siparis in Model)
-        {
-            var musteriNotu = MusteriNotunuAyikla(siparis.Notlar);
-
-            <div class="ticket-card shadow-sm" data-id="@siparis.Id" data-tarih="@siparis.OlusturmaTarihi.ToString("o")">
-                <div class="ticket-header">
-                    <div class="masa-badge">Masa @siparis.Masa.MasaNo</div>
-                    <div class="timer-badge timer-text">00:00</div>
-                </div>
-                @if (!string.IsNullOrWhiteSpace(musteriNotu))
-                {
-                    <div class="musteri-notu">
-                        <span class="musteri-notu-title">Müşteri Notu</span>
-                        <span class="musteri-notu-text">@musteriNotu</span>
-                    </div>
-                }
-                <div class="urun-list">
-                    @foreach(var detay in siparis.SiparisDetaylar.Where(d => d.Durum == QRMenu.Core.Enums.SiparisDurum.Onaylandi || d.Durum == QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor))
-                    {
-                        <div class="urun-row">
-                            <span class="text-primary">@detay.Adet x</span> @detay.Urun.Ad
-                            @if(!string.IsNullOrEmpty(detay.SeciliOpsiyonlar) && detay.SeciliOpsiyonlar != "[]")
-                            {
-                                var optStr = "";
-                                try {
-                                    var opsJson = System.Text.Json.JsonDocument.Parse(detay.SeciliOpsiyonlar);
-                                    var opsList = new System.Collections.Generic.List<string>();
-                                    foreach(var ops in opsJson.RootElement.EnumerateArray()) {
-                                        opsList.Add(ops.GetProperty("Ad").GetString() ?? "");
-                                    }
-                                    optStr = string.Join(", ", opsList);
-                                } catch {}
-                                <span class="opsiyon-text">@optStr</span>
-                            }
-                        </div>
-                    }
-                </div>
-                <div class="action-btns">
-                    @if (siparis.Durum == QRMenu.Core.Enums.SiparisDurum.Onaylandi)
-                    {
-                        <button class="btn btn-warning" onclick="durumGuncelle(@siparis.Id, 'Hazirlaniyor')">
-                            <i class="bi bi-fire"></i> Hazırlanıyor
-                        </button>
-                    }
-                    else if (siparis.Durum == QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor)
-                    {
-                        <button class="btn btn-success" onclick="durumGuncelle(@siparis.Id, 'Hazir')">
-                            <i class="bi bi-check-circle-fill"></i> Hazır
-                        </button>
-                    }
-                </div>
+<div id="kdsPanelRoot" class="kds-panel-root bg-surface font-body text-on-surface">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+        <div class="flex gap-4 flex-wrap">
+            <div class="bg-surface-container-low px-6 py-3 rounded-2xl flex flex-col">
+                <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Aktif Bilet</span>
+                <span class="text-3xl font-headline font-extrabold text-primary">@aktifBiletSayisi</span>
             </div>
-        }
+            <div class="bg-surface-container-low px-6 py-3 rounded-2xl flex flex-col">
+                <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Ort. Hazırlık</span>
+                <span class="text-3xl font-headline font-extrabold text-secondary">@SureyiYaz(ortalamaSaniye)</span>
+            </div>
+            <div class="bg-surface-container-low px-6 py-3 rounded-2xl flex flex-col">
+                <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Hazırlanıyor</span>
+                <span class="text-3xl font-headline font-extrabold text-on-surface">@hazardakiSiparisSayisi</span>
+            </div>
+        </div>
+    </div>
+
+    @if (aktifSiparisler.Any())
+    {
+        <div id="kdsGrid" class="kds-order-grid">
+            @foreach (var siparis in aktifSiparisler)
+            {
+                var detaylar = siparis.SiparisDetaylar
+                    .Where(d => d.Durum == SiparisDurum.Onaylandi || d.Durum == SiparisDurum.Hazirlaniyor)
+                    .ToList();
+
+                        if (!detaylar.Any())
+                        {
+                            continue;
+                        }
+
+                        var musteriNotu = MusteriNotunuAyikla(siparis.Notlar);
+                        var elapsed = now - siparis.OlusturmaTarihi;
+                        var danger = elapsed.TotalMinutes >= 5;
+                        var yeniBilet = siparis.Durum == SiparisDurum.Onaylandi && !danger;
+
+                        var kartSinifi = danger
+                            ? "ring-2 ring-error/15 border border-error-container/20 kds-ticket-card kds-danger"
+                            : yeniBilet
+                                ? "border-2 border-secondary kds-ticket-card"
+                                : "border border-outline/20 kds-ticket-card";
+
+                        var baslikSinifi = danger
+                            ? "bg-error-container/10"
+                            : yeniBilet
+                                ? "bg-secondary text-white"
+                                : "bg-surface-container-high";
+
+                        var sureRozetiSinifi = danger
+                            ? "bg-error-container text-on-error-container"
+                            : yeniBilet
+                                ? "bg-white/20 text-white"
+                                : "bg-surface-container-highest text-on-surface";
+
+                    <article class="bg-surface-container-lowest rounded-2xl flex flex-col overflow-hidden @kartSinifi" data-id="@siparis.Id" data-tarih="@siparis.OlusturmaTarihi.ToString("o")">
+                            <div class="@baslikSinifi p-5 flex justify-between items-center">
+                                <div class="@(yeniBilet ? "text-white" : "")">
+                                    <div class="text-xs font-bold uppercase tracking-tighter @(yeniBilet ? "opacity-80" : "text-on-surface-variant")">Masa @siparis.Masa.MasaNo</div>
+                                    <div class="text-2xl font-headline font-black @(yeniBilet ? "" : "text-on-surface")">Ticket #@siparis.Id</div>
+                                </div>
+                                <div class="@sureRozetiSinifi px-3 py-1.5 rounded-lg flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-sm">timer</span>
+                                    <span class="font-headline font-bold text-lg timer-text">@SureyiYaz((int)Math.Max(0, elapsed.TotalSeconds))</span>
+                                </div>
+                            </div>
+
+                            <div class="p-5 flex-grow flex flex-col gap-4">
+                                @if (!string.IsNullOrWhiteSpace(musteriNotu))
+                                {
+                                    <div class="bg-secondary-container/20 p-3 rounded-xl border-l-4 border-secondary">
+                                        <div class="text-[10px] font-black uppercase text-secondary-dim tracking-widest">Müşteri Notu</div>
+                                        <p class="text-sm font-medium text-on-secondary-container">@musteriNotu</p>
+                                    </div>
+                                }
+
+                                <div class="space-y-4">
+                                    @foreach (var detay in detaylar)
+                                    {
+                                        var opsiyonlar = OpsiyonlariCoz(detay.SeciliOpsiyonlar);
+                                        <div class="flex items-start gap-3">
+                                            <div class="bg-surface-container-highest px-2.5 py-1 rounded-lg font-black text-on-surface">@detay.Adet</div>
+                                            <div class="flex-grow">
+                                                <div class="font-headline font-bold text-on-surface text-lg">@detay.Urun.Ad</div>
+                                                @if (opsiyonlar.Any())
+                                                {
+                                                    foreach (var opsiyon in opsiyonlar)
+                                                    {
+                                                        <div class="text-sm text-on-surface-variant font-medium">• @opsiyon</div>
+                                                    }
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="p-4 bg-surface-container-low">
+                                @if (siparis.Durum == SiparisDurum.Onaylandi)
+                                {
+                                    <button type="button" onclick="durumGuncelle(@siparis.Id, 'Hazirlaniyor')" class="w-full bg-primary hover:bg-primary-dim text-white py-4 rounded-xl font-headline font-extrabold text-lg transition-all flex justify-center items-center gap-2">
+                                        <span>Hazırlanıyor</span>
+                                        <span class="material-symbols-outlined">chevron_right</span>
+                                    </button>
+                                }
+                                else if (siparis.Durum == SiparisDurum.Hazirlaniyor)
+                                {
+                                    <button type="button" onclick="durumGuncelle(@siparis.Id, 'Hazir')" class="w-full bg-primary hover:bg-primary-dim text-white py-4 rounded-xl font-headline font-extrabold text-lg transition-all flex justify-center items-center gap-2">
+                                        <span>Hazır</span>
+                                        <span class="material-symbols-outlined">check_circle</span>
+                                    </button>
+                                }
+                            </div>
+                </article>
+            }
+        </div>
     }
     else
     {
-        <div class="col-12 text-center text-muted py-5" style="grid-column: 1 / -1;">
-            <i class="bi bi-cup-hot" style="font-size: 5rem; color: #334155;"></i>
-            <h3 class="mt-3 text-white">Şu an bekleyen sipariş yok. Elinize sağlık!</h3>
-        </div>
+        <section id="kdsGrid" class="w-full min-h-[420px] rounded-3xl bg-surface-container-lowest border border-surface-container p-8 flex flex-col items-center justify-center text-center">
+            <span class="material-symbols-outlined text-6xl text-primary mb-2">skillet</span>
+            <h3 class="text-3xl font-headline font-black text-on-surface">Şu an bekleyen sipariş yok.</h3>
+            <p class="text-on-surface-variant mt-2 font-medium">Mutfak hazır. Yeni sipariş geldiğinde ekran otomatik güncellenecek.</p>
+        </section>
     }
+
+    <nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-4 bg-white/90 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.05)] border-t border-[#eae8e7]">
+        <div class="flex flex-col items-center justify-center bg-primary text-white rounded-xl mx-2 py-2 px-4 scale-110 duration-300 ease-out">
+            <span class="material-symbols-outlined">clock_loader_40</span>
+            <span class="font-body text-xs uppercase tracking-widest mt-1">Hazırlanıyor</span>
+        </div>
+        <div class="flex flex-col items-center justify-center text-on-surface py-2 px-4">
+            <span class="material-symbols-outlined">check_circle</span>
+            <span class="font-body text-xs uppercase tracking-widest mt-1">Hazır</span>
+        </div>
+        <div class="flex flex-col items-center justify-center text-on-surface py-2 px-4">
+            <span class="material-symbols-outlined">task</span>
+            <span class="font-body text-xs uppercase tracking-widest mt-1">Tamamlandı</span>
+        </div>
+    </nav>
+
 </div>
 
-@section Scripts {
+@section PageScripts {
     <script>
-        // Timer Hesaplamaları (5 dakikayı geçenler kırmızı)
+        let dangerThresholdMs = 5 * 60 * 1000;
+
+        function loadRuntimeSettings() {
+            try {
+                const criticalMinutes = parseInt(localStorage.getItem('kdsCriticalMinutes') || '', 10);
+                if (Number.isFinite(criticalMinutes) && criticalMinutes >= 1 && criticalMinutes <= 60) {
+                    dangerThresholdMs = criticalMinutes * 60 * 1000;
+                    return;
+                }
+            } catch (e) {
+                // localStorage erişilemiyorsa varsayılan süre kullan
+            }
+
+            dangerThresholdMs = 5 * 60 * 1000;
+        }
+
         function updateTimers() {
-            const cards = document.querySelectorAll('.ticket-card');
+            const cards = document.querySelectorAll('.kds-ticket-card');
             const now = new Date();
 
             cards.forEach(card => {
                 const tarihStr = card.getAttribute('data-tarih');
                 const pDate = new Date(tarihStr);
-                
-                // .NET 'o' formatı (ISO 8601) gönderdiği için JS Date() bunu doğru anlar.
-                // Timezone farkını manuel eklemeye gerek yok, (now - pDate) ms cinsinden mutlak farktır.
                 const diffMs = now - pDate;
-                if(diffMs < 0) return;
+                if (diffMs < 0) {
+                    return;
+                }
 
                 const diffSec = Math.floor(diffMs / 1000);
                 const mins = Math.floor(diffSec / 60);
                 const secs = diffSec % 60;
-                
-                card.querySelector('.timer-text').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                card.classList.remove('ticket-danger');
 
-                if (diffMs > (5 * 60 * 1000)) {
-                    card.classList.add('ticket-danger');
+                const timerText = card.querySelector('.timer-text');
+                if (timerText) {
+                    timerText.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                 }
+
+                card.classList.toggle('kds-danger', diffMs > dangerThresholdMs);
             });
         }
-        
+
         setInterval(updateTimers, 1000);
+        loadRuntimeSettings();
         updateTimers();
 
         let refreshTimer = null;
         let lastRefreshAt = 0;
         let refreshInFlight = false;
 
-        async function softRefreshKdsGrid() {
-            if (refreshInFlight) return;
-            refreshInFlight = true;
+        async function softRefreshKdsPanel() {
+            if (refreshInFlight) {
+                return;
+            }
 
+            refreshInFlight = true;
             try {
                 const res = await fetch(window.location.pathname, {
                     cache: 'no-store',
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
-                if (!res.ok) throw new Error('KDS verisi alınamadı.');
+
+                if (!res.ok) {
+                    throw new Error('KDS verisi alınamadı.');
+                }
 
                 const html = await res.text();
                 const doc = new DOMParser().parseFromString(html, 'text/html');
-                const yeniGrid = doc.getElementById('kdsGrid');
-                const mevcutGrid = document.getElementById('kdsGrid');
+                const yeniPanel = doc.getElementById('kdsPanelRoot');
+                const mevcutPanel = document.getElementById('kdsPanelRoot');
 
-                if (yeniGrid && mevcutGrid) {
-                    mevcutGrid.innerHTML = yeniGrid.innerHTML;
+                if (yeniPanel && mevcutPanel) {
+                    mevcutPanel.innerHTML = yeniPanel.innerHTML;
+                    loadRuntimeSettings();
                     updateTimers();
                 }
             } catch (err) {
@@ -289,53 +341,75 @@
             const elapsed = Date.now() - lastRefreshAt;
             const waitMs = Math.max(delayMs, minIntervalMs - elapsed);
 
-            if (refreshTimer) return;
+            if (refreshTimer) {
+                return;
+            }
 
             refreshTimer = setTimeout(async () => {
                 refreshTimer = null;
                 lastRefreshAt = Date.now();
-                await softRefreshKdsGrid();
+                await softRefreshKdsPanel();
             }, Math.max(0, waitMs));
         }
 
         async function durumGuncelle(siparisId, durum) {
-            const payload = { yeniDurum: durum };
-            const res = await fetch(`/Mutfak/DurumGuncelle/${siparisId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if(data.success) {
-                // SignalR zaten tetiklendiği için reload yeterli veya otomatik yenilenir
-                scheduleSoftRefresh(100);
-            } else {
-                alert("Durum güncellenirken hata: " + data.message);
+            try {
+                const payload = { yeniDurum: durum };
+                const res = await fetch(`/Mutfak/DurumGuncelle/${siparisId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    scheduleSoftRefresh(100);
+                } else {
+                    alert('Durum güncellenirken hata: ' + data.message);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Durum güncellenirken beklenmeyen bir hata oluştu.');
             }
         }
 
-        // SignalR Entegrasyonu
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/hubs/order")
+            .withUrl('/hubs/order')
             .withAutomaticReconnect()
             .build();
 
-        connection.on("SiparisGeldi", function () {
-            document.getElementById('bellSound').play().catch(e => console.log('Ses çalma hatası:', e));
+        function playBell() {
+            try {
+                if (localStorage.getItem('kdsEnableSound') === '0') {
+                    return;
+                }
+            } catch (e) {
+                // localStorage erişilemiyorsa ses varsayılan açık kalır
+            }
+
+            const bell = document.getElementById('bellSound');
+            if (bell) {
+                bell.play().catch(e => console.log('Ses çalma hatası:', e));
+            }
+        }
+
+        connection.on('SiparisGeldi', function () {
+            playBell();
             scheduleSoftRefresh(900);
         });
 
-        connection.on("SiparisEklendi", function () {
-            document.getElementById('bellSound').play().catch(e => console.log('Ses çalma hatası:', e));
+        connection.on('SiparisEklendi', function () {
+            playBell();
             scheduleSoftRefresh(900);
         });
 
-        connection.on("SiparisGuncellendi", function () {
+        connection.on('SiparisGuncellendi', function () {
             scheduleSoftRefresh(500);
         });
 
-        connection.start().then(() => {
-            console.log("KDS Bağlantısı başarılı.");
-        }).catch(err => console.error("SignalR KDS Hatası:", err));
+        connection
+            .start()
+            .then(() => console.log('KDS bağlantısı başarılı.'))
+            .catch(err => console.error('SignalR KDS hatası:', err));
     </script>
 }

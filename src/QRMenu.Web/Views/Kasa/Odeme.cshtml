@@ -1,231 +1,721 @@
 @model QRMenu.Core.Entities.Masa
 @{
-    Layout = "~/Views/Shared/_AdminLayout.cshtml";
-    ViewData["Title"] = $"Masa {Model.MasaNo} Tahsilat Ekranı";
+    Layout = "~/Views/Shared/_KasaLayout.cshtml";
+    ViewData["Title"] = $"Masa {Model.MasaNo} Tahsilat Detayı";
     ViewData["ActivePage"] = "KasaMasalar";
-    ViewData["PageTitle"] = $"Masa {Model.MasaNo} Tahsilat";
+    ViewData["PageTitle"] = "Tahsilat Detayı";
 
-    var siparisler = ViewBag.AktifSiparisler as List<QRMenu.Core.Entities.Siparis>;
+    var siparisler = ViewBag.AktifSiparisler as List<QRMenu.Core.Entities.Siparis> ?? new List<QRMenu.Core.Entities.Siparis>();
+    var toplamBekleyenKalem = siparisler.Sum(s => s.SiparisDetaylar.Count(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal));
 }
 
-<style>
-    .kasa-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #fff;
-        padding: 16px 24px;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        margin-bottom: 24px;
-    }
-    .kasa-header h4 { font-family: sans-serif; letter-spacing: -0.5px; }
-    .kasa-item-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 16px 24px;
-        background: #fff;
-        border-radius: 8px;
-        margin-bottom: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-        border: 1px solid #f1f5f9;
-        transition: border-color 0.2s;
-    }
-    .kasa-item-row.selected {
-        border-color: #3b82f6;
-        background: #eff6ff;
-    }
-    .kasa-checkbox {
-        width: 24px;
-        height: 24px;
-        cursor: pointer;
-        margin-right: 16px;
-    }
-    .kasa-footer {
-        position: sticky;
-        bottom: 0;
-        background: #fff;
-        padding: 20px 24px;
-        border-top: 2px solid #e2e8f0;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        z-index: 10;
-    }
-    .tutar-display {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: #2c3e50;
-    }
-</style>
+@section Styles {
+    <style>
+        .odeme-root {
+            height: 100%;
+            min-height: 0;
+            overflow: hidden;
+            background: #f8f6f5;
+        }
 
-<div class="kasa-header">
-    <a href="/Kasa/Masalar" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left"></i> Geri
-    </a>
-    <h4 class="mb-0 fw-bold text-dark">Masa @Model.MasaNo Tahsilatı</h4>
-    <button class="btn btn-outline-primary" type="button" onclick="tumunuSec()">
-        Tümünü Seç
-    </button>
-</div>
+        .odeme-shell {
+            height: 100%;
+            min-height: 0;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            gap: 1rem;
+            padding: 1rem 1.25rem 1.25rem;
+        }
 
-<div id="odemeListesi" style="margin-bottom: 100px;">
-    @if (siparisler != null && siparisler.Any())
-    {
-        bool odenecekVarMi = false;
+        .odeme-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            flex-wrap: wrap;
+            border-radius: 1rem;
+            border: 1px solid rgba(173, 171, 168, .5);
+            background: rgba(255, 255, 255, .86);
+            backdrop-filter: blur(4px);
+            padding: .85rem 1rem;
+        }
 
-        foreach(var siparis in siparisler)
-        {
-            var bekleyenDetaylar = siparis.SiparisDetaylar
-                .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal)
-                .ToList();
+        .odeme-toolbar-title {
+            margin: 0;
+            font-size: clamp(1.25rem, 1.7vw, 1.6rem);
+            font-weight: 900;
+            letter-spacing: -.02em;
+            color: #2e2f2f;
+        }
 
-            var siparisBazToplam = siparis.SiparisDetaylar
-                .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
-                .Sum(sd => sd.Adet * sd.BirimFiyat);
-            var indirimOrani = siparisBazToplam > 0 ? (siparis.ToplamTutar / siparisBazToplam) : 1m;
+        .odeme-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            border-radius: .7rem;
+            padding: .45rem .7rem;
+            background: #f2f0f0;
+            color: #5c5b5b;
+            font-size: .78rem;
+            font-weight: 700;
+        }
 
-            if (bekleyenDetaylar.Any())
-            {
-                odenecekVarMi = true;
-                <div class="mb-4">
-                    <h6 class="text-muted fw-bold mb-2 ms-2">Adisyon #@siparis.Id - @siparis.OlusturmaTarihi.ToString("HH:mm")</h6>
-                    
-                    @if (!string.IsNullOrEmpty(siparis.Notlar) && siparis.Notlar.Contains("🎉 Happy Hour"))
-                    {
-                        var hhNot = siparis.Notlar.Split('|')[0].Trim();
-                        <div style="background:#fff3cd; color:#856404; padding:8px 12px; border-radius:6px; margin:0 8px 12px 8px; font-weight:bold; font-size:0.9rem;">
-                            <i class="bi bi-gift-fill"></i> @hhNot
-                        </div>
-                    }
+        .odeme-grid {
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+            gap: 1rem;
+            align-items: stretch;
+        }
 
-                    @foreach(var detay in bekleyenDetaylar)
-                    {
-                        var satirTutar = (detay.Adet * detay.BirimFiyat) * indirimOrani;
-                        <label class="kasa-item-row">
-                            <div class="d-flex align-items-center">
-                                <input type="checkbox" class="kasa-checkbox urun-check" value="@detay.Id" data-fiyat="@satirTutar.ToString().Replace(",", ".")" onchange="hesapla()" />
-                                <div>
-                                    <div class="fw-bold fs-5 text-dark">@detay.Adet x @detay.Urun.Ad</div>
-                                    @if (!string.IsNullOrEmpty(detay.SeciliOpsiyonlar) && detay.SeciliOpsiyonlar != "[]")
-                                    {
-                                        var optStr = "";
-                                        try {
-                                            var opsJson = System.Text.Json.JsonDocument.Parse(detay.SeciliOpsiyonlar);
-                                            var opsList = new System.Collections.Generic.List<string>();
-                                            foreach(var ops in opsJson.RootElement.EnumerateArray()) {
-                                                opsList.Add(ops.GetProperty("Ad").GetString() ?? "");
-                                            }
-                                            optStr = string.Join(", ", opsList);
-                                        } catch {}
-                                        <div class="text-muted" style="font-size:0.85rem;">@optStr</div>
-                                    }
-                                    <div style="font-size:0.8rem; color:#888;">Durum: @detay.Durum</div>
-                                </div>
-                            </div>
-                            <div class="fw-bold fs-5">@satirTutar.ToString("N2") TL</div>
-                        </label>
-                    }
-                </div>
+        .odeme-left,
+        .odeme-right {
+            min-height: 0;
+        }
+
+        .odeme-left {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            gap: .75rem;
+        }
+
+        .odeme-list-wrap {
+            min-height: 0;
+            overflow-y: auto;
+            padding-right: .2rem;
+            display: flex;
+            flex-direction: column;
+            gap: .8rem;
+        }
+
+        .odeme-list-wrap::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .odeme-list-wrap::-webkit-scrollbar-thumb {
+            background: #d5d4d4;
+            border-radius: 999px;
+        }
+
+        .adisyon-block {
+            border-radius: .95rem;
+            border: 1px solid #ede7e3;
+            background: #fff;
+            padding: .85rem;
+        }
+
+        .adisyon-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .6rem;
+            padding: .1rem .2rem .6rem;
+        }
+
+        .adisyon-title {
+            margin: 0;
+            font-size: .88rem;
+            font-weight: 800;
+            color: #5c5b5b;
+            letter-spacing: .02em;
+        }
+
+        .adisyon-hh {
+            border-radius: 999px;
+            font-size: .67rem;
+            font-weight: 800;
+            padding: .25rem .55rem;
+            background: #fff4d6;
+            color: #8a6300;
+            border: 1px solid #f4d487;
+            white-space: nowrap;
+        }
+
+        .odeme-item-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .65rem;
+            border-radius: .85rem;
+            border: 1px solid #ece8e5;
+            background: #ffffff;
+            padding: .72rem .8rem;
+            margin-bottom: .55rem;
+            transition: border-color .2s ease, background-color .2s ease, transform .2s ease;
+            cursor: pointer;
+        }
+
+        .odeme-item-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .odeme-item-row:hover {
+            border-color: #d8cfc9;
+        }
+
+        .odeme-item-row.selected {
+            border-color: rgba(162, 55, 24, 0.45);
+            background: #fff8f5;
+            transform: translateY(-1px);
+        }
+
+        .odeme-item-main {
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: .7rem;
+            flex: 1;
+        }
+
+        .odeme-check {
+            width: 1.1rem;
+            height: 1.1rem;
+            margin: 0;
+            accent-color: #a23718;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .odeme-item-icon {
+            width: 2.6rem;
+            height: 2.6rem;
+            border-radius: .72rem;
+            background: #f3efed;
+            color: #6d4d39;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .odeme-item-name {
+            margin: 0;
+            font-size: .98rem;
+            font-weight: 800;
+            color: #2e2f2f;
+            line-height: 1.2;
+        }
+
+        .odeme-item-meta {
+            margin-top: .24rem;
+            display: flex;
+            gap: .4rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .meta-pill {
+            border-radius: 999px;
+            font-size: .65rem;
+            font-weight: 800;
+            letter-spacing: .02em;
+            padding: .16rem .5rem;
+            background: #f2f0f0;
+            color: #5c5b5b;
+            white-space: nowrap;
+        }
+
+        .meta-pill.status {
+            background: #edf2ff;
+            color: #3556ac;
+        }
+
+        .odeme-item-options {
+            margin-top: .25rem;
+            font-size: .73rem;
+            color: #7a7979;
+            line-height: 1.3;
+        }
+
+        .odeme-item-price {
+            font-size: 1rem;
+            font-weight: 900;
+            color: #2e2f2f;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .odeme-right {
+            display: grid;
+            grid-template-rows: minmax(0, 1fr) auto;
+            gap: .85rem;
+        }
+
+        .tahsilat-card {
+            min-height: 0;
+            overflow-y: auto;
+            border-radius: 1.1rem;
+            border: 1px solid #eee7e3;
+            background: #fff;
+            box-shadow: 0 10px 22px rgba(46, 47, 47, 0.06);
+            padding: 1rem;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: .5rem;
+            font-size: .9rem;
+            color: #5c5b5b;
+            margin-bottom: .5rem;
+        }
+
+        .summary-row strong {
+            color: #2e2f2f;
+            font-weight: 700;
+        }
+
+        .summary-total {
+            margin-top: .7rem;
+            border-top: 1px dashed rgba(173, 171, 168, 0.6);
+            padding-top: .75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: .7rem;
+        }
+
+        .summary-total-label {
+            margin: 0;
+            font-size: .66rem;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: #777776;
+            font-weight: 800;
+        }
+
+        .summary-total-value {
+            margin: .1rem 0 0;
+            font-size: clamp(1.7rem, 2.6vw, 2.2rem);
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: -.02em;
+            color: #2e2f2f;
+        }
+
+        .summary-state {
+            border-radius: 999px;
+            padding: .3rem .62rem;
+            background: rgba(162, 55, 24, 0.1);
+            color: #8f2d10;
+            font-size: .65rem;
+            font-weight: 900;
+            letter-spacing: .04em;
+            white-space: nowrap;
+            text-transform: uppercase;
+        }
+
+        .odeme-tip-grid {
+            margin-top: .95rem;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .55rem;
+        }
+
+        .odeme-tip-btn {
+            border: 1px solid #e7dfda;
+            border-radius: .82rem;
+            background: #fff;
+            color: #2e2f2f;
+            padding: .75rem .4rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: .2rem;
+            font-size: .78rem;
+            font-weight: 800;
+            transition: all .2s ease;
+        }
+
+        .odeme-tip-btn:hover {
+            border-color: #d2c4bb;
+            background: #fdf9f7;
+        }
+
+        .odeme-tip-btn.is-active {
+            background: #a23718;
+            color: #ffefec;
+            border-color: #a23718;
+            box-shadow: 0 8px 16px rgba(162, 55, 24, 0.2);
+        }
+
+        .tahsilat-submit {
+            width: 100%;
+            margin-top: .9rem;
+            border: 0;
+            border-radius: .85rem;
+            background: #a23718;
+            color: #ffefec;
+            font-size: .92rem;
+            font-weight: 900;
+            letter-spacing: .02em;
+            padding: .95rem .8rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .25rem;
+            transition: opacity .2s ease, transform .2s ease;
+        }
+
+        .tahsilat-submit:hover {
+            opacity: .92;
+            transform: translateY(-1px);
+        }
+
+        .tahsilat-submit:disabled {
+            opacity: .45;
+            transform: none;
+            cursor: not-allowed;
+        }
+
+        .empty-box {
+            border-radius: 1rem;
+            border: 2px dashed #d7d5d3;
+            background: #f9f7f6;
+            min-height: 240px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 1rem;
+            color: #6a6969;
+            font-weight: 700;
+        }
+
+        @@media (max-width: 1200px) {
+            .odeme-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .odeme-right {
+                grid-template-rows: auto auto;
+            }
+
+            .tahsilat-card {
+                overflow: visible;
             }
         }
 
-        if (!odenecekVarMi)
-        {
-            <div class="text-center py-5">
-                <i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i>
-                <h5 class="mt-3 text-muted">Açık hesap bulunmuyor, tüm ürünler ödenmiş.</h5>
-            </div>
-        }
-    }
-    else
-    {
-        <div class="text-center py-5">
-            <h5 class="mt-3 text-muted">Bu masaya ait aktif sipariş bulunmuyor.</h5>
-        </div>
-    }
-</div>
+        @@media (max-width: 768px) {
+            .odeme-shell {
+                padding: .75rem;
+                gap: .75rem;
+            }
 
-<div class="kasa-footer">
-    <div>
-        <div class="text-muted fw-bold mb-1">Seçilen Tutar</div>
-        <div class="tutar-display" id="secilenTutarTxt">0.00 TL</div>
+            .odeme-toolbar {
+                padding: .75rem;
+            }
+
+            .odeme-item-row {
+                padding: .65rem;
+            }
+
+            .odeme-item-icon {
+                width: 2.25rem;
+                height: 2.25rem;
+            }
+        }
+    </style>
+}
+
+<section class="odeme-root">
+    <div class="odeme-shell">
+        <header class="odeme-toolbar">
+            <div class="flex items-center gap-2 flex-wrap">
+                <a href="/Kasa/Masalar" class="inline-flex items-center gap-2 rounded-xl px-3 py-2 bg-surface-container-low text-on-surface hover:bg-surface-container-high text-sm font-bold transition-colors">
+                    <span class="material-symbols-outlined text-base">arrow_back</span>
+                    <span>Masalara Dön</span>
+                </a>
+                <h2 class="odeme-toolbar-title">Tahsilat Detayı</h2>
+                <span class="odeme-chip">
+                    <span class="material-symbols-outlined text-sm">restaurant_menu</span>
+                    <span>Masa @Model.MasaNo</span>
+                </span>
+            </div>
+            <button type="button" class="inline-flex items-center gap-2 rounded-xl px-3 py-2 bg-secondary-container text-on-secondary-container hover:opacity-90 text-sm font-bold transition-opacity" onclick="tumunuSec()">
+                <span class="material-symbols-outlined text-base">select_all</span>
+                <span>Tümünü Seç</span>
+            </button>
+        </header>
+
+        <div class="odeme-grid">
+            <section class="odeme-left">
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                    <h3 class="text-xl font-black tracking-tight text-on-surface">Ürün Listesi</h3>
+                    <span class="text-sm font-semibold text-on-surface-variant"><span id="seciliKalemSayisi">0</span> / @toplamBekleyenKalem kalem seçildi</span>
+                </div>
+
+                <div class="odeme-list-wrap">
+                    @if (siparisler.Any() && toplamBekleyenKalem > 0)
+                    {
+                        foreach (var siparis in siparisler)
+                        {
+                            var bekleyenDetaylar = siparis.SiparisDetaylar
+                                .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal)
+                                .ToList();
+
+                            if (!bekleyenDetaylar.Any())
+                            {
+                                continue;
+                            }
+
+                            var siparisBazToplam = siparis.SiparisDetaylar
+                                .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
+                                .Sum(sd => sd.Adet * sd.BirimFiyat);
+
+                            var indirimOrani = siparisBazToplam > 0 ? (siparis.ToplamTutar / siparisBazToplam) : 1m;
+
+                            <article class="adisyon-block">
+                                <div class="adisyon-head">
+                                    <p class="adisyon-title">Adisyon #@siparis.Id • @siparis.OlusturmaTarihi.ToString("HH:mm")</p>
+                                    @if (!string.IsNullOrWhiteSpace(siparis.Notlar) && siparis.Notlar.Contains("🎉 Happy Hour"))
+                                    {
+                                        var hhNot = siparis.Notlar.Split('|')[0].Trim();
+                                        <span class="adisyon-hh">@hhNot</span>
+                                    }
+                                </div>
+
+                                @foreach (var detay in bekleyenDetaylar)
+                                {
+                                    var satirTutar = (detay.Adet * detay.BirimFiyat) * indirimOrani;
+                                    var seciliOpsiyonMetni = "";
+
+                                    if (!string.IsNullOrWhiteSpace(detay.SeciliOpsiyonlar) && detay.SeciliOpsiyonlar != "[]")
+                                    {
+                                        try
+                                        {
+                                            var opsJson = System.Text.Json.JsonDocument.Parse(detay.SeciliOpsiyonlar);
+                                            var opsList = new System.Collections.Generic.List<string>();
+                                            foreach (var ops in opsJson.RootElement.EnumerateArray())
+                                            {
+                                                opsList.Add(ops.GetProperty("Ad").GetString() ?? "");
+                                            }
+                                            seciliOpsiyonMetni = string.Join(", ", opsList.Where(x => !string.IsNullOrWhiteSpace(x)));
+                                        }
+                                        catch
+                                        {
+                                            seciliOpsiyonMetni = "";
+                                        }
+                                    }
+
+                                    <label class="odeme-item-row">
+                                        <div class="odeme-item-main">
+                                            <input type="checkbox"
+                                                   class="odeme-check urun-check"
+                                                   value="@detay.Id"
+                                                   data-fiyat="@satirTutar.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                   onchange="hesapla()" />
+
+                                            <div class="odeme-item-icon">
+                                                <span class="material-symbols-outlined">restaurant</span>
+                                            </div>
+
+                                            <div class="min-w-0">
+                                                <p class="odeme-item-name">@detay.Urun?.Ad</p>
+                                                <div class="odeme-item-meta">
+                                                    <span class="meta-pill">@detay.Adet ADET</span>
+                                                    <span class="meta-pill status">@detay.Durum</span>
+                                                </div>
+                                                @if (!string.IsNullOrWhiteSpace(seciliOpsiyonMetni))
+                                                {
+                                                    <p class="odeme-item-options">@seciliOpsiyonMetni</p>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="odeme-item-price">@satirTutar.ToString("N2") TL</div>
+                                    </label>
+                                }
+                            </article>
+                        }
+                    }
+                    else
+                    {
+                        <div class="empty-box">
+                            Bu masaya ait açık hesap bulunmuyor.
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <aside class="odeme-right">
+                <div class="tahsilat-card">
+                    <h3 class="text-lg font-black tracking-tight text-on-surface mb-3">Tahsilat Özeti</h3>
+
+                    <div class="summary-row">
+                        <span>Ara Toplam</span>
+                        <strong id="araToplamTxt">0,00 TL</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>KDV (%10)</span>
+                        <strong id="kdvToplamTxt">0,00 TL</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>İndirim</span>
+                        <strong id="indirimToplamTxt">0,00 TL</strong>
+                    </div>
+
+                    <div class="summary-total">
+                        <div>
+                            <p class="summary-total-label">Ödenecek Tutar</p>
+                            <p class="summary-total-value" id="secilenTutarTxt">0,00 TL</p>
+                        </div>
+                        <span class="summary-state">Beklemede</span>
+                    </div>
+
+                    <div class="odeme-tip-grid">
+                        <button type="button" id="btnTipNakit" class="odeme-tip-btn" onclick="seciliOdemeTipiDegistir('Nakit')">
+                            <span class="material-symbols-outlined text-[28px]">payments</span>
+                            <span>Nakit</span>
+                        </button>
+                        <button type="button" id="btnTipKart" class="odeme-tip-btn" onclick="seciliOdemeTipiDegistir('Kart')">
+                            <span class="material-symbols-outlined text-[28px]">credit_card</span>
+                            <span>Kredi Kartı</span>
+                        </button>
+                    </div>
+
+                    <button type="button" class="tahsilat-submit" id="btnTahsilat" onclick="odemeYap()" disabled>
+                        <span>TAHSİLAT GİRİŞİ YAP</span>
+                        <span class="material-symbols-outlined text-base">chevron_right</span>
+                    </button>
+                </div>
+            </aside>
+        </div>
     </div>
-    <div class="d-flex gap-3">
-        <button class="btn btn-warning btn-lg fw-bold px-4 position-relative" id="btnNakit" onclick="odemeYap('Nakit')" disabled>
-            <i class="bi bi-cash-stack"></i> Nakit
-        </button>
-        <button class="btn btn-primary btn-lg fw-bold px-4" id="btnKredi" onclick="odemeYap('Kart')" disabled>
-            <i class="bi bi-credit-card"></i> Kredi Kartı
-        </button>
-    </div>
-</div>
+</section>
 
 @section Scripts {
     <script>
+        let seciliOdemeTipi = 'Nakit';
+
+        function formatTl(value) {
+            return Number(value || 0).toLocaleString('tr-TR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }) + ' TL';
+        }
+
+        function seciliOdemeTipiDegistir(tip) {
+            seciliOdemeTipi = tip;
+
+            const btnNakit = document.getElementById('btnTipNakit');
+            const btnKart = document.getElementById('btnTipKart');
+
+            if (btnNakit) {
+                btnNakit.classList.toggle('is-active', tip === 'Nakit');
+            }
+
+            if (btnKart) {
+                btnKart.classList.toggle('is-active', tip === 'Kart');
+            }
+        }
+
         function hesapla() {
             let toplam = 0;
-            const checks = document.querySelectorAll('.urun-check');
             let secilenSayisi = 0;
 
-            checks.forEach(check => {
-                const row = check.closest('.kasa-item-row');
+            document.querySelectorAll('.urun-check').forEach(check => {
+                const row = check.closest('.odeme-item-row');
+                const fiyat = Number.parseFloat(check.getAttribute('data-fiyat') || '0');
+
                 if (check.checked) {
-                    toplam += parseFloat(check.getAttribute('data-fiyat'));
-                    row.classList.add('selected');
-                    secilenSayisi++;
-                } else {
+                    secilenSayisi += 1;
+                    toplam += Number.isFinite(fiyat) ? fiyat : 0;
+                    if (row) {
+                        row.classList.add('selected');
+                    }
+                } else if (row) {
                     row.classList.remove('selected');
                 }
             });
 
-            document.getElementById('secilenTutarTxt').innerText = toplam.toFixed(2) + ' TL';
+            const araToplam = toplam / 1.10;
+            const kdvToplam = toplam - araToplam;
 
-            const disableBtns = secilenSayisi === 0;
-            document.getElementById('btnNakit').disabled = disableBtns;
-            document.getElementById('btnKredi').disabled = disableBtns;
+            const secilenTutarTxt = document.getElementById('secilenTutarTxt');
+            const araToplamTxt = document.getElementById('araToplamTxt');
+            const kdvToplamTxt = document.getElementById('kdvToplamTxt');
+            const indirimToplamTxt = document.getElementById('indirimToplamTxt');
+            const seciliKalemSayisi = document.getElementById('seciliKalemSayisi');
+            const btnTahsilat = document.getElementById('btnTahsilat');
+
+            if (secilenTutarTxt) {
+                secilenTutarTxt.innerText = formatTl(toplam);
+            }
+            if (araToplamTxt) {
+                araToplamTxt.innerText = formatTl(araToplam);
+            }
+            if (kdvToplamTxt) {
+                kdvToplamTxt.innerText = formatTl(kdvToplam);
+            }
+            if (indirimToplamTxt) {
+                indirimToplamTxt.innerText = formatTl(0);
+            }
+            if (seciliKalemSayisi) {
+                seciliKalemSayisi.innerText = String(secilenSayisi);
+            }
+            if (btnTahsilat) {
+                btnTahsilat.disabled = secilenSayisi === 0;
+            }
         }
 
         function tumunuSec() {
-            const checks = document.querySelectorAll('.urun-check');
-            let hepsiSecili = Array.from(checks).every(c => c.checked);
+            const checks = Array.from(document.querySelectorAll('.urun-check'));
+            if (!checks.length) {
+                return;
+            }
 
+            const hepsiSecili = checks.every(c => c.checked);
             checks.forEach(c => {
-                c.checked = !hepsiSecili; // Eğer hepsi seçiliyse kaldır, değilse tümünü seç
+                c.checked = !hepsiSecili;
             });
+
             hesapla();
         }
 
-        async function odemeYap(tip) {
-            const checks = document.querySelectorAll('.urun-check:checked');
-            if (checks.length === 0) return;
+        async function odemeYap() {
+            const seciliChecks = Array.from(document.querySelectorAll('.urun-check:checked'));
+            if (!seciliChecks.length) {
+                return;
+            }
 
-            const selectedIds = Array.from(checks).map(c => parseInt(c.value));
-            
-            document.getElementById('btnNakit').disabled = true;
-            document.getElementById('btnKredi').disabled = true;
+            const btnTahsilat = document.getElementById('btnTahsilat');
+            if (btnTahsilat) {
+                btnTahsilat.disabled = true;
+            }
 
             const payload = {
                 masaId: @Model.Id,
-                siparisDetayIds: selectedIds,
-                odemeTipi: tip
+                siparisDetayIds: seciliChecks.map(c => Number.parseInt(c.value, 10)),
+                odemeTipi: seciliOdemeTipi
             };
 
-            const response = await fetch('/Kasa/TahsilatYap', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            try {
+                const response = await fetch('/Kasa/TahsilatYap', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-            const result = await response.json();
-            if (result.success) {
-                location.reload();
-            } else {
-                alert("Tahsilat hatası: " + result.message);
-                hesapla(); // Butonları yeniden aktif etmek için
+                const result = await response.json();
+                if (result.success) {
+                    location.reload();
+                    return;
+                }
+
+                alert('Tahsilat hatası: ' + (result.message || 'Bilinmeyen hata'));
+                hesapla();
+            } catch (err) {
+                alert('Tahsilat sırasında bağlantı hatası oluştu.');
+                hesapla();
             }
         }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            seciliOdemeTipiDegistir(seciliOdemeTipi);
+            hesapla();
+        });
     </script>
 }

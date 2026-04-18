@@ -79,7 +79,26 @@
 
 @section PageStyles {
     <style>
-        .durum-chip { border-radius: 9999px; padding: 4px 10px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+        .durum-chip {
+            border-radius: 9999px;
+            padding: 4px 8px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.1;
+        }
+
+        .urun-ozet {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
         .durum-Onaylandi { background: #e0f2fe; color: #0369a1; }
         .durum-Hazirlaniyor { background: #dbeafe; color: #1d4ed8; }
         .durum-Hazir { background: #fff7ed; color: #c2410c; }
@@ -266,12 +285,12 @@
                 <table class="w-full table-fixed text-left border-collapse">
                     <thead>
                         <tr class="bg-surface-container-low/50">
-                            <th class="w-[7%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">#</th>
-                            <th class="w-[39%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Ürünler</th>
-                            <th class="w-[14%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Tutar</th>
-                            <th class="w-[14%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Durum</th>
-                            <th class="w-[10%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Saat</th>
-                            <th class="w-[16%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em] text-right">İşlem</th>
+                            <th class="w-[6%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">#</th>
+                            <th class="w-[32%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Ürünler</th>
+                            <th class="w-[12%] px-3 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Tutar</th>
+                            <th class="w-[13%] px-3 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Durum</th>
+                            <th class="w-[9%] px-3 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Saat</th>
+                            <th class="w-[28%] px-3 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em] text-right">İşlem</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-surface-container/30">
@@ -297,24 +316,24 @@
 
                                 <tr class="hover:bg-surface-container-low/50 cursor-pointer" onclick="siparisDetayAc(@s.Id)">
                                     <td class="px-4 py-3 font-bold text-sm">#@s.Id</td>
-                                    <td class="px-4 py-3 text-sm line-clamp-1">@detayOzet</td>
-                                    <td class="px-4 py-3 font-semibold text-sm">@s.ToplamTutar.ToString("N2") TL</td>
-                                    <td class="px-4 py-3"><span class="durum-chip durum-@s.Durum">@DurumLabel(s.Durum.ToString())</span></td>
-                                    <td class="px-4 py-3 text-sm">@toTR(s.OlusturmaTarihi)</td>
-                                    <td class="px-4 py-3">
+                                    <td class="px-4 py-3 text-sm"><span class="urun-ozet">@detayOzet</span></td>
+                                    <td class="px-3 py-3 font-semibold text-sm whitespace-nowrap">@s.ToplamTutar.ToString("N2") TL</td>
+                                    <td class="px-3 py-3"><span class="durum-chip durum-@s.Durum">@DurumLabel(s.Durum.ToString())</span></td>
+                                    <td class="px-3 py-3 text-sm whitespace-nowrap">@toTR(s.OlusturmaTarihi)</td>
+                                    <td class="px-3 py-3">
                                         @{
                                             var teslimAktif = s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir;
                                             var iptalAktif = s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir || s.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi;
 
                                             var teslimClass = teslimAktif
-                                                ? "min-w-[112px] px-3.5 py-2 rounded-xl bg-sky-600 text-white text-sm font-extrabold tracking-tight hover:bg-sky-700 transition-colors"
-                                                : "min-w-[112px] px-3.5 py-2 rounded-xl bg-slate-100 text-slate-400 text-sm font-extrabold tracking-tight cursor-not-allowed";
+                                                ? "min-w-[96px] px-3 py-2 rounded-xl bg-sky-600 text-white text-[13px] font-extrabold tracking-tight hover:bg-sky-700 transition-colors whitespace-nowrap"
+                                                : "min-w-[96px] px-3 py-2 rounded-xl bg-slate-100 text-slate-400 text-[13px] font-extrabold tracking-tight cursor-not-allowed whitespace-nowrap";
 
                                             var iptalClass = iptalAktif
-                                                ? "min-w-[112px] px-3.5 py-2 rounded-xl border border-red-300 bg-red-50 text-red-700 text-sm font-extrabold tracking-tight hover:bg-red-100 transition-colors"
-                                                : "min-w-[112px] px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 text-sm font-extrabold tracking-tight cursor-not-allowed";
+                                                ? "min-w-[96px] px-3 py-2 rounded-xl border border-red-300 bg-red-50 text-red-700 text-[13px] font-extrabold tracking-tight hover:bg-red-100 transition-colors whitespace-nowrap"
+                                                : "min-w-[96px] px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 text-[13px] font-extrabold tracking-tight cursor-not-allowed whitespace-nowrap";
                                         }
-                                        <div class="flex items-center justify-end gap-2">
+                                        <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
                                             <button type="button"
                                                     class="@teslimClass"
                                                     disabled="@(!teslimAktif)"

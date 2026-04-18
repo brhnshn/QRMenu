@@ -26,6 +26,11 @@
     flex-direction: column;
 }
 
+.admin-topbar,
+.admin-content {
+    transition: left 0.3s ease, margin-left 0.3s ease;
+}
+
 .admin-sidebar .sidebar-brand {
     height: var(--topbar-height);
     display: flex; align-items: center; padding: 0 20px;
@@ -129,8 +134,19 @@
 }
 
 .topbar-toggle {
-    display: none; background: none; border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    border: none;
     font-size: 1.3rem; color: #333; cursor: pointer; margin-right: 12px;
+}
+
+.topbar-toggle:hover {
+    background: #e5e7eb;
 }
 
 .topbar-title { font-weight: 600; font-size: 1rem; color: #333; }
@@ -144,6 +160,22 @@
     transition: margin-left 0.3s ease;
 }
 
+/* ===== DESKTOP COLLAPSE ===== */
+html.admin-sidebar-collapsed .admin-sidebar,
+body.admin-sidebar-collapsed .admin-sidebar {
+    transform: translateX(-100%);
+}
+
+html.admin-sidebar-collapsed .admin-topbar,
+body.admin-sidebar-collapsed .admin-topbar {
+    left: 0;
+}
+
+html.admin-sidebar-collapsed .admin-content,
+body.admin-sidebar-collapsed .admin-content {
+    margin-left: 0;
+}
+
 /* ===== OVERLAY (mobil) ===== */
 .sidebar-overlay {
     display: none; position: fixed; inset: 0;
@@ -153,9 +185,17 @@
 /* ===== MOBİL ===== */
 @media (max-width: 768px) {
     .admin-sidebar { transform: translateX(-100%); }
-    .admin-sidebar.open { transform: translateX(0); }
+
+    html.admin-sidebar-open .admin-sidebar,
+    body.admin-sidebar-open .admin-sidebar {
+        transform: translateX(0);
+    }
+
     .admin-topbar { left: 0; }
     .admin-content { margin-left: 0; }
-    .topbar-toggle { display: block; }
-    .sidebar-overlay.open { display: block; }
+
+    html.admin-sidebar-open .sidebar-overlay,
+    body.admin-sidebar-open .sidebar-overlay {
+        display: block;
+    }
 }

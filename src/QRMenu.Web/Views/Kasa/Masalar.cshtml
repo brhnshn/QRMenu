@@ -1,323 +1,639 @@
+@using QRMenu.Core.Enums
 @model List<QRMenu.Core.Entities.Masa>
 @{
-    Layout = "~/Views/Shared/_AdminLayout.cshtml";
-    ViewData["Title"] = "Kasa Paneli";
+    Layout = "~/Views/Shared/_KasaLayout.cshtml";
+    ViewData["Title"] = "Kasa Yönetimi";
     ViewData["ActivePage"] = "KasaMasalar";
-    ViewData["PageTitle"] = "Kasa İşlemleri";
-    
-    var sonOdemeler = ViewBag.SonOdemeler as List<QRMenu.Core.Entities.Siparis>;
+    ViewData["PageTitle"] = "Kasa Yönetimi";
+
     var mutfakZamanEsigi = DateTime.UtcNow.AddHours(-24);
+    var nowUtc = DateTime.UtcNow;
+
+    var masaKartlari = Model
+        .OrderBy(m => m.MasaNo)
+        .Select(masa =>
+        {
+            var siparisler = masa.Siparisler
+                .Where(s => s.Durum != SiparisDurum.TamOdendi && s.Durum != SiparisDurum.Iptal && s.Durum != SiparisDurum.Iade)
+                .ToList();
+
+            var aktifDetayVarmi = siparisler.Any(s => s.SiparisDetaylar.Any(sd =>
+                sd.Durum != SiparisDurum.TamOdendi &&
+                sd.Durum != SiparisDurum.Iptal &&
+                sd.Durum != SiparisDurum.Iade));
+
+            var mutfaktaVarMi = siparisler.Any(s =>
+                s.OlusturmaTarihi >= mutfakZamanEsigi &&
+                (s.Durum == SiparisDurum.Onaylandi || s.Durum == SiparisDurum.Hazirlaniyor));
+
+            var garsondaVarMi = siparisler.Any(s => s.Durum == SiparisDurum.Hazir);
+
+            var odemeBekliyorMu = siparisler.Any(s =>
+                s.Durum == SiparisDurum.TeslimEdildi ||
+                s.Durum == SiparisDurum.KismiOdendi);
+
+            var kalanBakiye = siparisler.Sum(s =>
+            {
+                var bazToplam = s.SiparisDetaylar
+                    .Where(sd => sd.Durum != SiparisDurum.Iptal && sd.Durum != SiparisDurum.Iade)
+                    .Sum(sd => sd.Adet * sd.BirimFiyat);
+
+                var oran = bazToplam > 0 ? (s.ToplamTutar / bazToplam) : 1m;
+
+                return s.SiparisDetaylar
+                    .Where(sd => sd.Durum != SiparisDurum.TamOdendi &&
+                                 sd.Durum != SiparisDurum.Iptal &&
+                                 sd.Durum != SiparisDurum.Iade)
+                    .Sum(sd => (sd.Adet * sd.BirimFiyat) * oran);
+            });
+
+            var doluMu = aktifDetayVarmi && kalanBakiye > 0;
+
+            var enEskiSiparis = siparisler
+                .Select(s => (DateTime?)s.OlusturmaTarihi)
+                .OrderBy(t => t)
+                .FirstOrDefault();
+
+            var beklemeDakika = enEskiSiparis.HasValue
+                ? (int)Math.Max(0, (nowUtc - enEskiSiparis.Value).TotalMinutes)
+                : 0;
+
+            var bolgeAd = string.IsNullOrWhiteSpace(masa.Bolge?.Ad) ? "Salon" : masa.Bolge!.Ad;
+
+            var durumMetni = "Hazır";
+            if (doluMu)
+            {
+                if (odemeBekliyorMu)
+                {
+                    durumMetni = "Ödeme Bekliyor";
+                }
+                else if (garsondaVarMi)
+                {
+                    durumMetni = "Garsonda";
+                }
+                else if (mutfaktaVarMi)
+                {
+                    durumMetni = "Mutfakta";
+                }
+                else
+                {
+                    durumMetni = "Sipariş Var";
+                }
+            }
+
+            var acilMi = doluMu && beklemeDakika >= 40;
+
+            return new
+            {
+                MasaId = masa.Id,
+                MasaNo = masa.MasaNo,
+                BolgeAd = bolgeAd,
+                DoluMu = doluMu,
+                DurumMetni = durumMetni,
+                KalanBakiye = kalanBakiye,
+                BeklemeDakika = beklemeDakika,
+                AcilMi = acilMi,
+                OdemedeMi = odemeBekliyorMu,
+                MutfaktaMi = mutfaktaVarMi,
+                GarsondaMi = garsondaVarMi
+            };
+        })
+        .ToList();
+
+    var toplamOdemeBekleyen = masaKartlari.Count(x => x.DoluMu);
+    var bolgeChipleri = masaKartlari
+        .GroupBy(x => x.BolgeAd)
+        .Select(g => new
+        {
+            Bolge = g.Key,
+            Bekleyen = g.Count(x => x.DoluMu)
+        })
+        .OrderByDescending(x => x.Bekleyen)
+        .ThenBy(x => x.Bolge)
+        .ToList();
 }
 
 @section Styles {
-    <link href="~/css/admin-siparisler.css" rel="stylesheet" />
     <style>
-        :root {
-            --cash-bg-1: #f8fafc;
-            --cash-bg-2: #eef7ff;
-            --cash-border: #d7e5f6;
-            --cash-text: #0f172a;
-            --cash-muted: #64748b;
-        }
-
-        .admin-content {
-            background:
-                radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.12), transparent 30%),
-                radial-gradient(circle at 85% 85%, rgba(14, 165, 233, 0.12), transparent 36%),
-                linear-gradient(155deg, var(--cash-bg-1), var(--cash-bg-2));
-        }
-
-        .kasa-tabs {
-            background: rgba(255, 255, 255, 0.86);
-            border: 1px solid var(--cash-border);
-            backdrop-filter: blur(8px);
-            padding: 10px 20px 0;
-            border-radius: 16px;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-            margin-bottom: 24px;
-        }
-        .nav-tabs { border-bottom: none; }
-        .nav-link { 
-            border: none !important; 
-            font-weight: 700; 
-            color: #64748b; 
-            padding: 14px 24px; 
-            position: relative;
-            transition: all 0.2s;
-        }
-        .nav-link:hover { color: #0f172a; }
-        .nav-link.active { color: #3b82f6 !important; background: transparent !important; }
-        .nav-link.active::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 20%;
-            right: 20%;
-            height: 3px;
-            background: #3b82f6;
-            border-radius: 3px;
-        }
-
-        .kare-masa {
-            background: rgba(255, 255, 255, 0.94);
-            border-radius: 16px;
-            padding: 30px 20px;
-            text-align: center;
-            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-            color: var(--cash-text);
-            display: block;
-            border: 1px solid var(--cash-border);
-            position: relative;
-        }
-        .kare-masa:hover {
-            transform: translateY(-8px) scale(1.01);
-            box-shadow: 0 18px 34px rgba(15, 23, 42, 0.12);
-        }
-        .masa-dolu {
-            border-color: #f59e0b;
-            background: linear-gradient(180deg, #fff9ef, #fff5e6);
-        }
-        .masa-mutfak {
-            border-color: #3b82f6;
-            background: linear-gradient(180deg, #f5faff, #edf5ff);
-        }
-        .masa-garson {
-            border-color: #22c55e;
-            background: linear-gradient(180deg, #f4fff7, #e9fcef);
-        }
-        .masa-odeme {
-            border-color: #f59e0b;
-            background: linear-gradient(180deg, #fff9ef, #fff5e6);
-        }
-        .masa-bos {
-            border-color: #cbd5e1;
-            background: linear-gradient(180deg, #ffffff, #f8fafc);
-            opacity: 0.82;
-        }
-        
-        .masa-no { font-size: 1.5rem; font-weight: 900; color: var(--cash-text); margin-bottom: 8px; }
-        .masa-info { font-size: 0.9rem; font-weight: 700; color: var(--cash-muted); }
-        .masa-tutar { font-size: 1.1rem; font-weight: 800; color: #b45309; margin-top: 15px; }
-
-        .siparis-table-wrap {
-            border-radius: 16px;
+        .kasa-masalar-root {
+            height: 100%;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
-            border: 1px solid var(--cash-border);
-            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+            background: #f8f6f5;
         }
 
-        .siparis-table thead th {
-            background: #eff6ff;
-            color: var(--cash-text);
-            border-bottom: 1px solid var(--cash-border);
+        .kasa-main-scroll {
+            min-height: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow: hidden;
+            padding: 1rem 1.25rem;
         }
 
-        .siparis-table tbody tr {
-            background: rgba(255, 255, 255, 0.96);
+        .kasa-main-scroll::-webkit-scrollbar {
+            width: 8px;
         }
 
-        .siparis-table tbody tr:hover {
-            background: #f8fbff;
+        .kasa-main-scroll::-webkit-scrollbar-thumb {
+            background: #d5d4d4;
+            border-radius: 999px;
         }
 
-        @@media (max-width: 576px) {
-            .kare-masa {
-                padding: 20px 12px;
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .table-bento-grid {
+            display: grid;
+            grid-template-columns: repeat(1, minmax(0, 1fr));
+            gap: .85rem;
+            min-height: 0;
+            flex: 1;
+            align-content: start;
+            overflow: visible;
+        }
+
+        @@media (min-width: 768px) {
+            .table-bento-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
-            .masa-no {
-                font-size: 1.2rem;
+        }
+
+        @@media (min-width: 1024px) {
+            .table-bento-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
             }
+        }
+
+        @@media (min-width: 1280px) {
+            .table-bento-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+        }
+
+        .table-card {
+            height: 13.5rem;
+        }
+
+        .table-card.is-clickable {
+            cursor: pointer;
+        }
+
+        .table-card.is-clickable:focus-visible {
+            outline: 2px solid rgba(162, 55, 24, 0.4);
+            outline-offset: 2px;
+        }
+
+        @@media (max-width: 767px) {
+            .kasa-main-scroll {
+                padding: .75rem;
+            }
+
+            .table-card {
+                height: 12.5rem;
+            }
+        }
+
+        .kasa-main-footer {
+            margin-top: .25rem;
+            padding-top: .65rem;
+            padding-bottom: .2rem;
+        }
+
+        .kasa-pager-btn {
+            width: 2.6rem;
+            height: 2.6rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: .65rem;
+            background: #eae8e7;
+            color: #2e2f2f;
+            font-weight: 800;
+            border: 0;
+            transition: background-color .2s ease, color .2s ease, opacity .2s ease;
+        }
+
+        .kasa-pager-btn:hover {
+            background: #dedcdc;
+        }
+
+        .kasa-pager-btn.is-active {
+            background: #765600;
+            color: #fff;
+        }
+
+        .kasa-pager-btn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
         }
     </style>
 }
 
-<div class="kasa-tabs">
-    <ul class="nav nav-tabs" id="kasaTab" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="bekleyen-tab" data-bs-toggle="tab" data-bs-target="#bekleyen" type="button" role="tab">
-                <i class="bi bi-hourglass-split"></i> Bekleyen Masalar
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="odenen-tab" data-bs-toggle="tab" data-bs-target="#odenen" type="button" role="tab">
-                <i class="bi bi-check-all"></i> Ödenen Siparişler
-            </button>
-        </li>
-    </ul>
-</div>
-
-@if (ViewBag.ConnectionWarning != null)
-{
-    <div class="alert alert-warning d-flex align-items-center" role="alert" style="border-radius: 12px;">
-        <i class="bi bi-wifi-off me-2"></i>
-        <span>@ViewBag.ConnectionWarning</span>
-    </div>
-}
-
 <audio id="kasaBellSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
 
-<div class="tab-content" id="kasaTabContent">
-    <!-- BEKLEYEN MASALAR TAB -->
-    <div class="tab-pane fade show active" id="bekleyen" role="tabpanel">
-        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-4">
-            @foreach(var masa in Model.OrderBy(m => m.MasaNo))
-            {
-                var siparisler = masa.Siparisler.Where(s => s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade).ToList();
-                var aktifDetayVarmi = siparisler.Any(s => s.SiparisDetaylar.Any(sd =>
-                    sd.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi &&
-                    sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal &&
-                    sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iade));
+<section class="kasa-masalar-root">
+    <div id="kasaTabContent" class="kasa-main-scroll">
+        @if (ViewBag.ConnectionWarning != null)
+        {
+            <div class="mb-4 border border-amber-200 bg-amber-50 text-amber-800 rounded-xl px-4 py-3 flex items-center gap-2 text-sm">
+                <i class="bi bi-wifi-off"></i>
+                <span>@ViewBag.ConnectionWarning</span>
+            </div>
+        }
 
-                var doluMu = aktifDetayVarmi;
-
-                // Kasa etiketleri sipariş ana durumundan hesaplanır.
-                // Sadece Mutfakta etiketi için Mutfak paneliyle aynı 24 saat kuralını uygularız.
-                var mutfaktaVarMi = siparisler.Any(s =>
-                    s.OlusturmaTarihi >= mutfakZamanEsigi &&
-                    (s.Durum == QRMenu.Core.Enums.SiparisDurum.Onaylandi ||
-                     s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor));
-
-                var garsondaVarMi = siparisler.Any(s =>
-                    s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir);
-
-                var odemeBekliyorMu = siparisler.Any(s =>
-                    s.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi ||
-                    s.Durum == QRMenu.Core.Enums.SiparisDurum.KismiOdendi);
-                
-                // Siparişe uygulanan indirimleri kalan bakiyeye oransal yansıtıyoruz.
-                var kalanBakiye = siparisler.Sum(s =>
-                {
-                    var bazToplam = s.SiparisDetaylar
-                        .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
-                        .Sum(sd => sd.Adet * sd.BirimFiyat);
-
-                    var oran = bazToplam > 0 ? (s.ToplamTutar / bazToplam) : 1m;
-
-                    return s.SiparisDetaylar
-                        .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && 
-                                     sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && 
-                                     sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
-                        .Sum(sd => (sd.Adet * sd.BirimFiyat) * oran);
-                });
-                
-                // Eğer bakiye 0 ise masayı boş kabul et.
-                if (kalanBakiye <= 0) doluMu = false;
-
-                var masaDurumSinifi = "masa-bos";
-                var durumMetni = "Hazır";
-                var durumRenkSinifi = "text-muted";
-                var durumIkonu = "bi-check-circle";
-
-                if (doluMu)
-                {
-                    if (odemeBekliyorMu)
-                    {
-                        masaDurumSinifi = "masa-odeme";
-                        durumMetni = "Ödeme Bekliyor";
-                        durumRenkSinifi = "text-warning";
-                        durumIkonu = "bi-credit-card";
-                    }
-                    else if (garsondaVarMi)
-                    {
-                        masaDurumSinifi = "masa-garson";
-                        durumMetni = "Garsonda";
-                        durumRenkSinifi = "text-success";
-                        durumIkonu = "bi-bag-check";
-                    }
-                    else if (mutfaktaVarMi)
-                    {
-                        masaDurumSinifi = "masa-mutfak";
-                        durumMetni = "Mutfakta";
-                        durumRenkSinifi = "text-primary";
-                        durumIkonu = "bi-fire";
-                    }
-                    else
-                    {
-                        masaDurumSinifi = "masa-dolu";
-                        durumMetni = "Sipariş Var";
-                        durumRenkSinifi = "text-secondary";
-                        durumIkonu = "bi-receipt";
-                    }
-                }
-                
-                <div class="col">
-                    <a href="@(doluMu ? $"/Kasa/Odeme/{masa.Id}" : "#")" class="kare-masa @masaDurumSinifi">
-                        <div class="masa-no">Masa @masa.MasaNo</div>
-                        <div class="masa-info">
-                            @if(doluMu) {
-                                <span class="@durumRenkSinifi"><i class="bi @durumIkonu"></i> @durumMetni</span>
-                            } else {
-                                <span class="text-muted"><i class="bi bi-check-circle"></i> Hazır</span>
-                            }
-                        </div>
-                        @if(doluMu) {
-                            <div class="masa-tutar">@kalanBakiye.ToString("N2") TL</div>
-                        } else {
-                            <div class="masa-tutar text-muted" style="opacity: 0.3;">0,00 TL</div>
-                        }
-                    </a>
+        <header class="mb-2">
+            <div class="flex items-end justify-between mb-3 gap-3 flex-wrap">
+                <div>
+                    <span class="text-secondary font-bold tracking-widest text-xs uppercase mb-2 block">Operasyon Paneli</span>
+                    <h1 class="text-3xl font-extrabold text-on-surface tracking-tight">Bekleyen Masalar</h1>
                 </div>
-            }
-        </div>
-    </div>
+                <div class="bg-primary/5 px-5 py-3 rounded-xl flex items-center gap-3">
+                    <div class="w-10 h-10 bg-primary flex items-center justify-center rounded-full text-white">
+                        <span class="material-symbols-outlined">receipt_long</span>
+                    </div>
+                    <div>
+                        <p class="text-xs text-on-surface-variant font-semibold">Toplam Ödeme Bekleyen</p>
+                        <p class="text-xl font-black text-primary">@toplamOdemeBekleyen Masa</p>
+                    </div>
+                </div>
+            </div>
 
-    <!-- ÖDENEN SİPARİŞLER TAB -->
-    <div class="tab-pane fade" id="odenen" role="tabpanel">
-        <div class="siparis-table-wrap">
-            <table class="siparis-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Masa</th>
-                        <th>Ürünler</th>
-                        <th>Tutar</th>
-                        <th>Ödeme Tarihi</th>
-                        <th>Durum</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (sonOdemeler == null || !sonOdemeler.Any())
-                    {
-                        <tr>
-                            <td colspan="6" class="text-center py-5">Henüz ödenmiş sipariş yok.</td>
-                        </tr>
-                    }
-                    else
-                    {
-                        @foreach(var s in sonOdemeler)
+            <div class="flex items-center gap-2 flex-wrap pb-1">
+                <button type="button" class="px-6 py-2 bg-secondary-container text-on-secondary-container rounded-full text-sm font-bold shadow-sm whitespace-nowrap kasa-filter-chip active" data-area-chip="all">Tüm Masalar (@masaKartlari.Count)</button>
+                @foreach (var chip in bolgeChipleri)
+                {
+                    <button type="button" class="px-6 py-2 bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high rounded-full text-sm font-semibold transition-colors whitespace-nowrap kasa-filter-chip" data-area-chip="@chip.Bolge">@chip.Bolge (@chip.Bekleyen)</button>
+                }
+
+                <div class="ml-auto flex items-center gap-2">
+                    <span class="text-sm font-semibold text-on-surface-variant">Sırala:</span>
+                    <div class="relative">
+                        <select id="kasaSortSelect" class="appearance-none pl-3 pr-8 py-2 rounded-full bg-surface-container-low hover:bg-surface-container-high text-sm font-bold border-0 focus:ring-2 focus:ring-primary/20">
+                            <option value="wait-desc">Bekleme Süresi</option>
+                            <option value="amount-desc">Tutar</option>
+                            <option value="table-asc">Masa No</option>
+                        </select>
+                        <span class="material-symbols-outlined text-lg absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">arrow_drop_down</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div id="kasaTableGrid" class="table-bento-grid">
+            @foreach (var kart in masaKartlari)
+            {
+                var badgeText = kart.DoluMu
+                    ? (kart.AcilMi ? $"Acil - {kart.BeklemeDakika} dk." : $"{kart.BolgeAd} - {kart.BeklemeDakika} dk.")
+                    : $"{kart.BolgeAd} - Boş";
+
+                var borderClass = "border-outline-variant";
+                var badgeClass = "bg-surface-container-high text-on-surface-variant";
+
+                if (kart.AcilMi)
+                {
+                    borderClass = "border-error";
+                    badgeClass = "bg-error/10 text-error";
+                }
+                else if (kart.DoluMu && kart.OdemedeMi)
+                {
+                    borderClass = "border-secondary";
+                    badgeClass = "bg-secondary/10 text-secondary";
+                }
+                else if (kart.DoluMu && kart.MutfaktaMi)
+                {
+                    borderClass = "border-blue-500";
+                    badgeClass = "bg-blue-100 text-blue-700";
+                }
+                else if (kart.DoluMu && kart.GarsondaMi)
+                {
+                    borderClass = "border-emerald-500";
+                    badgeClass = "bg-emerald-100 text-emerald-700";
+                }
+
+                var displayAmount = kart.DoluMu ? kart.KalanBakiye : 0m;
+                var searchText = $"masa {kart.MasaNo} {kart.BolgeAd} {kart.DurumMetni}";
+
+                <article class="group bg-surface-container-lowest rounded-xl p-5 border-l-4 @borderClass shadow-sm hover:shadow-md transition-all scale-95 hover:scale-100 flex flex-col justify-between table-card is-clickable"
+                         data-area="@kart.BolgeAd"
+                         data-wait="@kart.BeklemeDakika"
+                         data-amount="@displayAmount"
+                         data-table="@kart.MasaNo"
+                         data-search="@searchText.ToLowerInvariant()"
+                         data-detail-url="/Kasa/Odeme/@kart.MasaId"
+                         role="button"
+                         tabindex="0"
+                         aria-label="Masa @kart.MasaNo detayını aç">
+                    <div>
+                        <div class="flex justify-between items-start mb-4 gap-2">
+                            <span class="text-3xl font-black text-on-surface opacity-30">#@kart.MasaNo</span>
+                            <div class="@badgeClass px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">@badgeText</div>
+                        </div>
+                        <h3 class="text-xl font-bold text-on-surface mb-1">Masa @kart.MasaNo</h3>
+                        <p class="text-sm text-on-surface-variant">Durum: @kart.DurumMetni</p>
+                    </div>
+                    <div class="flex items-center justify-between border-t border-surface-container-high pt-4 gap-2">
+                        <div>
+                            <p class="text-[10px] text-on-surface-variant font-bold uppercase">Tutar</p>
+                            <p class="text-lg font-black text-on-surface">@displayAmount.ToString("N2") TL</p>
+                        </div>
+
+                        @if (kart.DoluMu)
                         {
-                            var detayOzet = string.Join(", ", s.SiparisDetaylar.Select(sd => $"{sd.Adet}x {sd.Urun.Ad}"));
-                            <tr>
-                                <td><strong>#@s.Id</strong></td>
-                                <td><span class="badge bg-dark rounded-pill px-3">Masa @s.Masa?.MasaNo</span></td>
-                                <td class="text-truncate" style="max-width:300px;">@detayOzet</td>
-                                <td><strong>@s.ToplamTutar.ToString("N2") TL</strong></td>
-                                <td>@(s.GuncellemeTarihi?.ToString("HH:mm") ?? "-")</td>
-                                <td><span class="durum-badge durum-@s.Durum">@s.Durum</span></td>
-                            </tr>
+                            <a href="/Kasa/Odeme/@kart.MasaId" class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary-dim transition-colors flex items-center gap-2 whitespace-nowrap">
+                                Ödeme Al
+                            </a>
                         }
-                    }
-                </tbody>
-            </table>
+                        else
+                        {
+                            <span class="bg-surface-container-high text-on-surface-variant px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap">Hazır</span>
+                        }
+                    </div>
+                </article>
+            }
+
+            <div id="kasaGridEmpty" class="border-2 border-dashed border-outline-variant rounded-xl p-5 flex flex-col items-center justify-center text-center table-card opacity-60" style="display:none;">
+                <span class="material-symbols-outlined text-4xl mb-2">search</span>
+                <p class="text-sm font-bold">Filtreye uygun masa bulunamadı</p>
+                <p class="text-xs text-on-surface-variant">Arama veya filtreyi değiştir</p>
+            </div>
         </div>
+
+        <footer class="kasa-main-footer flex items-center justify-between border-t border-surface-container-high gap-3 flex-wrap">
+            <p id="kasaFooterInfo" class="text-sm text-on-surface-variant font-medium">Toplam @masaKartlari.Count masadan @toplamOdemeBekleyen bekleyen masa gösteriliyor</p>
+            <div class="flex gap-2 items-center" id="kasaPagerControls">
+                <button id="kasaPrevPageBtn" type="button" class="kasa-pager-btn" aria-label="Önceki sayfa" disabled>
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </button>
+                <div id="kasaPageNumberGroup" class="flex gap-2"></div>
+                <button id="kasaNextPageBtn" type="button" class="kasa-pager-btn" aria-label="Sonraki sayfa" disabled>
+                    <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+            </div>
+        </footer>
     </div>
-</div>
+</section>
 
 @section Scripts {
     <script>
         let refreshTimer = null;
         let lastRefreshAt = 0;
         let refreshInFlight = false;
+        const kasaUiState = {
+            area: 'all',
+            query: '',
+            sort: 'wait-desc',
+            currentPage: 1,
+            totalPages: 1,
+            pageSize: 1
+        };
+
+        function normalizeText(value) {
+            return String(value || '').toLocaleLowerCase('tr-TR');
+        }
+
+        function sortCards(cards) {
+            const sortType = kasaUiState.sort;
+            cards.sort((a, b) => {
+                const waitA = Number(a.dataset.wait || 0);
+                const waitB = Number(b.dataset.wait || 0);
+                const amountA = Number(a.dataset.amount || 0);
+                const amountB = Number(b.dataset.amount || 0);
+                const tableA = Number(a.dataset.table || 0);
+                const tableB = Number(b.dataset.table || 0);
+
+                if (sortType === 'amount-desc') return amountB - amountA;
+                if (sortType === 'table-asc') return tableA - tableB;
+                return waitB - waitA;
+            });
+        }
+
+        function getGridColumnCount(grid) {
+            if (!grid) {
+                return 1;
+            }
+
+            const template = window.getComputedStyle(grid).gridTemplateColumns || '';
+            const parts = template.split(' ').filter(Boolean);
+            return Math.max(1, parts.length);
+        }
+
+        function calculatePageSize(grid, visibleCards) {
+            const cols = getGridColumnCount(grid);
+            if (!visibleCards.length) {
+                return cols;
+            }
+
+            const cardRect = visibleCards[0].getBoundingClientRect();
+            const cardHeight = cardRect.height || 0;
+            const gridStyle = window.getComputedStyle(grid);
+            const rowGap = Number.parseFloat(gridStyle.rowGap || '0') || 0;
+            const availableHeight = grid.clientHeight || 0;
+
+            if (cardHeight <= 0 || availableHeight <= 0) {
+                return cols;
+            }
+
+            const rows = Math.max(1, Math.floor((availableHeight + rowGap) / (cardHeight + rowGap)));
+            return Math.max(1, cols * rows);
+        }
+
+        function renderPager(totalItems) {
+            const prevBtn = document.getElementById('kasaPrevPageBtn');
+            const nextBtn = document.getElementById('kasaNextPageBtn');
+            const numberGroup = document.getElementById('kasaPageNumberGroup');
+            const footerInfo = document.getElementById('kasaFooterInfo');
+            const totalAll = document.querySelectorAll('#kasaTableGrid .table-card[data-search]').length;
+
+            if (footerInfo) {
+                footerInfo.textContent = `Toplam ${totalAll} masadan ${totalItems} masa gösteriliyor`;
+            }
+
+            if (!prevBtn || !nextBtn || !numberGroup) {
+                return;
+            }
+
+            numberGroup.innerHTML = '';
+
+            const totalPages = kasaUiState.totalPages;
+            const currentPage = kasaUiState.currentPage;
+
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+
+            if (totalPages <= 1) {
+                return;
+            }
+
+            for (let i = 1; i <= totalPages; i++) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `kasa-pager-btn${i === currentPage ? ' is-active' : ''}`;
+                btn.textContent = String(i);
+                btn.addEventListener('click', () => {
+                    if (kasaUiState.currentPage === i) {
+                        return;
+                    }
+                    kasaUiState.currentPage = i;
+                    applyBekleyenFilters();
+                });
+                numberGroup.appendChild(btn);
+            }
+        }
+
+        function initTableCardNavigation() {
+            document.querySelectorAll('#kasaTableGrid .table-card[data-detail-url]').forEach(card => {
+                const goToDetail = () => {
+                    const detailUrl = card.dataset.detailUrl;
+                    if (detailUrl) {
+                        window.location.href = detailUrl;
+                    }
+                };
+
+                card.onclick = (evt) => {
+                    const target = evt.target;
+                    if (target instanceof Element && target.closest('a, button, input, select, textarea, label')) {
+                        return;
+                    }
+                    goToDetail();
+                };
+
+                card.onkeydown = (evt) => {
+                    if (evt.key === 'Enter' || evt.key === ' ') {
+                        evt.preventDefault();
+                        goToDetail();
+                    }
+                };
+            });
+        }
+
+        function applyBekleyenFilters() {
+            const grid = document.getElementById('kasaTableGrid');
+            if (!grid) return;
+
+            const empty = document.getElementById('kasaGridEmpty');
+            const cards = Array.from(grid.querySelectorAll('.table-card[data-search]'));
+
+            const visibleCards = cards.filter(card => {
+                const areaMatch = kasaUiState.area === 'all' || card.dataset.area === kasaUiState.area;
+                const text = normalizeText(card.dataset.search || '');
+                const queryMatch = !kasaUiState.query || text.includes(kasaUiState.query);
+                return areaMatch && queryMatch;
+            });
+
+            sortCards(visibleCards);
+            visibleCards.forEach(card => grid.appendChild(card));
+
+            const pageSize = calculatePageSize(grid, visibleCards);
+            kasaUiState.pageSize = pageSize;
+            kasaUiState.totalPages = Math.max(1, Math.ceil(visibleCards.length / pageSize));
+            kasaUiState.currentPage = Math.min(kasaUiState.currentPage, kasaUiState.totalPages);
+            kasaUiState.currentPage = Math.max(1, kasaUiState.currentPage);
+
+            const startIndex = (kasaUiState.currentPage - 1) * kasaUiState.pageSize;
+            const endIndex = startIndex + kasaUiState.pageSize;
+
+            cards.forEach(card => {
+                card.style.display = 'none';
+            });
+
+            visibleCards.forEach((card, index) => {
+                card.style.display = index >= startIndex && index < endIndex ? '' : 'none';
+            });
+
+            if (empty) {
+                empty.style.display = visibleCards.length ? 'none' : 'flex';
+            }
+
+            renderPager(visibleCards.length);
+        }
+
+        function initBekleyenMasalarUI() {
+            const searchInput = document.getElementById('kasaSearchInput');
+            const sortSelect = document.getElementById('kasaSortSelect');
+            const prevBtn = document.getElementById('kasaPrevPageBtn');
+            const nextBtn = document.getElementById('kasaNextPageBtn');
+
+            document.querySelectorAll('[data-area-chip]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.areaChip === kasaUiState.area);
+                btn.onclick = () => {
+                    kasaUiState.area = btn.dataset.areaChip || 'all';
+                    kasaUiState.currentPage = 1;
+                    document.querySelectorAll('[data-area-chip]').forEach(x => x.classList.toggle('active', x === btn));
+                    applyBekleyenFilters();
+                };
+            });
+
+            if (searchInput) {
+                searchInput.value = kasaUiState.query;
+                searchInput.oninput = () => {
+                    kasaUiState.query = normalizeText(searchInput.value).trim();
+                    kasaUiState.currentPage = 1;
+                    applyBekleyenFilters();
+                };
+            }
+
+            if (sortSelect) {
+                sortSelect.value = kasaUiState.sort;
+                sortSelect.onchange = () => {
+                    kasaUiState.sort = sortSelect.value;
+                    kasaUiState.currentPage = 1;
+                    applyBekleyenFilters();
+                };
+            }
+
+            if (prevBtn) {
+                prevBtn.onclick = () => {
+                    if (kasaUiState.currentPage <= 1) {
+                        return;
+                    }
+                    kasaUiState.currentPage -= 1;
+                    applyBekleyenFilters();
+                };
+            }
+
+            if (nextBtn) {
+                nextBtn.onclick = () => {
+                    if (kasaUiState.currentPage >= kasaUiState.totalPages) {
+                        return;
+                    }
+                    kasaUiState.currentPage += 1;
+                    applyBekleyenFilters();
+                };
+            }
+
+            initTableCardNavigation();
+            applyBekleyenFilters();
+        }
 
         async function softRefreshKasaPanels() {
             if (refreshInFlight) return;
             refreshInFlight = true;
 
             try {
-                const activeTabTarget = document.querySelector('#kasaTab .nav-link.active')?.getAttribute('data-bs-target') || '#bekleyen';
+                const searchInput = document.getElementById('kasaSearchInput');
+                if (searchInput) {
+                    kasaUiState.query = normalizeText(searchInput.value).trim();
+                }
+
+                const sortSelect = document.getElementById('kasaSortSelect');
+                if (sortSelect) {
+                    kasaUiState.sort = sortSelect.value;
+                }
+
+                const activeChip = document.querySelector('[data-area-chip].active');
+                if (activeChip) {
+                    kasaUiState.area = activeChip.dataset.areaChip || 'all';
+                }
 
                 const res = await fetch(window.location.pathname, {
                     cache: 'no-store',
@@ -332,16 +648,7 @@
                 const mevcutIcerik = document.getElementById('kasaTabContent');
                 if (yeniIcerik && mevcutIcerik) {
                     mevcutIcerik.innerHTML = yeniIcerik.innerHTML;
-
-                    // Aktif sekmeyi koru
-                    mevcutIcerik.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('show', 'active'));
-                    const activePane = mevcutIcerik.querySelector(activeTabTarget);
-                    if (activePane) {
-                        activePane.classList.add('show', 'active');
-                    } else {
-                        const firstPane = mevcutIcerik.querySelector('.tab-pane');
-                        if (firstPane) firstPane.classList.add('show', 'active');
-                    }
+                    initBekleyenMasalarUI();
                 }
             } catch (err) {
                 console.error(err);
@@ -366,29 +673,45 @@
         }
 
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/hubs/order")
+            .withUrl('/hubs/order')
             .withAutomaticReconnect()
             .build();
 
-        connection.on("SiparisGeldi", function () {
+        connection.on('SiparisGeldi', function () {
             scheduleSoftRefresh(800);
         });
 
-        connection.on("SiparisEklendi", function () {
+        connection.on('SiparisEklendi', function () {
             scheduleSoftRefresh(800);
         });
 
-        connection.on("SiparisGuncellendi", function () {
+        connection.on('SiparisGuncellendi', function () {
             scheduleSoftRefresh(500);
         });
 
-        connection.on("OdemeYapildi", function () {
-            document.getElementById('kasaBellSound').play().catch(() => {});
+        connection.on('OdemeYapildi', function () {
+            const bell = document.getElementById('kasaBellSound');
+            if (bell) {
+                bell.play().catch(() => {});
+            }
             scheduleSoftRefresh(300);
         });
 
         connection.start().then(() => {
-            console.log("Kasa Paneli SignalR Bağlantısı başarılı.");
-        }).catch(err => console.error("SignalR Hatası:", err));
+            console.log('Kasa Paneli SignalR bağlantısı başarılı.');
+        }).catch(err => console.error('SignalR Hatası:', err));
+
+        let kasaResizeTimer = null;
+        window.addEventListener('resize', function () {
+            if (kasaResizeTimer) {
+                clearTimeout(kasaResizeTimer);
+            }
+
+            kasaResizeTimer = setTimeout(() => {
+                applyBekleyenFilters();
+            }, 120);
+        });
+
+        initBekleyenMasalarUI();
     </script>
 }

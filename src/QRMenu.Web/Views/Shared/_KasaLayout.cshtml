@@ -1,0 +1,295 @@
+@{
+    var pageTitle = ViewData["PageTitle"]?.ToString() ?? "Kasa Yönetimi";
+    var activePage = ViewData["ActivePage"]?.ToString() ?? "KasaMasalar";
+}
+<!DOCTYPE html>
+<html class="light" lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Kasa</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('kasaSidebarCollapsed') === '1') {
+                    document.documentElement.classList.add('kasa-sidebar-collapsed');
+                }
+            } catch (e) {
+                // localStorage erişilemiyorsa varsayılan düzenle devam et
+            }
+        })();
+    </script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary-fixed": "#453100",
+                        "surface": "#f8f6f5",
+                        "on-surface": "#2e2f2f",
+                        "surface-bright": "#f8f6f5",
+                        "surface-dim": "#d5d4d4",
+                        "on-tertiary": "#f5f2f1",
+                        "inverse-surface": "#0e0e0e",
+                        "primary-dim": "#922c0c",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary": "#ffefec",
+                        "inverse-on-surface": "#9e9d9c",
+                        "secondary-fixed": "#ffca57",
+                        "tertiary-container": "#ffffff",
+                        "primary": "#a23718",
+                        "outline": "#777776",
+                        "on-error-container": "#570008",
+                        "on-surface-variant": "#5c5b5b",
+                        "tertiary-dim": "#504f4f",
+                        "on-secondary": "#fff1dc",
+                        "inverse-primary": "#fd7954",
+                        "secondary-fixed-dim": "#f6ba2d",
+                        "background": "#f8f6f5",
+                        "surface-container-highest": "#dedcdc",
+                        "surface-container-high": "#e4e2e2",
+                        "secondary-dim": "#674b00",
+                        "on-background": "#2e2f2f",
+                        "on-primary-fixed-variant": "#581200",
+                        "secondary-container": "#ffca57",
+                        "surface-variant": "#dedcdc",
+                        "error-dim": "#9f0519",
+                        "tertiary-fixed": "#ffffff",
+                        "primary-fixed": "#fd7954",
+                        "on-tertiary-container": "#636262",
+                        "on-primary-fixed": "#000000",
+                        "on-primary-container": "#480d00",
+                        "tertiary": "#5c5b5b",
+                        "on-tertiary-fixed-variant": "#6e6d6d",
+                        "error-container": "#fb5151",
+                        "secondary": "#765600",
+                        "on-secondary-container": "#5d4300",
+                        "primary-container": "#fd7954",
+                        "error": "#b31b25",
+                        "primary-fixed-dim": "#ec6d49",
+                        "on-tertiary-fixed": "#505050",
+                        "tertiary-fixed-dim": "#f3f0f0",
+                        "on-secondary-fixed-variant": "#694c00",
+                        "surface-tint": "#a23718",
+                        "surface-container": "#eae8e7",
+                        "on-error": "#ffefee",
+                        "surface-container-low": "#f2f0f0",
+                        "outline-variant": "#aeadac"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    fontFamily: {
+                        headline: ["Plus Jakarta Sans"],
+                        body: ["Be Vietnam Pro"],
+                        label: ["Plus Jakarta Sans"]
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            overflow: hidden;
+        }
+
+        h1,
+        h2,
+        h3,
+        .font-headline {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        #kasaSidebar,
+        #kasaTopbar,
+        #kasaMain {
+            transition: all .26s ease;
+        }
+
+        html.kasa-sidebar-collapsed #kasaSidebar,
+        body.kasa-sidebar-collapsed #kasaSidebar {
+            transform: translateX(-100%);
+        }
+
+        html.kasa-sidebar-collapsed #kasaTopbar,
+        body.kasa-sidebar-collapsed #kasaTopbar {
+            left: 0;
+            width: 100%;
+        }
+
+        html.kasa-sidebar-collapsed #kasaMain,
+        body.kasa-sidebar-collapsed #kasaMain {
+            margin-left: 0;
+        }
+
+        .kasa-layout-overlay {
+            display: none;
+        }
+
+        @@media (max-width: 1024px) {
+            #kasaSidebar {
+                transform: translateX(-100%);
+            }
+
+            html.kasa-sidebar-open #kasaSidebar,
+            body.kasa-sidebar-open #kasaSidebar {
+                transform: translateX(0);
+            }
+
+            .kasa-layout-overlay {
+                position: fixed;
+                inset: 0;
+                z-index: 45;
+                background: rgba(0, 0, 0, 0.42);
+            }
+
+            html.kasa-sidebar-open .kasa-layout-overlay,
+            body.kasa-sidebar-open .kasa-layout-overlay {
+                display: block;
+            }
+
+            #kasaTopbar {
+                left: 0 !important;
+                width: 100% !important;
+            }
+
+            #kasaMain {
+                margin-left: 0 !important;
+            }
+        }
+    </style>
+
+    @RenderSection("Styles", required: false)
+</head>
+<body class="bg-surface text-on-surface">
+    <aside id="kasaSidebar" class="fixed left-0 top-0 h-full flex flex-col p-6 h-screen w-64 border-r-0 bg-[#f8f6f5] font-['Plus_Jakarta_Sans'] antialiased z-50">
+        <div class="flex items-center gap-3 mb-10">
+            <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                <span class="material-symbols-outlined text-on-primary" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold tracking-tighter text-[#2e2f2f]">Kasa Paneli</h2>
+                <p class="text-xs text-on-surface-variant font-medium">Kasa Yönetimi</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 space-y-2">
+            <a href="/Kasa/Masalar" class="@(activePage == "KasaMasalar" ? "flex items-center gap-3 px-4 py-3 bg-[#765600]/10 text-[#765600] rounded-full font-semibold transition-all duration-300" : "flex items-center gap-3 px-4 py-3 text-[#2e2f2f]/60 hover:text-[#2e2f2f] hover:bg-[#eae8e7] transition-all duration-300")">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' @(activePage == "KasaMasalar" ? "1" : "0");">table_restaurant</span>
+                <span class="text-sm">Masa Haritası</span>
+            </a>
+            <a href="/Kasa/OdenenSiparisler" class="@(activePage == "KasaOdenen" ? "flex items-center gap-3 px-4 py-3 bg-[#765600]/10 text-[#765600] rounded-full font-semibold transition-all duration-300" : "flex items-center gap-3 px-4 py-3 text-[#2e2f2f]/60 hover:text-[#2e2f2f] hover:bg-[#eae8e7] transition-all duration-300")">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' @(activePage == "KasaOdenen" ? "1" : "0");">assessment</span>
+                <span class="text-sm font-medium">Raporlar</span>
+            </a>
+            <a href="/Kasa/Ayarlar" class="@(activePage == "KasaAyarlar" ? "flex items-center gap-3 px-4 py-3 bg-[#765600]/10 text-[#765600] rounded-full font-semibold transition-all duration-300" : "flex items-center gap-3 px-4 py-3 text-[#2e2f2f]/60 hover:text-[#2e2f2f] hover:bg-[#eae8e7] transition-all duration-300")">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' @(activePage == "KasaAyarlar" ? "1" : "0");">settings</span>
+                <span class="text-sm font-medium">Ayarlar</span>
+            </a>
+        </nav>
+
+        <div class="mt-auto pt-6 border-t border-outline-variant/10">
+            <a href="/Auth/Logout" class="flex items-center gap-3 px-4 py-3 text-[#2e2f2f]/70 hover:text-[#2e2f2f] hover:bg-[#eae8e7] rounded-xl transition-all duration-300 font-semibold">
+                <span class="material-symbols-outlined">logout</span>
+                <span class="text-sm">Çıkış Yap</span>
+            </a>
+        </div>
+    </aside>
+
+    <div class="kasa-layout-overlay" id="kasaLayoutOverlay" onclick="closeKasaSidebarMobile()"></div>
+
+    <header id="kasaTopbar" class="fixed left-64 right-0 top-0 z-40 bg-white/80 backdrop-blur-xl flex items-center justify-between px-8 py-4 w-[calc(100%-16rem)] shadow-sm">
+        <div class="flex items-center gap-4 flex-1 max-w-md">
+            <button id="kasaSidebarToggle" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
+            <div class="relative w-full group">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+                <input id="kasaSearchInput" class="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-[#a23718]/20 transition-all" placeholder="Masa veya garson ara..." type="text" />
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-lg font-black text-[#2e2f2f]">@pageTitle</span>
+        </div>
+    </header>
+
+    <main id="kasaMain" class="ml-64 mt-[72px] h-[calc(100dvh-72px)] min-h-0 overflow-hidden">
+        @RenderBody()
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        const kasaSidebarStorageKey = 'kasaSidebarCollapsed';
+
+        function setKasaDesktopCollapsed(isCollapsed) {
+            document.body.classList.toggle('kasa-sidebar-collapsed', isCollapsed);
+            document.documentElement.classList.toggle('kasa-sidebar-collapsed', isCollapsed);
+            try {
+                localStorage.setItem(kasaSidebarStorageKey, isCollapsed ? '1' : '0');
+            } catch (e) {
+                // localStorage erişilemiyorsa yalnızca anlık sınıf değiştir
+            }
+        }
+
+        function openKasaSidebarMobile() {
+            document.body.classList.add('kasa-sidebar-open');
+            document.documentElement.classList.add('kasa-sidebar-open');
+        }
+
+        function closeKasaSidebarMobile() {
+            document.body.classList.remove('kasa-sidebar-open');
+            document.documentElement.classList.remove('kasa-sidebar-open');
+        }
+
+        (function initKasaSidebarState() {
+            let collapsed = false;
+            try {
+                collapsed = localStorage.getItem(kasaSidebarStorageKey) === '1';
+            } catch (e) {
+                collapsed = false;
+            }
+            setKasaDesktopCollapsed(collapsed);
+        })();
+
+        const kasaSidebarToggle = document.getElementById('kasaSidebarToggle');
+        if (kasaSidebarToggle) {
+            kasaSidebarToggle.addEventListener('click', function () {
+                if (window.innerWidth <= 1024) {
+                    const isOpen = document.body.classList.contains('kasa-sidebar-open');
+                    if (isOpen) {
+                        closeKasaSidebarMobile();
+                    } else {
+                        openKasaSidebarMobile();
+                    }
+                    return;
+                }
+
+                const isCollapsed = !document.body.classList.contains('kasa-sidebar-collapsed');
+                setKasaDesktopCollapsed(isCollapsed);
+            });
+        }
+
+        window.addEventListener('resize', function () {
+            if (window.innerWidth > 1024) {
+                closeKasaSidebarMobile();
+            }
+        });
+    </script>
+
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

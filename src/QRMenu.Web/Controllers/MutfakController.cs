@@ -31,6 +31,9 @@ namespace QRMenu.Web.Controllers
         {
             ViewData["ActivePage"] = "MutfakPanel";
             ViewData["PageTitle"] = "Mutfak KDS Ekranı";
+            ViewData["MutfakPageTitle"] = "Mutfak KDS";
+            ViewData["MutfakActivePage"] = "CanliSiparisler";
+            ViewData["MutfakContentClass"] = "p-5 lg:p-8 pb-28 md:pb-8 flex-1 overflow-y-auto";
 
             // Sadece Onaylandı veya Hazırlanıyor ürün barındıran ve son 24 saat içinde olan siparişleri getir
             var sinirTarih = DateTime.UtcNow.AddHours(-24);
@@ -48,6 +51,42 @@ namespace QRMenu.Web.Controllers
                 .ToListAsync();
 
             return View(bekleyenSiparisler);
+        }
+
+        [HttpGet("/Mutfak/Gecmis")]
+        public async Task<IActionResult> Gecmis()
+        {
+            ViewData["ActivePage"] = "MutfakPanel";
+            ViewData["PageTitle"] = "Sipariş Geçmişi";
+            ViewData["MutfakPageTitle"] = "Sipariş Geçmişi";
+            ViewData["MutfakActivePage"] = "SiparisGecmisi";
+            ViewData["MutfakContentClass"] = "p-5 lg:p-8 pb-8 flex-1 overflow-y-auto";
+
+            var sinirTarih = DateTime.UtcNow.AddDays(-7);
+            var gecmisSiparisler = await _context.Siparisler
+                .Include(s => s.Masa)
+                .Include(s => s.SiparisDetaylar)
+                    .ThenInclude(sd => sd.Urun)
+                .AsSplitQuery()
+                .Where(s => s.OlusturmaTarihi >= sinirTarih
+                    && !s.SiparisDetaylar.Any(sd => sd.Durum == SiparisDurum.Onaylandi || sd.Durum == SiparisDurum.Hazirlaniyor))
+                .OrderByDescending(s => s.OlusturmaTarihi)
+                .Take(200)
+                .ToListAsync();
+
+            return View(gecmisSiparisler);
+        }
+
+        [HttpGet("/Mutfak/Ayarlar")]
+        public IActionResult Ayarlar()
+        {
+            ViewData["ActivePage"] = "MutfakPanel";
+            ViewData["PageTitle"] = "Mutfak Ayarları";
+            ViewData["MutfakPageTitle"] = "Mutfak Ayarları";
+            ViewData["MutfakActivePage"] = "MutfakAyarlari";
+            ViewData["MutfakContentClass"] = "p-5 lg:p-8 pb-8 flex-1 overflow-y-auto";
+
+            return View();
         }
 
         [HttpPost("/Mutfak/DurumGuncelle/{siparisId:int}")]

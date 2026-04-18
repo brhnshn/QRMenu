@@ -31,12 +31,14 @@ namespace QRMenu.Web.Controllers
         public async Task<IActionResult> Masalar()
         {
             ViewData["ActivePage"] = "KasaMasalar";
-            ViewData["PageTitle"] = "Kasa Paneli";
+            ViewData["PageTitle"] = "Kasa Yönetimi";
 
             try
             {
                 // Tahsilat Bekleyen Masalar (Siparişi olanlar)
                 var masalar = await _context.Masalar
+                    .Where(m => m.AktifMi)
+                    .Include(m => m.Bolge)
                     .Include(m => m.Siparisler.Where(s => 
                         s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && 
                         s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal &&
@@ -50,27 +52,71 @@ namespace QRMenu.Web.Controllers
                     .OrderBy(m => m.MasaNo)
                     .ToListAsync();
 
-                // Son Ödenen Siparişler (Tab için)
-                var sonOdemeler = await _context.Siparisler
-                    .Include(s => s.Masa)
-                    .Include(s => s.SiparisDetaylar)
-                        .ThenInclude(sd => sd.Urun)
-                    .AsSplitQuery()
-                    .Where(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.TamOdendi || s.Durum == QRMenu.Core.Enums.SiparisDurum.Iade)
-                    .OrderByDescending(s => s.GuncellemeTarihi ?? s.OlusturmaTarihi)
-                    .Take(20)
-                    .ToListAsync();
-
-                ViewBag.SonOdemeler = sonOdemeler;
                 return View(masalar);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Kasa/Masalar veri çekimi başarısız. Geçici bağlantı sorunu olabilir.");
-                ViewBag.SonOdemeler = new List<Siparis>();
                 ViewBag.ConnectionWarning = "Veritabanı bağlantısı geçici olarak zayıf. Lütfen birkaç saniye sonra sayfayı yenileyin.";
                 return View(new List<Masa>());
             }
+        }
+
+        // GET: /Kasa/OdenenSiparisler
+        [HttpGet("/Kasa/OdenenSiparisler")]
+        public async Task<IActionResult> OdenenSiparisler()
+        {
+            ViewData["ActivePage"] = "KasaOdenen";
+            ViewData["PageTitle"] = "Ödenen Siparişler";
+
+            try
+            {
+                var siparisler = await _context.Siparisler
+                    .Include(s => s.Masa)
+                        .ThenInclude(m => m.Bolge)
+                    .Include(s => s.Odemeler)
+                    .Include(s => s.SiparisDetaylar)
+                        .ThenInclude(sd => sd.Urun)
+                    .AsSplitQuery()
+                    .Where(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.TamOdendi || s.Durum == QRMenu.Core.Enums.SiparisDurum.Iade)
+                    .OrderByDescending(s => s.GuncellemeTarihi ?? s.OlusturmaTarihi)
+                    .Take(200)
+                    .ToListAsync();
+
+                var bugunUtc = DateTime.UtcNow.Date;
+                var bugunKayitlari = siparisler
+                    .Where(s => (s.GuncellemeTarihi ?? s.OlusturmaTarihi).Date == bugunUtc)
+                    .ToList();
+
+                ViewBag.GunlukCiro = bugunKayitlari
+                    .Where(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.TamOdendi)
+                    .Sum(s => s.ToplamTutar);
+                ViewBag.IslemSayisi = bugunKayitlari.Count;
+                ViewBag.OrtalamaMasaTutari = bugunKayitlari.Count > 0
+                    ? bugunKayitlari.Average(s => s.ToplamTutar)
+                    : 0m;
+
+                return View(siparisler);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Kasa/OdenenSiparisler veri çekimi başarısız. Geçici bağlantı sorunu olabilir.");
+                ViewBag.GunlukCiro = 0m;
+                ViewBag.IslemSayisi = 0;
+                ViewBag.OrtalamaMasaTutari = 0m;
+                ViewBag.ConnectionWarning = "Veritabanı bağlantısı geçici olarak zayıf. Lütfen birkaç saniye sonra sayfayı yenileyin.";
+                return View(new List<Siparis>());
+            }
+        }
+
+        // GET: /Kasa/Ayarlar
+        [HttpGet("/Kasa/Ayarlar")]
+        public IActionResult Ayarlar()
+        {
+            ViewData["ActivePage"] = "KasaAyarlar";
+            ViewData["PageTitle"] = "Kasa Ayarları";
+
+            return View();
         }
 
         // GET: /Kasa/Odeme/{id}

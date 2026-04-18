@@ -1,0 +1,95 @@
+@{
+    Layout = "~/Views/Shared/_MutfakLayout.cshtml";
+    ViewData["Title"] = "Mutfak Ayarları";
+    ViewData["MutfakPageTitle"] = "Mutfak Ayarları";
+    ViewData["MutfakActivePage"] = "MutfakAyarlari";
+    ViewData["MutfakContentClass"] = "p-5 lg:p-8 pb-8 flex-1 overflow-y-auto";
+}
+
+<section class="mb-6">
+    <h2 class="text-3xl font-headline font-black text-on-surface">Mutfak Ayarları</h2>
+    <p class="text-on-surface-variant mt-1">Canlı sipariş ekranı davranışlarını buradan yönetebilirsin.</p>
+</section>
+
+<section class="bg-surface-container-lowest rounded-2xl border border-surface-container p-6 max-w-3xl">
+    <div class="space-y-6">
+        <label class="flex items-center justify-between gap-4">
+            <div>
+                <div class="font-headline font-bold text-on-surface">Sesli Bildirim</div>
+                <div class="text-sm text-on-surface-variant">Yeni sipariş geldiğinde uyarı sesi çal.</div>
+            </div>
+            <input id="kdsEnableSound" type="checkbox" class="h-5 w-5 rounded border-surface-container-high text-primary focus:ring-primary" />
+        </label>
+
+        <label class="flex items-center justify-between gap-4">
+            <div>
+                <div class="font-headline font-bold text-on-surface">Kritik Süre (Dakika)</div>
+                <div class="text-sm text-on-surface-variant">Bu süreden eski siparişler kritik olarak işaretlenir.</div>
+            </div>
+            <input id="kdsCriticalMinutes" type="number" min="1" max="60" class="w-24 rounded-xl border border-surface-container-high bg-white px-3 py-2 text-sm font-semibold text-on-surface" />
+        </label>
+    </div>
+
+    <div class="mt-8 flex items-center gap-3">
+        <button id="btnSaveKdsSettings" type="button" class="px-5 py-2.5 rounded-xl bg-primary text-white font-bold hover:bg-primary-dim transition-colors">Kaydet</button>
+        <button id="btnResetKdsSettings" type="button" class="px-5 py-2.5 rounded-xl border border-surface-container-high bg-white text-on-surface font-semibold hover:bg-surface-container-low transition-colors">Sıfırla</button>
+        <span id="kdsSettingsInfo" class="text-sm font-medium text-on-surface-variant"></span>
+    </div>
+</section>
+
+@section PageScripts {
+    <script>
+        const defaults = {
+            sound: true,
+            criticalMinutes: 5
+        };
+
+        const soundInput = document.getElementById('kdsEnableSound');
+        const criticalInput = document.getElementById('kdsCriticalMinutes');
+        const infoText = document.getElementById('kdsSettingsInfo');
+
+        function loadSettings() {
+            try {
+                const soundRaw = localStorage.getItem('kdsEnableSound');
+                const criticalRaw = parseInt(localStorage.getItem('kdsCriticalMinutes') || '', 10);
+
+                soundInput.checked = soundRaw === null ? defaults.sound : soundRaw === '1';
+                criticalInput.value = Number.isFinite(criticalRaw) && criticalRaw >= 1 && criticalRaw <= 60
+                    ? criticalRaw
+                    : defaults.criticalMinutes;
+            } catch (e) {
+                soundInput.checked = defaults.sound;
+                criticalInput.value = defaults.criticalMinutes;
+            }
+        }
+
+        function saveSettings() {
+            const criticalValue = parseInt(criticalInput.value || '', 10);
+            const safeCritical = Number.isFinite(criticalValue) && criticalValue >= 1 && criticalValue <= 60
+                ? criticalValue
+                : defaults.criticalMinutes;
+
+            criticalInput.value = safeCritical;
+
+            try {
+                localStorage.setItem('kdsEnableSound', soundInput.checked ? '1' : '0');
+                localStorage.setItem('kdsCriticalMinutes', String(safeCritical));
+                infoText.textContent = 'Ayarlar kaydedildi.';
+            } catch (e) {
+                infoText.textContent = 'Ayarlar kaydedilemedi.';
+            }
+        }
+
+        function resetSettings() {
+            soundInput.checked = defaults.sound;
+            criticalInput.value = defaults.criticalMinutes;
+            saveSettings();
+            infoText.textContent = 'Ayarlar varsayılana döndürüldü.';
+        }
+
+        document.getElementById('btnSaveKdsSettings').addEventListener('click', saveSettings);
+        document.getElementById('btnResetKdsSettings').addEventListener('click', resetSettings);
+
+        loadSettings();
+    </script>
+}

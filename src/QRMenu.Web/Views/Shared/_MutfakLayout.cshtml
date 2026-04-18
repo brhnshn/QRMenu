@@ -1,0 +1,353 @@
+@{
+    var pageTitle = ViewData["MutfakPageTitle"] as string ?? "Mutfak Paneli";
+    var activePage = ViewData["MutfakActivePage"] as string ?? "CanliSiparisler";
+    var contentClass = ViewData["MutfakContentClass"] as string ?? "h-full p-5 lg:p-8 pb-8 overflow-y-auto";
+}
+<!DOCTYPE html>
+<html lang="tr" class="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@pageTitle</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'on-secondary-fixed': '#453100',
+                        surface: '#f8f6f5',
+                        'on-surface': '#2e2f2f',
+                        'surface-bright': '#f8f6f5',
+                        'surface-dim': '#d5d4d4',
+                        'on-tertiary': '#f5f2f1',
+                        'inverse-surface': '#0e0e0e',
+                        'primary-dim': '#922c0c',
+                        'surface-container-lowest': '#ffffff',
+                        'on-primary': '#ffefec',
+                        'inverse-on-surface': '#9e9d9c',
+                        'secondary-fixed': '#ffca57',
+                        'tertiary-container': '#ffffff',
+                        primary: '#a23718',
+                        outline: '#777776',
+                        'on-error-container': '#570008',
+                        'on-surface-variant': '#5c5b5b',
+                        'tertiary-dim': '#504f4f',
+                        'on-secondary': '#fff1dc',
+                        'inverse-primary': '#fd7954',
+                        'secondary-fixed-dim': '#f6ba2d',
+                        background: '#f8f6f5',
+                        'surface-container-highest': '#dedcdc',
+                        'surface-container-high': '#e4e2e2',
+                        'secondary-dim': '#674b00',
+                        'on-background': '#2e2f2f',
+                        'on-primary-fixed-variant': '#581200',
+                        'secondary-container': '#ffca57',
+                        'surface-variant': '#dedcdc',
+                        'error-dim': '#9f0519',
+                        'tertiary-fixed': '#ffffff',
+                        'primary-fixed': '#fd7954',
+                        'on-tertiary-container': '#636262',
+                        'on-primary-fixed': '#000000',
+                        'on-primary-container': '#480d00',
+                        tertiary: '#5c5b5b',
+                        'on-tertiary-fixed-variant': '#6e6d6d',
+                        'error-container': '#fb5151',
+                        secondary: '#765600',
+                        'on-secondary-container': '#5d4300',
+                        'primary-container': '#fd7954',
+                        error: '#b31b25',
+                        'primary-fixed-dim': '#ec6d49',
+                        'on-tertiary-fixed': '#505050',
+                        'tertiary-fixed-dim': '#f3f0f0',
+                        'on-secondary-fixed-variant': '#694c00',
+                        'surface-tint': '#a23718',
+                        'surface-container': '#eae8e7',
+                        'on-error': '#ffefee',
+                        'surface-container-low': '#f2f0f0',
+                        'outline-variant': '#aeadac'
+                    },
+                    borderRadius: {
+                        DEFAULT: '0.25rem',
+                        lg: '0.5rem',
+                        xl: '0.75rem',
+                        full: '9999px'
+                    },
+                    fontFamily: {
+                        headline: ['Plus Jakarta Sans', 'sans-serif'],
+                        body: ['Be Vietnam Pro', 'sans-serif'],
+                        label: ['Plus Jakarta Sans', 'sans-serif']
+                    }
+                }
+            }
+        };
+    </script>
+
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('kitchenSidebarCollapsed') === '1') {
+                    document.documentElement.classList.add('kitchen-sidebar-collapsed');
+                }
+            } catch (e) {
+                // localStorage erişilemiyorsa varsayılan düzenle devam et
+            }
+        })();
+    </script>
+
+    <style>
+        :root {
+            color-scheme: light;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background:
+                radial-gradient(circle at 8% 10%, rgba(253, 121, 84, 0.17), transparent 28%),
+                radial-gradient(circle at 92% 90%, rgba(255, 202, 87, 0.20), transparent 30%),
+                linear-gradient(180deg, #f9f7f6 0%, #f5f3f2 100%);
+        }
+
+        h1,
+        h2,
+        h3,
+        .font-headline {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        #kitchenSidebar,
+        #kitchenTopbar,
+        #kitchenMain {
+            transition: all 0.28s ease;
+        }
+
+        .kitchen-shell {
+            position: relative;
+            min-height: 100dvh;
+        }
+
+        .kitchen-shell::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image: linear-gradient(rgba(162, 55, 24, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(162, 55, 24, 0.02) 1px, transparent 1px);
+            background-size: 30px 30px;
+            z-index: 0;
+        }
+
+        html.kitchen-sidebar-collapsed #kitchenSidebar,
+        body.kitchen-sidebar-collapsed #kitchenSidebar {
+            transform: translateX(-100%);
+        }
+
+        html.kitchen-sidebar-collapsed #kitchenTopbar,
+        body.kitchen-sidebar-collapsed #kitchenTopbar {
+            left: 0;
+            width: 100%;
+        }
+
+        html.kitchen-sidebar-collapsed #kitchenMain,
+        body.kitchen-sidebar-collapsed #kitchenMain {
+            margin-left: 0;
+        }
+
+        .kitchen-overlay {
+            display: none;
+        }
+
+        @@media (max-width: 1023px) {
+            #kitchenSidebar {
+                display: flex;
+                width: 16rem;
+                transform: translateX(-100%);
+            }
+
+            html.kitchen-sidebar-open #kitchenSidebar,
+            body.kitchen-sidebar-open #kitchenSidebar {
+                transform: translateX(0);
+            }
+
+            .kitchen-overlay {
+                position: fixed;
+                inset: 0;
+                z-index: 45;
+                background: rgba(0, 0, 0, 0.42);
+            }
+
+            html.kitchen-sidebar-open .kitchen-overlay,
+            body.kitchen-sidebar-open .kitchen-overlay {
+                display: block;
+            }
+
+            #kitchenTopbar {
+                left: 0 !important;
+                width: 100% !important;
+            }
+
+            #kitchenMain {
+                margin-left: 0 !important;
+            }
+        }
+    </style>
+
+    @RenderSection("PageStyles", required: false)
+</head>
+<body class="bg-surface text-on-surface antialiased overflow-hidden">
+    <div class="kitchen-shell">
+    <aside id="kitchenSidebar" class="fixed left-0 top-0 h-full flex flex-col p-6 h-screen w-64 border-r border-[#e5dfdc] bg-gradient-to-b from-[#fffefd] via-[#faf8f7] to-[#f5f2f1] font-['Plus_Jakarta_Sans'] antialiased z-50 shadow-[0_18px_55px_rgba(89,58,33,0.13)]">
+        <div class="flex items-center gap-3 mb-10">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#a23718] to-[#8b2e12] flex items-center justify-center shadow-md shadow-[#a23718]/25">
+                <span class="material-symbols-outlined text-on-primary" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold tracking-tighter text-[#2e2f2f]">Mutfak Paneli</h2>
+                <p class="text-xs text-on-surface-variant font-medium">Anlık Üretim Takibi</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 space-y-2">
+            <a href="/Mutfak/Panel" class="@(activePage == "CanliSiparisler" ? "flex items-center gap-3 px-4 py-3 bg-[#765600]/10 text-[#765600] rounded-full font-semibold transition-all duration-300" : "flex items-center gap-3 px-4 py-3 text-[#2e2f2f]/60 hover:text-[#2e2f2f] hover:bg-[#eae8e7] transition-all duration-300")">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' @(activePage == "CanliSiparisler" ? "1" : "0");">table_restaurant</span>
+                <span class="text-sm">Canlı Siparişler</span>
+            </a>
+
+            <a href="/Mutfak/Gecmis" class="@(activePage == "SiparisGecmisi" ? "flex items-center gap-3 px-4 py-3 bg-[#765600]/10 text-[#765600] rounded-full font-semibold transition-all duration-300" : "flex items-center gap-3 px-4 py-3 text-[#2e2f2f]/60 hover:text-[#2e2f2f] hover:bg-[#eae8e7] transition-all duration-300")">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' @(activePage == "SiparisGecmisi" ? "1" : "0");">history</span>
+                <span class="text-sm">Sipariş Geçmişi</span>
+            </a>
+
+            <a href="/Mutfak/Ayarlar" class="@(activePage == "MutfakAyarlari" ? "flex items-center gap-3 px-4 py-3 bg-[#765600]/10 text-[#765600] rounded-full font-semibold transition-all duration-300" : "flex items-center gap-3 px-4 py-3 text-[#2e2f2f]/60 hover:text-[#2e2f2f] hover:bg-[#eae8e7] transition-all duration-300")">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' @(activePage == "MutfakAyarlari" ? "1" : "0");">settings</span>
+                <span class="text-sm">Mutfak Ayarları</span>
+            </a>
+
+            @if (IsSectionDefined("MutfakNavExtras"))
+            {
+                @RenderSection("MutfakNavExtras", required: false)
+            }
+        </nav>
+
+        <div class="mt-auto pt-6 border-t border-outline-variant/30 space-y-3">
+            <a href="/Auth/Logout" class="flex items-center gap-3 px-4 py-3 text-[#2e2f2f]/70 hover:text-[#2e2f2f] hover:bg-[#eae8e7] rounded-xl transition-all duration-300 font-semibold">
+                <span class="material-symbols-outlined">logout</span>
+                <span class="text-sm">Çıkış</span>
+            </a>
+        </div>
+    </aside>
+
+    <div class="kitchen-overlay" id="kitchenOverlay" onclick="closeKitchenSidebarMobile()"></div>
+
+    <header id="kitchenTopbar" class="fixed left-64 right-0 top-0 z-40 bg-white/75 backdrop-blur-xl flex items-center justify-between px-8 py-4 w-[calc(100%-16rem)] border-b border-[#eadfdb] shadow-[0_8px_30px_rgba(89,58,33,0.08)]">
+        <div class="flex items-center gap-4 flex-1 min-w-0">
+            <button id="toggleKitchenSidebarBtn" type="button" class="material-symbols-outlined text-primary hover:opacity-70 transition-opacity">menu</button>
+            <div class="min-w-0">
+                <p class="text-xs uppercase tracking-[0.22em] text-[#7e5f49] font-semibold">KDS Ekranı</p>
+                <h1 class="font-headline font-extrabold tracking-tight text-[22px] text-on-surface truncate">Mutfak Paneli</h1>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-6">
+            <div class="hidden md:flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#e6dbd6] bg-[#fff7f3]">
+                <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-xs font-bold tracking-wide text-[#8a6146]">SİSTEM AKTİF</span>
+            </div>
+            <div id="kdsNowClock" class="text-primary font-bold font-headline text-lg px-4 py-1.5 rounded-full bg-white border border-[#eadfdb]">--:--</div>
+        </div>
+    </header>
+
+    <main id="kitchenMain" class="relative z-10 ml-64 mt-[82px] h-[calc(100dvh-82px)] min-h-0 overflow-hidden">
+        <div class="@contentClass">
+            @RenderBody()
+        </div>
+    </main>
+    </div>
+
+    <script>
+        const kitchenSidebarStorageKey = 'kitchenSidebarCollapsed';
+
+        function setKitchenDesktopCollapsed(isCollapsed) {
+            document.body.classList.toggle('kitchen-sidebar-collapsed', isCollapsed);
+            document.documentElement.classList.toggle('kitchen-sidebar-collapsed', isCollapsed);
+            try {
+                localStorage.setItem(kitchenSidebarStorageKey, isCollapsed ? '1' : '0');
+            } catch (e) {
+                // localStorage erişilemiyorsa yalnızca anlık sınıf değiştir
+            }
+        }
+
+        function openKitchenSidebarMobile() {
+            document.body.classList.add('kitchen-sidebar-open');
+            document.documentElement.classList.add('kitchen-sidebar-open');
+        }
+
+        function closeKitchenSidebarMobile() {
+            document.body.classList.remove('kitchen-sidebar-open');
+            document.documentElement.classList.remove('kitchen-sidebar-open');
+        }
+
+        (function initKitchenSidebarState() {
+            let collapsed = false;
+            try {
+                collapsed = localStorage.getItem(kitchenSidebarStorageKey) === '1';
+            } catch (e) {
+                collapsed = false;
+            }
+
+            setKitchenDesktopCollapsed(collapsed);
+        })();
+
+        const toggleKitchenSidebarBtn = document.getElementById('toggleKitchenSidebarBtn');
+        if (toggleKitchenSidebarBtn) {
+            toggleKitchenSidebarBtn.addEventListener('click', function () {
+                if (window.innerWidth < 1024) {
+                    const isOpen = document.body.classList.contains('kitchen-sidebar-open');
+                    if (isOpen) {
+                        closeKitchenSidebarMobile();
+                    } else {
+                        openKitchenSidebarMobile();
+                    }
+                    return;
+                }
+
+                const isCollapsed = !document.body.classList.contains('kitchen-sidebar-collapsed');
+                setKitchenDesktopCollapsed(isCollapsed);
+            });
+        }
+
+        window.addEventListener('resize', function () {
+            if (window.innerWidth >= 1024) {
+                closeKitchenSidebarMobile();
+            }
+        });
+
+        function updateLayoutClock() {
+            const el = document.getElementById('kdsNowClock');
+            if (!el) {
+                return;
+            }
+
+            const now = new Date();
+            const hh = now.getHours().toString().padStart(2, '0');
+            const mm = now.getMinutes().toString().padStart(2, '0');
+            el.innerText = `${hh}:${mm}`;
+        }
+
+        setInterval(updateLayoutClock, 1000);
+        updateLayoutClock();
+    </script>
+
+    @RenderSection("PageScripts", required: false)
+</body>
+</html>
