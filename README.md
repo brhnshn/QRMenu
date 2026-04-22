@@ -4,8 +4,8 @@
 
 Restoran ve kafeler için QR kod tabanlı dijital menü ve sipariş yönetim sistemi. Bu proje, modern web teknolojileri ve gerçek zamanlı iletişim altyapısı kullanılarak geliştirilmiştir.
 
-## 🚀 Proje Durumu: Hafta 5 Tamamlandı
-Proje şu an 10 haftalık yol haritasının tam ortasında olup, **Personel Servisleri** ve **Kasa Yönetimi** modülleri başarıyla devreye alınmıştır.
+## 🚀 Proje Durumu: Hafta 8 Tamamlandı
+Proje, 10 haftalık yol haritasında personel operasyon akışlarını kapsayan kritik fazları tamamlamış; **Garson, Mutfak ve Kasa** panellerinde gerçek zamanlı ve rol bazlı yönetim yapısını oturtmuştur.
 
 ## 🛠️ Teknik Özellikler
 - **Backend:** .NET 8, EF Core, PostgreSQL (Supabase)
@@ -31,9 +31,10 @@ Haftalık ilerleme raporları ve teknik detaylara aşağıdaki tablodan ulaşabi
 | **Hafta 5-2** | **Veritabanı Taşıma, Görsel Optimizasyonu, Kalori Özelliği, QR Giriş Fix & Masa Durum Takibi** | [PDF](https://github.com/brhnshn/QRMenu/blob/main/docs/Pdfler/Hafta%205-2%20%E2%80%94%20Veritaban%C4%B1%20Ta%C5%9F%C4%B1ma%2C%20G%C3%B6rsel%20Optimizasyonu%2C%20Kalori%20%C3%96zelli%C4%9Fi%2C%20QR%20Giri%C5%9F%20Fix%20%26%20Masa%20Durum%20Takibi.pdf) |
 | **Hafta 6** | **İndirim Saatleri ve diğer işler** | [PDF](https://github.com/brhnshn/QRMenu/blob/main/docs/Pdfler/Hafta%206%20%C4%B0ndirim%20Saatleri%20ve%20di%C4%9Fer%20i%C5%9Fler.pdf) |
 | **Hafta 7** | **Performans, Canlı Ekran Soft Refresh, Oyunlaştırma ve TR-EN İyileştirmeleri** | [PDF](https://github.com/brhnshn/QRMenu/blob/main/docs/Pdfler/Hafta%207%20-%20%20Gelistirme%20Raporu.pdf) |
+| **Hafta 8** | **Garson, Mutfak ve Kasa Panellerinde Soft Refresh, SignalR Uyum Checklisti ve Operasyonel UI Tamamlamaları** | [PDF](docs/Pdfler/8.%20Hafta%20Geli%C5%9Ftirme%20Raporu.pdf) |
 | **Dosya Yapısı** | QR Menü Otomasyonu Genel Dosya Mimarisi | [PDF](docs/Pdfler/Proje%20Dosya%20Yapısı%20—%20QR%20Menü%20Otomasyonu.pdf) |
 
 ---
     
 ## 👨‍💻 Geliştirme Notları
-Hafta 5 kapsamında; Garson, Mutfak ve Kasa ekranları arasındaki tüm iş akışları finalize edilmiştir. Ünite testleri (67 adet) ile sistemin kararlılığı doğrulanmış ve yerelleştirme (Turkish I) hataları giderilmiştir.
+Hafta 8 kapsamında; Garson, Mutfak ve Kasa ekranlarında soft refresh davranışları pekiştirildi, SignalR olay/kanal uyumu netleştirildi ve operasyonel arayüz iyileştirmeleri raporlandı.

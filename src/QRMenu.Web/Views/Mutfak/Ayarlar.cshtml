@@ -3,17 +3,17 @@
     ViewData["Title"] = "Mutfak Ayarları";
     ViewData["MutfakPageTitle"] = "Mutfak Ayarları";
     ViewData["MutfakActivePage"] = "MutfakAyarlari";
-    ViewData["MutfakContentClass"] = "p-5 lg:p-8 pb-8 flex-1 overflow-y-auto";
+    ViewData["MutfakContentClass"] = "p-3 sm:p-5 lg:p-8 pb-8 flex-1 overflow-y-auto";
 }
 
 <section class="mb-6">
-    <h2 class="text-3xl font-headline font-black text-on-surface">Mutfak Ayarları</h2>
-    <p class="text-on-surface-variant mt-1">Canlı sipariş ekranı davranışlarını buradan yönetebilirsin.</p>
+    <h2 class="text-2xl sm:text-3xl font-headline font-black text-on-surface">Mutfak Ayarları</h2>
+    <p class="text-sm sm:text-base text-on-surface-variant mt-1">Canlı sipariş ekranı davranışlarını buradan yönetebilirsin.</p>
 </section>
 
-<section class="bg-surface-container-lowest rounded-2xl border border-surface-container p-6 max-w-3xl">
+<section class="bg-surface-container-lowest rounded-2xl border border-surface-container p-4 sm:p-6 max-w-3xl">
     <div class="space-y-6">
-        <label class="flex items-center justify-between gap-4">
+        <label class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
                 <div class="font-headline font-bold text-on-surface">Sesli Bildirim</div>
                 <div class="text-sm text-on-surface-variant">Yeni sipariş geldiğinde uyarı sesi çal.</div>
@@ -21,18 +21,50 @@
             <input id="kdsEnableSound" type="checkbox" class="h-5 w-5 rounded border-surface-container-high text-primary focus:ring-primary" />
         </label>
 
-        <label class="flex items-center justify-between gap-4">
+        <label class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
                 <div class="font-headline font-bold text-on-surface">Kritik Süre (Dakika)</div>
                 <div class="text-sm text-on-surface-variant">Bu süreden eski siparişler kritik olarak işaretlenir.</div>
             </div>
             <input id="kdsCriticalMinutes" type="number" min="1" max="60" class="w-24 rounded-xl border border-surface-container-high bg-white px-3 py-2 text-sm font-semibold text-on-surface" />
         </label>
+
+        <label class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+                <div class="font-headline font-bold text-on-surface">Kritikleri Üste Sabitle</div>
+                <div class="text-sm text-on-surface-variant">Kritik süredeki biletler listenin en üstünde dursun.</div>
+            </div>
+            <input id="kdsPinCriticalTop" type="checkbox" class="h-5 w-5 rounded border-surface-container-high text-primary focus:ring-primary" />
+        </label>
+
+        <label class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+                <div class="font-headline font-bold text-on-surface">Müşteri Notlarını Göster</div>
+                <div class="text-sm text-on-surface-variant">Bilet üstündeki müşteri not kartlarını görünür tut.</div>
+            </div>
+            <input id="kdsShowCustomerNotes" type="checkbox" class="h-5 w-5 rounded border-surface-container-high text-primary focus:ring-primary" />
+        </label>
+
+        <label class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+                <div class="font-headline font-bold text-on-surface">Kompakt Kart Görünümü</div>
+                <div class="text-sm text-on-surface-variant">Canlı panelde kart iç boşluklarını daraltarak daha fazla bilet göster.</div>
+            </div>
+            <input id="kdsCompactCards" type="checkbox" class="h-5 w-5 rounded border-surface-container-high text-primary focus:ring-primary" />
+        </label>
+
+        <label class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+                <div class="font-headline font-bold text-on-surface">Kritik Kart Vurgusu</div>
+                <div class="text-sm text-on-surface-variant">Kritik kartlarda titreşim/pulse vurgusunu açık tut.</div>
+            </div>
+            <input id="kdsCriticalPulse" type="checkbox" class="h-5 w-5 rounded border-surface-container-high text-primary focus:ring-primary" />
+        </label>
     </div>
 
-    <div class="mt-8 flex items-center gap-3">
-        <button id="btnSaveKdsSettings" type="button" class="px-5 py-2.5 rounded-xl bg-primary text-white font-bold hover:bg-primary-dim transition-colors">Kaydet</button>
-        <button id="btnResetKdsSettings" type="button" class="px-5 py-2.5 rounded-xl border border-surface-container-high bg-white text-on-surface font-semibold hover:bg-surface-container-low transition-colors">Sıfırla</button>
+    <div class="mt-8 flex flex-col sm:flex-row sm:items-center gap-3">
+        <button id="btnSaveKdsSettings" type="button" class="px-5 py-2.5 rounded-xl bg-primary text-white font-bold hover:bg-primary-dim transition-colors w-full sm:w-auto">Kaydet</button>
+        <button id="btnResetKdsSettings" type="button" class="px-5 py-2.5 rounded-xl border border-surface-container-high bg-white text-on-surface font-semibold hover:bg-surface-container-low transition-colors w-full sm:w-auto">Sıfırla</button>
         <span id="kdsSettingsInfo" class="text-sm font-medium text-on-surface-variant"></span>
     </div>
 </section>
@@ -41,25 +73,45 @@
     <script>
         const defaults = {
             sound: true,
-            criticalMinutes: 5
+            criticalMinutes: 5,
+            pinCriticalTop: true,
+            showCustomerNotes: true,
+            compactCards: false,
+            criticalPulse: true
         };
 
         const soundInput = document.getElementById('kdsEnableSound');
         const criticalInput = document.getElementById('kdsCriticalMinutes');
+        const pinCriticalTopInput = document.getElementById('kdsPinCriticalTop');
+        const showCustomerNotesInput = document.getElementById('kdsShowCustomerNotes');
+        const compactCardsInput = document.getElementById('kdsCompactCards');
+        const criticalPulseInput = document.getElementById('kdsCriticalPulse');
         const infoText = document.getElementById('kdsSettingsInfo');
 
         function loadSettings() {
             try {
                 const soundRaw = localStorage.getItem('kdsEnableSound');
                 const criticalRaw = parseInt(localStorage.getItem('kdsCriticalMinutes') || '', 10);
+                const pinTopRaw = localStorage.getItem('kdsPinCriticalTop');
+                const showNotesRaw = localStorage.getItem('kdsShowCustomerNotes');
+                const compactRaw = localStorage.getItem('kdsCompactCards');
+                const pulseRaw = localStorage.getItem('kdsCriticalPulse');
 
                 soundInput.checked = soundRaw === null ? defaults.sound : soundRaw === '1';
                 criticalInput.value = Number.isFinite(criticalRaw) && criticalRaw >= 1 && criticalRaw <= 60
                     ? criticalRaw
                     : defaults.criticalMinutes;
+                pinCriticalTopInput.checked = pinTopRaw === null ? defaults.pinCriticalTop : pinTopRaw === '1';
+                showCustomerNotesInput.checked = showNotesRaw === null ? defaults.showCustomerNotes : showNotesRaw === '1';
+                compactCardsInput.checked = compactRaw === null ? defaults.compactCards : compactRaw === '1';
+                criticalPulseInput.checked = pulseRaw === null ? defaults.criticalPulse : pulseRaw === '1';
             } catch (e) {
                 soundInput.checked = defaults.sound;
                 criticalInput.value = defaults.criticalMinutes;
+                pinCriticalTopInput.checked = defaults.pinCriticalTop;
+                showCustomerNotesInput.checked = defaults.showCustomerNotes;
+                compactCardsInput.checked = defaults.compactCards;
+                criticalPulseInput.checked = defaults.criticalPulse;
             }
         }
 
@@ -74,6 +126,10 @@
             try {
                 localStorage.setItem('kdsEnableSound', soundInput.checked ? '1' : '0');
                 localStorage.setItem('kdsCriticalMinutes', String(safeCritical));
+                localStorage.setItem('kdsPinCriticalTop', pinCriticalTopInput.checked ? '1' : '0');
+                localStorage.setItem('kdsShowCustomerNotes', showCustomerNotesInput.checked ? '1' : '0');
+                localStorage.setItem('kdsCompactCards', compactCardsInput.checked ? '1' : '0');
+                localStorage.setItem('kdsCriticalPulse', criticalPulseInput.checked ? '1' : '0');
                 infoText.textContent = 'Ayarlar kaydedildi.';
             } catch (e) {
                 infoText.textContent = 'Ayarlar kaydedilemedi.';
@@ -83,6 +139,10 @@
         function resetSettings() {
             soundInput.checked = defaults.sound;
             criticalInput.value = defaults.criticalMinutes;
+            pinCriticalTopInput.checked = defaults.pinCriticalTop;
+            showCustomerNotesInput.checked = defaults.showCustomerNotes;
+            compactCardsInput.checked = defaults.compactCards;
+            criticalPulseInput.checked = defaults.criticalPulse;
             saveSettings();
             infoText.textContent = 'Ayarlar varsayılana döndürüldü.';
         }

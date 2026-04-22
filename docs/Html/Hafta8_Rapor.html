@@ -238,24 +238,24 @@
         <div class="tag">Hafta 8 / Nisan 2026</div>
         <h1>QR Menu - Hafta 8 Geliştirme Raporu</h1>
         <p class="subtitle">
-            Bu hafta Garson tarafında masa ve yeni sipariş akışları uçtan uca iyileştirildi.
-            Amaç; tablet kullanımında daha hızlı operasyon, daha net sipariş durumu yönetimi,
-            tam ekran uyumlu sepet deneyimi ve gerçek zamanlı ekranda kesintisiz güncellemeydi.
+            Bu hafta Garson, Mutfak ve Kasa panelleri birlikte ele alınıp rol bazlı ekran akışları
+            uçtan uca yenilendi. Amaç; ekrana sığan operasyonel arayüzler, daha net sipariş/tahsilat
+            durumu yönetimi, canlı güncelleme sürekliliği ve kullanıcı geri bildirimlerine hızlı adaptasyondu.
         </p>
         <div class="meta">
             <div class="meta-box">Durum: Tamamlandı</div>
             <div class="meta-box">Derleme: QRMenu.sln Başarılı</div>
-            <div class="meta-box">Odak: Garson UX + İş Kuralı + Canlı Akış</div>
-            <div class="meta-box">Tarih: 18 Nisan 2026</div>
+            <div class="meta-box">Odak: Role Bazlı Layout + Tahsilat + Canlı Akış</div>
+            <div class="meta-box">Tarih: 19 Nisan 2026</div>
         </div>
     </header>
 
     <main class="container">
         <section class="stats">
-            <div class="stat"><strong>12+</strong><span>Ana Fonksiyonel İyileştirme</span></div>
-            <div class="stat"><strong>4</strong><span>Kritik Ekran (Layout/Masa/YeniSipariş/Detay)</span></div>
-            <div class="stat"><strong>3</strong><span>İş Kuralı Güncellemesi</span></div>
-            <div class="stat"><strong>1</strong><span>Gerçek Zamanlı Kısmi Yenileme Modeli</span></div>
+            <div class="stat"><strong>20+</strong><span>Ana Fonksiyonel İyileştirme</span></div>
+            <div class="stat"><strong>9</strong><span>Kritik Ekran (Garson/Mutfak/Kasa)</span></div>
+            <div class="stat"><strong>5</strong><span>Layout ve Navigasyon Revizyonu</span></div>
+            <div class="stat"><strong>1</strong><span>Canlı Güncelleme ve Kısmi Yenileme Modeli</span></div>
         </section>
 
         <section class="section">
@@ -374,12 +374,24 @@
                 src/QRMenu.Web/Program.cs
                 src/QRMenu.Web/appsettings.Example.json
                 src/QRMenu.Web/Controllers/SiparisController.cs
+                src/QRMenu.Web/Controllers/KasaController.cs
+                src/QRMenu.Web/Controllers/MutfakController.cs
                 src/QRMenu.Web/Views/Shared/_GarsonLayout.cshtml
+                src/QRMenu.Web/Views/Shared/_KasaLayout.cshtml
+                src/QRMenu.Web/Views/Shared/_MutfakLayout.cshtml
+                src/QRMenu.Web/Views/Shared/_AdminLayout.cshtml
                 src/QRMenu.Web/Views/Garson/YeniSiparis.cshtml
                 src/QRMenu.Web/Views/Garson/Masa.cshtml
                 src/QRMenu.Web/Controllers/GarsonController.cs
-                src/QRMenu.Web/Views/Sepet/Index.cshtml
+                src/QRMenu.Web/Views/Kasa/Masalar.cshtml
+                src/QRMenu.Web/Views/Kasa/Odeme.cshtml
+                src/QRMenu.Web/Views/Kasa/OdenenSiparisler.cshtml
+                src/QRMenu.Web/Views/Kasa/Ayarlar.cshtml
                 src/QRMenu.Web/Views/Mutfak/Panel.cshtml
+                src/QRMenu.Web/Views/Mutfak/Gecmis.cshtml
+                src/QRMenu.Web/Views/Mutfak/Ayarlar.cshtml
+                src/QRMenu.Web/Views/Sepet/Index.cshtml
+                src/QRMenu.Web/wwwroot/css/admin-layout.css
                 src/QRMenu.Core/DTOs/ManuelSiparisDetayDto.cs
                 src/QRMenu.Data/Services/SiparisService.cs
             </div>
@@ -394,8 +406,8 @@
                 net iyileşme sağlandı.
             </div>
             <div class="warn">
-                Not: Rapor kapsamı; bu hafta boyunca Garson ekranları için alınan canlı geri bildirimler doğrultusunda
-                tamamlanan iyileştirmelerin toplu özetidir.
+                Not: Rapor kapsamı; bu hafta boyunca Garson, Mutfak ve Kasa ekranları için alınan canlı geri bildirimler
+                doğrultusunda tamamlanan iyileştirmelerin toplu özetidir.
             </div>
         </section>
 
@@ -430,6 +442,89 @@
                     <ul>
                         <li><span class="check">✓</span>Supabase/PostgreSQL pool ayarları ortam konfigürasyonuyla yönetilebilir hale getirildi.</li>
                         <li><span class="check">✓</span>Bağlantı idle/pruning parametreleriyle yoğun kullanımda bağlantı havuzu stabilitesi artırıldı.</li>
+                    </ul>
+                </article>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>8) Kasa ve Mutfak Entegrasyon Tamamlamaları</h2>
+            <div class="cards">
+                <article class="card">
+                    <h3>Mutfak için Ayrı Shell ve Sayfa Akışı <span class="badge">Yeni</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Mutfak ekranı bağımsız layout ile ayrıştırıldı; Panel, Sipariş Geçmişi ve Ayarlar sayfaları aktif hale getirildi.</li>
+                        <li><span class="check">✓</span>Masaüstü ve mobil hamburger/overlay davranışı standardize edildi.</li>
+                    </ul>
+                </article>
+                <article class="card">
+                    <h3>Kasa Layout ve Menü Revizyonu <span class="badge">Yeni</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Kasa için ayrı layout tanımlanarak admin shell'den bağımsızlaştırıldı.</li>
+                        <li><span class="check">✓</span>Dashboard kaldırıldı, profil/zil ikonları temizlendi, menü başlığı "Kasa Paneli" olarak güncellendi.</li>
+                        <li><span class="check">✓</span>Ayarlar menüsü route ve sayfa bazında aktif hale getirildi.</li>
+                    </ul>
+                </article>
+                <article class="card">
+                    <h3>Kasa Masalar Operasyon Akışı <span class="badge">Güncellendi</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Masalar sorgusunda aktif masa filtresi ve bölge include'u eklenerek sayı/bölge tutarsızlığı giderildi.</li>
+                        <li><span class="check">✓</span>Masa kartının tamamı tıklanabilir yapıldı; doğrudan tahsilat ekranına geçiş sağlandı.</li>
+                        <li><span class="check">✓</span>Ekrana sığdırma iyileştirildi, kart taşmaları düzeltildi ve gerçek sayfalama (1/2/ileri-geri) devreye alındı.</li>
+                    </ul>
+                </article>
+                <article class="card">
+                    <h3>Tahsilat ve Rapor Ekranı Yenilenmesi <span class="badge">Yenilendi</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Kasa/Odeme ekranı yeni tasarım diline göre yeniden inşa edildi; çoklu ürün seçimi ve kısmi ödeme işlevi korundu.</li>
+                        <li><span class="check">✓</span>Ödenen Siparişler ekranı ayrı bir route/view ile operasyonel raporlama akışına alındı.</li>
+                        <li><span class="check">✓</span>Kullanıcı geri bildirimi doğrultusunda adisyon notu alanı ödeme ekranından kaldırıldı.</li>
+                    </ul>
+                </article>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>9) Teknik Uyum Checklisti (Hafta 8 Kapsamı)</h2>
+            <div class="cards">
+                <article class="card">
+                    <h3>Garson Paneli Gereksinimleri <span class="badge">Birebir Eklendi</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Masa grid renk kodu: Boş = Yeşil, Sipariş Var = Mavi, Ödeme Bekliyor = Turuncu.</li>
+                        <li><span class="check">✓</span>Masaya tıklayınca sipariş detayı açılır.</li>
+                        <li><span class="check">✓</span>Manuel sipariş girişi formu aktif çalışır.</li>
+                        <li><span class="check">✓</span>Bildirim alanı: sipariş hazır ve sipariş iptal olayları gösterilir.</li>
+                    </ul>
+                </article>
+
+                <article class="card">
+                    <h3>Mutfak / Barista Paneli Gereksinimleri <span class="badge">Birebir Eklendi</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Bekleyen siparişler ticket/fiş görünümünde listelenir.</li>
+                        <li><span class="check">✓</span>Her sipariş için JS timer ile bekleme süresi sayacı çalışır.</li>
+                        <li><span class="check">✓</span>5 dakikayı geçen siparişler kırmızı duruma geçer.</li>
+                        <li><span class="check">✓</span>"Hazırla" akışı buton ile yönetilir (Hazırlanıyor -> Hazır).</li>
+                    </ul>
+                </article>
+
+                <article class="card">
+                    <h3>Kasa Paneli Gereksinimleri <span class="badge">Birebir Eklendi</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Masa seçimi sonrası adisyon/tahsilat ekranı açılır.</li>
+                        <li><span class="check">✓</span>Checkbox ile ürün seçilir, dinamik alt toplam anlık hesaplanır.</li>
+                        <li><span class="check">✓</span>Nakit/Kart seçimi ile ödeme alma akışı tamamlanır.</li>
+                    </ul>
+                </article>
+
+                <article class="card">
+                    <h3>SignalR Entegrasyon Gereksinimleri <span class="badge">Birebir Eklendi</span></h3>
+                    <ul>
+                        <li><span class="check">✓</span>Hub adı: OrderHub.</li>
+                        <li><span class="check">✓</span>Gruplar: table-{id}, kitchen, waiter, cashier.</li>
+                        <li><span class="check">✓</span>Olaylar: SiparisGeldi, SiparisHazir, OdemeYapildi.</li>
+                        <li><span class="check">✓</span>İstemci tarafında withAutomaticReconnect() kullanılır.</li>
+                        <li><span class="check">✓</span>Sunucu tarafında OnDisconnectedAsync ile bağlantı/grup temizliği yapılır.</li>
+                        <li><span class="check">✓</span>Bildirim geldiğinde bip sesi çalınır.</li>
                     </ul>
                 </article>
             </div>

@@ -154,6 +154,15 @@ namespace QRMenu.Web.Controllers
                 var success = await _odemeService.ParcaliOdemeAsync(request.MasaId, request.SiparisDetayIds, request.OdemeTipi);
                 if (success)
                 {
+                    var kalanOdemeVar = await _context.SiparisDetaylar
+                        .AsNoTracking()
+                        .AnyAsync(sd =>
+                            sd.Siparis.MasaId == request.MasaId &&
+                            (sd.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi || sd.Durum == QRMenu.Core.Enums.SiparisDurum.KismiOdendi) &&
+                            sd.Siparis.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal &&
+                            sd.Siparis.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi &&
+                            sd.Siparis.Durum != QRMenu.Core.Enums.SiparisDurum.Iade);
+
                     var masaNo = await _context.Masalar
                         .Where(m => m.Id == request.MasaId)
                         .Select(m => m.MasaNo)
@@ -168,7 +177,7 @@ namespace QRMenu.Web.Controllers
                     await _orderHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
                     await _orderHub.Clients.Group(SignalRGroups.Table(request.MasaId)).SendAsync("SiparisGuncellendi");
 
-                    return Json(new { success = true });
+                    return Json(new { success = true, tumuOdendi = !kalanOdemeVar });
                 }
                 
                 return Json(new { success = false, message = "Geçerli ödenecek ürün bulunamadı." });

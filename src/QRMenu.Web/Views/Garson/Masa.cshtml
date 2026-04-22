@@ -57,7 +57,7 @@
 
     ViewData["GarsonPageTitle"] = $"Masa {Model.MasaNo}";
     ViewData["GarsonActivePage"] = "Masa";
-    ViewData["GarsonContentClass"] = "px-5 py-3 flex-1 min-h-0 overflow-hidden";
+    ViewData["GarsonContentClass"] = "px-3 py-3 sm:px-5 sm:py-3 flex-1 min-h-0 overflow-y-auto lg:overflow-hidden";
     ViewData["GarsonMasaLink"] = $"/Garson/Masa/{Model.Id}";
 }
 
@@ -66,12 +66,12 @@
         <span class="material-symbols-outlined text-stone-500">arrow_back</span>
         <span class="text-stone-500 font-medium font-label">Geri</span>
     </a>
-    <div class="h-6 w-px bg-stone-200/50 mx-1"></div>
-    <h2 class="text-[#2e2f2f] font-['Plus_Jakarta_Sans'] text-lg font-bold">Masa @Model.MasaNo</h2>
+    <div class="hidden sm:block h-6 w-px bg-stone-200/50 mx-1"></div>
+    <h2 class="text-[#2e2f2f] font-['Plus_Jakarta_Sans'] text-base sm:text-lg font-bold">Masa @Model.MasaNo</h2>
 }
 
 @section GarsonHeaderRight {
-    <a href="/Garson/Masa/@Model.Id/YeniSiparis" class="bg-primary text-on-primary px-5 py-2.5 rounded-2xl flex items-center gap-2 font-label font-bold tracking-tight active:scale-95 transition-all shadow-lg shadow-primary/20">
+    <a href="/Garson/Masa/@Model.Id/YeniSiparis" class="bg-primary text-on-primary px-4 sm:px-5 py-2.5 rounded-2xl flex items-center justify-center gap-2 font-label font-bold tracking-tight active:scale-95 transition-all shadow-lg shadow-primary/20 w-full sm:w-auto">
         <span class="material-symbols-outlined text-[20px]">add</span>
         <span>Yeni Sipariş Al</span>
     </a>
@@ -113,14 +113,16 @@
             to { transform: scale(1.05); }
         }
 
-        #waiterMain {
-            height: 100dvh;
-            min-height: 100dvh;
-            overflow: hidden;
-        }
+        @@media (min-width: 1024px) {
+            #waiterMain {
+                height: 100dvh;
+                min-height: 100dvh;
+                overflow: hidden;
+            }
 
-        #waiterMain > div {
-            min-height: 0;
+            #waiterMain > div {
+                min-height: 0;
+            }
         }
 
         .masa-fit-layout {
@@ -211,6 +213,47 @@
                 display: none;
             }
         }
+
+        @@media (max-width: 1023px) {
+            .masa-fit-layout {
+                height: auto;
+                gap: 0.75rem;
+            }
+
+            #masaSiparisSection {
+                border-radius: 1.1rem;
+            }
+
+            #masaSiparisSection tbody td {
+                padding-top: 0.62rem;
+                padding-bottom: 0.62rem;
+            }
+
+            #gecmisSiparisPanel {
+                position: fixed;
+                left: 50%;
+                right: auto;
+                top: 78px;
+                transform: translateX(-50%);
+                width: min(94vw, 430px);
+                max-height: min(70vh, 420px);
+                overflow: hidden;
+            }
+        }
+
+        @@media (max-width: 640px) {
+            #garsonNoticeOverlay h1 {
+                font-size: 1.75rem !important;
+            }
+
+            #garsonNoticeOverlay p {
+                font-size: 0.92rem !important;
+            }
+
+            #garsonToastCard {
+                max-width: min(92vw, 360px);
+            }
+        }
     </style>
 }
 
@@ -220,7 +263,7 @@
             <h2 class="text-xl font-bold font-headline text-on-surface tracking-tight">Masa Detayı</h2>
             <p class="text-on-surface-variant text-xs mt-1">Aktif masa durumunu ve bekleyen siparişleri buradan yönetin.</p>
         </div>
-        <div class="flex flex-wrap items-center justify-end gap-3">
+        <div class="flex flex-wrap items-center justify-start md:justify-end gap-2 sm:gap-3 w-full md:w-auto">
             <button type="button"
                     onclick="topluTeslimEt(@Model.Id)"
                     class="px-3 py-1 rounded-xl border border-sky-300 bg-sky-50 text-sky-700 text-xs font-bold flex items-center gap-1.5 hover:bg-sky-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -281,8 +324,8 @@
 
     <div id="masaMainGrid" class="masa-main-grid">
         <div id="masaSiparisSection" class="bg-surface-container-lowest rounded-3xl overflow-hidden shadow-[0_12px_32px_rgba(46,47,47,0.04)] ring-1 ring-outline-variant/10">
-            <div class="masa-table-wrap overflow-x-auto">
-                <table class="w-full table-fixed text-left border-collapse">
+            <div class="masa-table-wrap overflow-x-auto overscroll-x-contain">
+                <table class="w-full min-w-[760px] md:min-w-0 table-fixed text-left border-collapse">
                     <thead>
                         <tr class="bg-surface-container-low/50">
                             <th class="w-[6%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">#</th>
@@ -446,7 +489,7 @@
     </div>
 </div>
 
-<div id="garsonToast" class="fixed bottom-6 right-6 z-[120] opacity-0 pointer-events-none translate-y-3 transition-all duration-300">
+<div id="garsonToast" class="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-[120] opacity-0 pointer-events-none translate-y-3 transition-all duration-300">
     <div id="garsonToastCard" class="max-w-[360px] flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 shadow-xl">
         <span id="garsonToastIcon" class="material-symbols-outlined text-[18px] mt-0.5">error</span>
         <span id="garsonToastMessage" class="text-sm font-semibold leading-relaxed">İşlem sırasında bir hata oluştu.</span>
@@ -461,6 +504,19 @@
         let refreshInFlight = false;
         let garsonToastTimer = null;
         let garsonConfirmResolver = null;
+
+        function garsonSettingEnabled(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                if (raw === null) {
+                    return fallback;
+                }
+
+                return raw === '1';
+            } catch (e) {
+                return fallback;
+            }
+        }
 
         function DurumLabel(d) {
             const map = {
@@ -834,8 +890,15 @@
         const connection = new signalR.HubConnectionBuilder().withUrl('/hubs/order').withAutomaticReconnect().build();
         connection.on('SiparisGuncellendi', () => scheduleSoftRefresh(500));
         connection.on('SiparisHazir', (masaNo) => {
-            showGarsonNotice(`Masa ${masaNo} Siparişi Hazır!`);
-            playNoticeSound();
+            if (garsonSettingEnabled('garsonNoticeOverlay', true)) {
+                showGarsonNotice(`Masa ${masaNo} Siparişi Hazır!`);
+            }
+
+            if (garsonSettingEnabled('garsonNoticeSound', true)) {
+                playNoticeSound();
+            }
+
+            scheduleSoftRefresh(300);
         });
         connection.on('SiparisIptal', () => scheduleSoftRefresh(350));
         connection.on('OdemeYapildi', () => scheduleSoftRefresh(300));

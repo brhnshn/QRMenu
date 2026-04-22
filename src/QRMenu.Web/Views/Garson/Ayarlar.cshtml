@@ -1,0 +1,130 @@
+@{
+    Layout = "~/Views/Shared/_GarsonLayout.cshtml";
+    ViewData["Title"] = "Garson Ayarları";
+    ViewData["GarsonPageTitle"] = "Garson Ayarları";
+    ViewData["GarsonActivePage"] = "Ayarlar";
+    ViewData["GarsonContentClass"] = "p-4 sm:p-6 lg:p-8 flex-1 overflow-y-auto";
+}
+
+<section class="mb-6">
+    <h2 class="text-2xl sm:text-3xl font-headline font-black text-on-surface">Garson Ayarları</h2>
+    <p class="text-sm sm:text-base text-on-surface-variant mt-1">Masa ekranı ve bildirim davranışlarını buradan yönetebilirsin.</p>
+</section>
+
+<section class="bg-surface-container-lowest rounded-2xl border border-surface-container p-4 sm:p-6 max-w-3xl">
+    <div class="space-y-6">
+        <label class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+                <div class="font-headline font-bold text-on-surface">Hazır Sipariş Sesi</div>
+                <div class="text-sm text-on-surface-variant">Sipariş hazır olduğunda sesli bildirim çal.</div>
+            </div>
+            <input id="garsonNoticeSound" type="checkbox" class="h-5 w-5 rounded border-surface-container-high text-primary focus:ring-primary" />
+        </label>
+
+        <label class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+                <div class="font-headline font-bold text-on-surface">Tam Ekran Uyarı</div>
+                <div class="text-sm text-on-surface-variant">Hazır sipariş geldiğinde tam ekran uyarı katmanı göster.</div>
+            </div>
+            <input id="garsonNoticeOverlay" type="checkbox" class="h-5 w-5 rounded border-surface-container-high text-primary focus:ring-primary" />
+        </label>
+
+        <label class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+                <div class="font-headline font-bold text-on-surface">Sidebar Kapalı Başlat</div>
+                <div class="text-sm text-on-surface-variant">Masa ekranına girerken sol menü dar başlamış olsun.</div>
+            </div>
+            <input id="garsonSidebarStartCollapsed" type="checkbox" class="h-5 w-5 rounded border-surface-container-high text-primary focus:ring-primary" />
+        </label>
+    </div>
+
+    <div class="mt-8 flex flex-col sm:flex-row sm:items-center gap-3">
+        <button id="btnSaveGarsonSettings" type="button" class="px-5 py-2.5 rounded-xl bg-primary text-white font-bold hover:bg-primary-dim transition-colors w-full sm:w-auto">Kaydet</button>
+        <button id="btnResetGarsonSettings" type="button" class="px-5 py-2.5 rounded-xl border border-surface-container-high bg-white text-on-surface font-semibold hover:bg-surface-container-low transition-colors w-full sm:w-auto">Sıfırla</button>
+        <span id="garsonSettingsInfo" class="text-sm font-medium text-on-surface-variant"></span>
+    </div>
+</section>
+
+@section PageScripts {
+    <script>
+        const GARSON_SETTING_DEFAULTS = {
+            garsonNoticeSound: true,
+            garsonNoticeOverlay: true,
+            garsonSidebarStartCollapsed: false
+        };
+
+        function garsonReadBoolSetting(key) {
+            try {
+                const raw = localStorage.getItem(key);
+                if (raw === null) {
+                    return GARSON_SETTING_DEFAULTS[key] ?? false;
+                }
+                return raw === '1';
+            } catch (e) {
+                return GARSON_SETTING_DEFAULTS[key] ?? false;
+            }
+        }
+
+        function garsonWriteBoolSetting(key, enabled) {
+            localStorage.setItem(key, enabled ? '1' : '0');
+        }
+
+        function loadGarsonSettings() {
+            Object.keys(GARSON_SETTING_DEFAULTS).forEach((key) => {
+                const el = document.getElementById(key);
+                if (!el) {
+                    return;
+                }
+
+                el.checked = garsonReadBoolSetting(key);
+            });
+        }
+
+        function saveGarsonSettings() {
+            const infoText = document.getElementById('garsonSettingsInfo');
+            try {
+                Object.keys(GARSON_SETTING_DEFAULTS).forEach((key) => {
+                    const el = document.getElementById(key);
+                    if (!el) {
+                        return;
+                    }
+
+                    garsonWriteBoolSetting(key, !!el.checked);
+                });
+
+                const collapsedStart = document.getElementById('garsonSidebarStartCollapsed')?.checked ? '1' : '0';
+                localStorage.setItem('garsonSidebarCollapsed', collapsedStart);
+
+                if (infoText) {
+                    infoText.textContent = 'Ayarlar kaydedildi.';
+                }
+            } catch (e) {
+                if (infoText) {
+                    infoText.textContent = 'Ayarlar kaydedilemedi.';
+                }
+            }
+        }
+
+        function resetGarsonSettings() {
+            Object.keys(GARSON_SETTING_DEFAULTS).forEach((key) => {
+                const el = document.getElementById(key);
+                if (!el) {
+                    return;
+                }
+
+                el.checked = GARSON_SETTING_DEFAULTS[key];
+            });
+
+            saveGarsonSettings();
+            const infoText = document.getElementById('garsonSettingsInfo');
+            if (infoText) {
+                infoText.textContent = 'Ayarlar varsayılana döndürüldü.';
+            }
+        }
+
+        document.getElementById('btnSaveGarsonSettings')?.addEventListener('click', saveGarsonSettings);
+        document.getElementById('btnResetGarsonSettings')?.addEventListener('click', resetGarsonSettings);
+
+        loadGarsonSettings();
+    </script>
+}

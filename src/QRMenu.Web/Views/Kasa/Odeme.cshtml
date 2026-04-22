@@ -83,7 +83,7 @@
             min-height: 0;
             overflow-y: auto;
             padding-right: .2rem;
-            display: flex;
+            display: flexy;
             flex-direction: column;
             gap: .8rem;
         }
@@ -385,6 +385,15 @@
         }
 
         @@media (max-width: 1200px) {
+            .odeme-root {
+                overflow-y: auto;
+            }
+
+            .odeme-shell {
+                height: auto;
+                min-height: 100%;
+            }
+
             .odeme-grid {
                 grid-template-columns: 1fr;
             }
@@ -395,6 +404,10 @@
 
             .tahsilat-card {
                 overflow: visible;
+            }
+
+            .odeme-list-wrap {
+                max-height: 52dvh;
             }
         }
 
@@ -416,6 +429,30 @@
                 width: 2.25rem;
                 height: 2.25rem;
             }
+
+            .odeme-toolbar-title {
+                font-size: 1.08rem;
+            }
+
+            .odeme-chip {
+                font-size: .7rem;
+            }
+
+            .odeme-item-row {
+                align-items: flex-start;
+            }
+
+            .odeme-item-price {
+                font-size: .9rem;
+            }
+
+            .odeme-tip-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .odeme-list-wrap {
+                max-height: 50dvh;
+            }
         }
     </style>
 }
@@ -434,7 +471,7 @@
                     <span>Masa @Model.MasaNo</span>
                 </span>
             </div>
-            <button type="button" class="inline-flex items-center gap-2 rounded-xl px-3 py-2 bg-secondary-container text-on-secondary-container hover:opacity-90 text-sm font-bold transition-opacity" onclick="tumunuSec()">
+            <button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 bg-secondary-container text-on-secondary-container hover:opacity-90 text-sm font-bold transition-opacity w-full sm:w-auto" onclick="tumunuSec()">
                 <span class="material-symbols-outlined text-base">select_all</span>
                 <span>Tümünü Seç</span>
             </button>
@@ -442,9 +479,9 @@
 
         <div class="odeme-grid">
             <section class="odeme-left">
-                <div class="flex items-center justify-between gap-3 flex-wrap">
-                    <h3 class="text-xl font-black tracking-tight text-on-surface">Ürün Listesi</h3>
-                    <span class="text-sm font-semibold text-on-surface-variant"><span id="seciliKalemSayisi">0</span> / @toplamBekleyenKalem kalem seçildi</span>
+                <div class="flex items-start sm:items-center justify-between gap-3 flex-wrap">
+                    <h3 class="text-lg sm:text-xl font-black tracking-tight text-on-surface">Ürün Listesi</h3>
+                    <span class="text-xs sm:text-sm font-semibold text-on-surface-variant"><span id="seciliKalemSayisi">0</span> / @toplamBekleyenKalem kalem seçildi</span>
                 </div>
 
                 <div class="odeme-list-wrap">
@@ -590,6 +627,15 @@
     <script>
         let seciliOdemeTipi = 'Nakit';
 
+        function readDefaultPaymentType() {
+            try {
+                const stored = localStorage.getItem('kasaDefaultPayment');
+                return stored === 'Kart' ? 'Kart' : 'Nakit';
+            } catch (e) {
+                return 'Nakit';
+            }
+        }
+
         function formatTl(value) {
             return Number(value || 0).toLocaleString('tr-TR', {
                 minimumFractionDigits: 2,
@@ -675,6 +721,35 @@
             hesapla();
         }
 
+        async function softRefreshOdemePanel() {
+            try {
+                const res = await fetch(window.location.pathname, {
+                    cache: 'no-store',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                if (!res.ok) {
+                    throw new Error('Ödeme ekranı güncellenemedi.');
+                }
+
+                const html = await res.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const yeniKok = doc.querySelector('.odeme-root');
+                const mevcutKok = document.querySelector('.odeme-root');
+
+                if (yeniKok && mevcutKok) {
+                    mevcutKok.innerHTML = yeniKok.innerHTML;
+                }
+
+                seciliOdemeTipi = readDefaultPaymentType();
+                seciliOdemeTipiDegistir(seciliOdemeTipi);
+                hesapla();
+            } catch (err) {
+                console.error(err);
+                alert('Ekran güncellenemedi. Lütfen birazdan tekrar deneyin.');
+            }
+        }
+
         async function odemeYap() {
             const seciliChecks = Array.from(document.querySelectorAll('.urun-check:checked'));
             if (!seciliChecks.length) {
@@ -701,7 +776,7 @@
 
                 const result = await response.json();
                 if (result.success) {
-                    location.reload();
+                    await softRefreshOdemePanel();
                     return;
                 }
 
@@ -714,6 +789,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', function () {
+            seciliOdemeTipi = readDefaultPaymentType();
             seciliOdemeTipiDegistir(seciliOdemeTipi);
             hesapla();
         });

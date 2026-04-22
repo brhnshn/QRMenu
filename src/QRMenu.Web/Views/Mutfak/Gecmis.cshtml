@@ -5,7 +5,7 @@
     ViewData["Title"] = "Sipariş Geçmişi";
     ViewData["MutfakPageTitle"] = "Sipariş Geçmişi";
     ViewData["MutfakActivePage"] = "SiparisGecmisi";
-    ViewData["MutfakContentClass"] = "p-5 lg:p-8 pb-8 flex-1 overflow-y-auto";
+    ViewData["MutfakContentClass"] = "p-3 sm:p-5 lg:p-8 pb-8 flex-1 overflow-y-auto";
 
     string DurumEtiketi(SiparisDurum durum) => durum switch
     {
@@ -47,8 +47,8 @@
 }
 
 <section class="mb-6">
-    <h2 class="text-3xl font-headline font-black text-on-surface">Son 7 Gün Sipariş Geçmişi</h2>
-    <p class="text-on-surface-variant mt-1">Hazırlık süreci tamamlanan siparişler burada listelenir.</p>
+    <h2 class="text-2xl sm:text-3xl font-headline font-black text-on-surface">Son 7 Gün Sipariş Geçmişi</h2>
+    <p class="text-sm sm:text-base text-on-surface-variant mt-1">Hazırlık süreci tamamlanan siparişler burada listelenir.</p>
 </section>
 
 @if (Model.Any())

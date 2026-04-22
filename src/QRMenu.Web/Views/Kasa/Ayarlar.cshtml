@@ -209,6 +209,17 @@
                 min-width: 135px;
             }
         }
+
+        @@media (max-width: 640px) {
+            .settings-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .settings-select {
+                width: 100%;
+            }
+        }
     </style>
 }
 
@@ -219,7 +230,7 @@
                 <p class="kasa-settings-sub">Kasa Yönetimi</p>
                 <h1 class="kasa-settings-title">Ayarlar</h1>
             </div>
-            <button type="button" class="kasa-save-btn" onclick="kaydetKasaAyar()">
+            <button type="button" class="kasa-save-btn w-full sm:w-auto justify-center" onclick="kaydetKasaAyar()">
                 <span class="material-symbols-outlined text-[18px]">save</span>
                 <span>Ayarları Kaydet</span>
             </button>
@@ -228,17 +239,6 @@
         <div class="settings-grid">
             <article class="settings-card">
                 <h3>Tahsilat ve Bildirim</h3>
-
-                <div class="settings-row">
-                    <div>
-                        <p class="settings-label">Otomatik yenileme</p>
-                        <p class="settings-help">Kasa ekranı sipariş değişiminde güncellensin.</p>
-                    </div>
-                    <label class="switch">
-                        <input id="kasaAutoRefresh" type="checkbox" checked />
-                        <span class="slider"></span>
-                    </label>
-                </div>
 
                 <div class="settings-row">
                     <div>
@@ -312,7 +312,6 @@
     <script>
         function yukleKasaAyar() {
             const boolSettings = [
-                ['kasaAutoRefresh', true],
                 ['kasaPaymentSound', true],
                 ['kasaStartCollapsed', false],
                 ['kasaCompactCards', false]
@@ -345,7 +344,7 @@
         }
 
         function kaydetKasaAyar() {
-            const boolKeys = ['kasaAutoRefresh', 'kasaPaymentSound', 'kasaStartCollapsed', 'kasaCompactCards'];
+            const boolKeys = ['kasaPaymentSound', 'kasaStartCollapsed', 'kasaCompactCards'];
             boolKeys.forEach((key) => {
                 const el = document.getElementById(key);
                 if (!el) {
@@ -364,9 +363,7 @@
                 localStorage.setItem('kasaSortDefault', sortEl.value);
             }
 
-            if (document.getElementById('kasaStartCollapsed')?.checked) {
-                localStorage.setItem('kasaSidebarCollapsed', '1');
-            }
+            localStorage.setItem('kasaSidebarCollapsed', document.getElementById('kasaStartCollapsed')?.checked ? '1' : '0');
 
             const note = document.getElementById('kasaAyarNote');
             if (note) {

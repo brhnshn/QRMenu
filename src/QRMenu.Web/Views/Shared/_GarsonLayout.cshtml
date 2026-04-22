@@ -135,6 +135,34 @@
         html.sidebar-collapsed #waiterMain {
             margin-left: 0;
         }
+
+        #waiterSidebarBackdrop {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        body.mobile-sidebar-open #waiterSidebarBackdrop,
+        html.mobile-sidebar-open #waiterSidebarBackdrop {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        @@media (max-width: 1023px) {
+            #waiterSidebar {
+                transform: translateX(-100%);
+                width: min(88vw, 19.5rem);
+            }
+
+            #waiterMain {
+                margin-left: 0 !important;
+            }
+
+            body.mobile-sidebar-open #waiterSidebar,
+            html.mobile-sidebar-open #waiterSidebar {
+                transform: translateX(0);
+            }
+        }
     </style>
 
     @RenderSection("PageStyles", required: false)
@@ -164,6 +192,10 @@
                     <span>Masa Detayı</span>
                 </a>
             }
+            <a href="/Garson/Ayarlar" class="@(activePage == "Ayarlar" ? "bg-[#eae8e7] text-[#a23718]" : "text-[#2e2f2f] opacity-60 hover:bg-[#eae8e7]") rounded-xl flex items-center gap-4 px-6 py-4 mx-2 font-['Plus_Jakarta_Sans'] font-semibold tracking-tight transition-all duration-300">
+                <span class="material-symbols-outlined">settings</span>
+                <span>Ayarlar</span>
+            </a>
             <a href="/Auth/Logout" class="text-[#2e2f2f] opacity-60 flex items-center gap-4 px-6 py-4 mx-2 font-['Plus_Jakarta_Sans'] font-semibold tracking-tight hover:bg-[#eae8e7] rounded-xl transition-all duration-300">
                 <span class="material-symbols-outlined">logout</span>
                 <span>Çıkış</span>
@@ -171,9 +203,11 @@
         </nav>
     </aside>
 
+    <div id="waiterSidebarBackdrop" class="fixed inset-0 z-40 bg-black/30 lg:hidden"></div>
+
     <main id="waiterMain" class="ml-72 flex flex-col min-h-screen">
-        <header class="sticky top-0 w-full z-40 flex items-center justify-between px-8 py-4 bg-[#f8f6f5]/80 backdrop-blur-xl border-b border-[#ece8e7]">
-            <div class="flex items-center gap-4">
+        <header class="sticky top-0 w-full z-30 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 bg-[#f8f6f5]/80 backdrop-blur-xl border-b border-[#ece8e7]">
+            <div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
                 <button id="toggleSidebarBtn" type="button" class="material-symbols-outlined text-[#a23718] hover:opacity-70 transition-opacity">menu</button>
                 @if (IsSectionDefined("GarsonHeaderLeft"))
                 {
@@ -186,7 +220,7 @@
             </div>
             @if (IsSectionDefined("GarsonHeaderRight"))
             {
-                <div class="flex items-center gap-4">
+                <div class="w-full sm:w-auto flex items-center justify-end gap-2 sm:gap-4">
                     @RenderSection("GarsonHeaderRight", required: false)
                 </div>
             }
@@ -200,7 +234,24 @@
     <script>
         const sidebarStorageKey = 'garsonSidebarCollapsed';
 
+        function isMobileViewport() {
+            return window.matchMedia('(max-width: 1023px)').matches;
+        }
+
+        function setMobileSidebarOpen(isOpen) {
+            document.body.classList.toggle('mobile-sidebar-open', isOpen);
+            document.documentElement.classList.toggle('mobile-sidebar-open', isOpen);
+        }
+
         function applySidebarState(isCollapsed) {
+            if (isMobileViewport()) {
+                setMobileSidebarOpen(false);
+                document.body.classList.add('sidebar-collapsed');
+                document.documentElement.classList.add('sidebar-collapsed');
+                return;
+            }
+
+            setMobileSidebarOpen(false);
             document.body.classList.toggle('sidebar-collapsed', isCollapsed);
             document.documentElement.classList.toggle('sidebar-collapsed', isCollapsed);
             try {
@@ -216,14 +267,46 @@
         })();
 
         const toggleBtn = document.getElementById('toggleSidebarBtn');
+        const sidebarBackdrop = document.getElementById('waiterSidebarBackdrop');
+
+        if (sidebarBackdrop) {
+            sidebarBackdrop.addEventListener('click', function () {
+                setMobileSidebarOpen(false);
+            });
+        }
+
         if (toggleBtn) {
             toggleBtn.addEventListener('click', function () {
+                if (isMobileViewport()) {
+                    const isOpen = !document.body.classList.contains('mobile-sidebar-open');
+                    setMobileSidebarOpen(isOpen);
+                    return;
+                }
+
                 const isCollapsed = !document.body.classList.contains('sidebar-collapsed');
                 applySidebarState(isCollapsed);
             });
         }
-    </script>
 
+        window.addEventListener('resize', function () {
+            if (!isMobileViewport()) {
+                setMobileSidebarOpen(false);
+                return;
+            }
+
+            setMobileSidebarOpen(false);
+            document.body.classList.add('sidebar-collapsed');
+            document.documentElement.classList.add('sidebar-collapsed');
+        });
+
+        document.querySelectorAll('#waiterSidebar a').forEach(function (link) {
+            link.addEventListener('click', function () {
+                if (isMobileViewport()) {
+                    setMobileSidebarOpen(false);
+                }
+            });
+        });
+    </script>
     @RenderSection("PageScripts", required: false)
 </body>
 </html>

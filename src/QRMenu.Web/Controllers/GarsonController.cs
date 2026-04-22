@@ -75,6 +75,16 @@ namespace QRMenu.Web.Controllers
             return View(masalar);
         }
 
+        // GET: /Garson/Ayarlar
+        [HttpGet("/Garson/Ayarlar")]
+        public IActionResult Ayarlar()
+        {
+            ViewData["GarsonPageTitle"] = "Garson Ayarları";
+            ViewData["GarsonActivePage"] = "Ayarlar";
+            ViewData["GarsonContentClass"] = "p-4 sm:p-6 lg:p-8 flex-1 overflow-y-auto";
+            return View();
+        }
+
         // GET: /Garson/Masa/{id}
         [HttpGet("/Garson/Masa/{id:int}")]
         public async Task<IActionResult> Masa(int id)

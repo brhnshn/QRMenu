@@ -4,7 +4,7 @@
     Layout = "~/Views/Shared/_GarsonLayout.cshtml";
     ViewData["GarsonPageTitle"] = "Masa Yönetimi";
     ViewData["GarsonActivePage"] = "Masalar";
-    ViewData["GarsonContentClass"] = "p-8 flex-1 overflow-y-auto";
+    ViewData["GarsonContentClass"] = "p-4 sm:p-6 lg:p-8 flex-1 overflow-y-auto";
 
     var trCulture = CultureInfo.GetCultureInfo("tr-TR");
 
@@ -82,29 +82,43 @@
                 transform: scale(1.05);
             }
         }
+
+        @@media (max-width: 640px) {
+            .table-card {
+                border-left-width: 4px;
+            }
+
+            #garsonNoticeOverlay h1 {
+                font-size: 1.65rem !important;
+            }
+
+            #garsonNoticeOverlay p {
+                font-size: 0.9rem !important;
+            }
+        }
     </style>
 }
 
-<div id="garsonSummaryStats" class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-    <div class="bg-surface-container-lowest p-6 rounded-xl border-b-4 border-green-500/30">
-        <p class="text-sm font-label text-on-surface-variant mb-1">Müsait</p>
-        <p class="text-3xl font-headline font-bold text-on-surface">@musaitMasaSayisi</p>
+<div id="garsonSummaryStats" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-10">
+    <div class="bg-surface-container-lowest p-4 sm:p-6 rounded-xl border-b-4 border-green-500/30">
+        <p class="text-xs sm:text-sm font-label text-on-surface-variant mb-1">Müsait</p>
+        <p class="text-2xl sm:text-3xl font-headline font-bold text-on-surface">@musaitMasaSayisi</p>
     </div>
-    <div class="bg-surface-container-lowest p-6 rounded-xl border-b-4 border-primary/30">
-        <p class="text-sm font-label text-on-surface-variant mb-1">Dolu</p>
-        <p class="text-3xl font-headline font-bold text-on-surface">@doluMasaSayisi</p>
+    <div class="bg-surface-container-lowest p-4 sm:p-6 rounded-xl border-b-4 border-primary/30">
+        <p class="text-xs sm:text-sm font-label text-on-surface-variant mb-1">Dolu</p>
+        <p class="text-2xl sm:text-3xl font-headline font-bold text-on-surface">@doluMasaSayisi</p>
     </div>
-    <div class="bg-surface-container-lowest p-6 rounded-xl border-b-4 border-secondary/30">
-        <p class="text-sm font-label text-on-surface-variant mb-1">Hesap Bekleyen</p>
-        <p class="text-3xl font-headline font-bold text-on-surface">@hesapBekleyenMasaSayisi</p>
+    <div class="bg-surface-container-lowest p-4 sm:p-6 rounded-xl border-b-4 border-secondary/30">
+        <p class="text-xs sm:text-sm font-label text-on-surface-variant mb-1">Hesap Bekleyen</p>
+        <p class="text-2xl sm:text-3xl font-headline font-bold text-on-surface">@hesapBekleyenMasaSayisi</p>
     </div>
-    <div class="bg-surface-container-lowest p-6 rounded-xl border-b-4 border-tertiary/30">
-        <p class="text-sm font-label text-on-surface-variant mb-1">Toplam Masa</p>
-        <p class="text-3xl font-headline font-bold text-on-surface">@toplamMasaSayisi</p>
+    <div class="bg-surface-container-lowest p-4 sm:p-6 rounded-xl border-b-4 border-tertiary/30">
+        <p class="text-xs sm:text-sm font-label text-on-surface-variant mb-1">Toplam Masa</p>
+        <p class="text-2xl sm:text-3xl font-headline font-bold text-on-surface">@toplamMasaSayisi</p>
     </div>
 </div>
 
-<div id="garsonMasalarGrid" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+<div id="garsonMasalarGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 lg:gap-8">
     @foreach (var masa in Model.OrderBy(m => m.MasaNo))
     {
         var aktifSiparisler = masa.Siparisler
@@ -140,8 +154,8 @@
         var ilkSiparis = aktifSiparisler.OrderBy(s => s.OlusturmaTarihi).FirstOrDefault();
         var gecenDakika = ilkSiparis == null ? 0 : Math.Max(1, (int)(DateTime.UtcNow - ilkSiparis.OlusturmaTarihi).TotalMinutes);
 
-        <a href="/Garson/Masa/@masa.Id" class="group relative bg-surface-container-lowest rounded-xl p-6 table-card @kartSinif cursor-pointer text-decoration-none text-on-surface">
-            <div class="flex justify-between items-start mb-12">
+        <a href="/Garson/Masa/@masa.Id" class="group relative bg-surface-container-lowest rounded-xl p-5 sm:p-6 table-card @kartSinif cursor-pointer text-decoration-none text-on-surface">
+            <div class="flex justify-between items-start mb-8 sm:mb-12">
                 <div class="w-12 h-12 rounded-lg @(siparisVarMi ? "bg-primary-container/20 text-primary" : "bg-surface-container") flex items-center justify-center font-headline font-extrabold text-xl">
                     @masa.MasaNo.ToString("00")
                 </div>
@@ -190,6 +204,19 @@
 
 @section PageScripts {
     <script>
+        function garsonSettingEnabled(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                if (raw === null) {
+                    return fallback;
+                }
+
+                return raw === '1';
+            } catch (e) {
+                return fallback;
+            }
+        }
+
         let refreshTimer = null;
         let lastRefreshAt = 0;
         let refreshInFlight = false;
@@ -221,7 +248,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                location.reload();
+                console.warn('Garson masalar içeriği güncellenemedi, mevcut görünüm korunuyor.');
             } finally {
                 refreshInFlight = false;
             }
@@ -267,8 +294,15 @@
         });
 
         connection.on('SiparisHazir', function (masaNo) {
-            showGarsonNotice('Masa ' + masaNo + ' siparişi hazır!');
-            playNoticeSound();
+            if (garsonSettingEnabled('garsonNoticeOverlay', true)) {
+                showGarsonNotice('Masa ' + masaNo + ' siparişi hazır!');
+            }
+
+            if (garsonSettingEnabled('garsonNoticeSound', true)) {
+                playNoticeSound();
+            }
+
+            scheduleSoftRefresh(350);
         });
 
         connection.on('SiparisIptal', function () {

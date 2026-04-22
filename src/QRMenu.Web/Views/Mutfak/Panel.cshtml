@@ -8,7 +8,7 @@
     ViewData["PageTitle"] = "Mutfak Ekranı (KDS)";
     ViewData["MutfakPageTitle"] = "Mutfak KDS";
     ViewData["MutfakActivePage"] = "CanliSiparisler";
-    ViewData["MutfakContentClass"] = "p-5 lg:p-8 pb-28 md:pb-8 flex-1 overflow-y-auto";
+    ViewData["MutfakContentClass"] = "p-3 sm:p-5 lg:p-8 pb-24 md:pb-8 flex-1 overflow-y-auto";
 
     var aktifSiparisler = (Model ?? new List<QRMenu.Core.Entities.Siparis>())
         .Where(s => s.SiparisDetaylar.Any(d => d.Durum == SiparisDurum.Onaylandi || d.Durum == SiparisDurum.Hazirlaniyor))
@@ -91,6 +91,23 @@
             animation: kdsPulse 2s infinite;
         }
 
+        .kds-compact-mode .ticket-head {
+            padding: .75rem 1rem;
+        }
+
+        .kds-compact-mode .ticket-body {
+            padding: .7rem .95rem;
+            gap: .65rem;
+        }
+
+        .kds-compact-mode .ticket-actions {
+            padding: .65rem .85rem;
+        }
+
+        .kds-compact-mode .ticket-body .space-y-4 {
+            row-gap: .55rem;
+        }
+
         @@keyframes kdsPulse {
             0% { box-shadow: 0 0 0 0 rgba(251, 81, 81, 0.32); }
             70% { box-shadow: 0 0 0 12px rgba(251, 81, 81, 0); }
@@ -102,6 +119,18 @@
                 grid-template-columns: 1fr;
                 gap: 1rem;
             }
+
+            .kds-ticket-card .ticket-head {
+                padding: 1rem;
+            }
+
+            .kds-ticket-card .ticket-body {
+                padding: 1rem;
+            }
+
+            .kds-ticket-card .ticket-actions {
+                padding: .85rem;
+            }
         }
     </style>
 }
@@ -109,19 +138,19 @@
 <audio id="bellSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
 
 <div id="kdsPanelRoot" class="kds-panel-root bg-surface font-body text-on-surface">
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+    <div class="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-5 sm:mb-8">
         <div class="flex gap-4 flex-wrap">
-            <div class="bg-surface-container-low px-6 py-3 rounded-2xl flex flex-col">
+            <div class="bg-surface-container-low px-4 sm:px-6 py-3 rounded-2xl flex flex-col">
                 <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Aktif Bilet</span>
-                <span class="text-3xl font-headline font-extrabold text-primary">@aktifBiletSayisi</span>
+                <span class="text-2xl sm:text-3xl font-headline font-extrabold text-primary">@aktifBiletSayisi</span>
             </div>
-            <div class="bg-surface-container-low px-6 py-3 rounded-2xl flex flex-col">
+            <div class="bg-surface-container-low px-4 sm:px-6 py-3 rounded-2xl flex flex-col">
                 <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Ort. Hazırlık</span>
-                <span class="text-3xl font-headline font-extrabold text-secondary">@SureyiYaz(ortalamaSaniye)</span>
+                <span class="text-2xl sm:text-3xl font-headline font-extrabold text-secondary">@SureyiYaz(ortalamaSaniye)</span>
             </div>
-            <div class="bg-surface-container-low px-6 py-3 rounded-2xl flex flex-col">
+            <div class="bg-surface-container-low px-4 sm:px-6 py-3 rounded-2xl flex flex-col">
                 <span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Hazırlanıyor</span>
-                <span class="text-3xl font-headline font-extrabold text-on-surface">@hazardakiSiparisSayisi</span>
+                <span class="text-2xl sm:text-3xl font-headline font-extrabold text-on-surface">@hazardakiSiparisSayisi</span>
             </div>
         </div>
     </div>
@@ -164,21 +193,21 @@
                                 : "bg-surface-container-highest text-on-surface";
 
                     <article class="bg-surface-container-lowest rounded-2xl flex flex-col overflow-hidden @kartSinifi" data-id="@siparis.Id" data-tarih="@siparis.OlusturmaTarihi.ToString("o")">
-                            <div class="@baslikSinifi p-5 flex justify-between items-center">
+                            <div class="@baslikSinifi p-4 sm:p-5 flex justify-between items-center ticket-head">
                                 <div class="@(yeniBilet ? "text-white" : "")">
                                     <div class="text-xs font-bold uppercase tracking-tighter @(yeniBilet ? "opacity-80" : "text-on-surface-variant")">Masa @siparis.Masa.MasaNo</div>
-                                    <div class="text-2xl font-headline font-black @(yeniBilet ? "" : "text-on-surface")">Ticket #@siparis.Id</div>
+                                    <div class="text-xl sm:text-2xl font-headline font-black @(yeniBilet ? "" : "text-on-surface")">Ticket #@siparis.Id</div>
                                 </div>
                                 <div class="@sureRozetiSinifi px-3 py-1.5 rounded-lg flex items-center gap-2">
                                     <span class="material-symbols-outlined text-sm">timer</span>
-                                    <span class="font-headline font-bold text-lg timer-text">@SureyiYaz((int)Math.Max(0, elapsed.TotalSeconds))</span>
+                                    <span class="font-headline font-bold text-base sm:text-lg timer-text">@SureyiYaz((int)Math.Max(0, elapsed.TotalSeconds))</span>
                                 </div>
                             </div>
 
-                            <div class="p-5 flex-grow flex flex-col gap-4">
+                            <div class="p-4 sm:p-5 flex-grow flex flex-col gap-4 ticket-body">
                                 @if (!string.IsNullOrWhiteSpace(musteriNotu))
                                 {
-                                    <div class="bg-secondary-container/20 p-3 rounded-xl border-l-4 border-secondary">
+                                    <div class="kds-customer-note bg-secondary-container/20 p-3 rounded-xl border-l-4 border-secondary">
                                         <div class="text-[10px] font-black uppercase text-secondary-dim tracking-widest">Müşteri Notu</div>
                                         <p class="text-sm font-medium text-on-secondary-container">@musteriNotu</p>
                                     </div>
@@ -191,12 +220,12 @@
                                         <div class="flex items-start gap-3">
                                             <div class="bg-surface-container-highest px-2.5 py-1 rounded-lg font-black text-on-surface">@detay.Adet</div>
                                             <div class="flex-grow">
-                                                <div class="font-headline font-bold text-on-surface text-lg">@detay.Urun.Ad</div>
+                                                <div class="font-headline font-bold text-on-surface text-base sm:text-lg">@detay.Urun.Ad</div>
                                                 @if (opsiyonlar.Any())
                                                 {
                                                     foreach (var opsiyon in opsiyonlar)
                                                     {
-                                                        <div class="text-sm text-on-surface-variant font-medium">• @opsiyon</div>
+                                                        <div class="text-xs sm:text-sm text-on-surface-variant font-medium">• @opsiyon</div>
                                                     }
                                                 }
                                             </div>
@@ -205,17 +234,17 @@
                                 </div>
                             </div>
 
-                            <div class="p-4 bg-surface-container-low">
+                            <div class="p-3 sm:p-4 bg-surface-container-low ticket-actions">
                                 @if (siparis.Durum == SiparisDurum.Onaylandi)
                                 {
-                                    <button type="button" onclick="durumGuncelle(@siparis.Id, 'Hazirlaniyor')" class="w-full bg-primary hover:bg-primary-dim text-white py-4 rounded-xl font-headline font-extrabold text-lg transition-all flex justify-center items-center gap-2">
+                                    <button type="button" onclick="durumGuncelle(@siparis.Id, 'Hazirlaniyor')" class="w-full bg-primary hover:bg-primary-dim text-white py-3 sm:py-4 rounded-xl font-headline font-extrabold text-base sm:text-lg transition-all flex justify-center items-center gap-2">
                                         <span>Hazırlanıyor</span>
                                         <span class="material-symbols-outlined">chevron_right</span>
                                     </button>
                                 }
                                 else if (siparis.Durum == SiparisDurum.Hazirlaniyor)
                                 {
-                                    <button type="button" onclick="durumGuncelle(@siparis.Id, 'Hazir')" class="w-full bg-primary hover:bg-primary-dim text-white py-4 rounded-xl font-headline font-extrabold text-lg transition-all flex justify-center items-center gap-2">
+                                    <button type="button" onclick="durumGuncelle(@siparis.Id, 'Hazir')" class="w-full bg-primary hover:bg-primary-dim text-white py-3 sm:py-4 rounded-xl font-headline font-extrabold text-base sm:text-lg transition-all flex justify-center items-center gap-2">
                                         <span>Hazır</span>
                                         <span class="material-symbols-outlined">check_circle</span>
                                     </button>
@@ -254,19 +283,52 @@
 @section PageScripts {
     <script>
         let dangerThresholdMs = 5 * 60 * 1000;
+        let pinCriticalTop = true;
+        let showCustomerNotes = true;
+        let compactCards = false;
+        let criticalPulse = true;
 
         function loadRuntimeSettings() {
             try {
                 const criticalMinutes = parseInt(localStorage.getItem('kdsCriticalMinutes') || '', 10);
                 if (Number.isFinite(criticalMinutes) && criticalMinutes >= 1 && criticalMinutes <= 60) {
                     dangerThresholdMs = criticalMinutes * 60 * 1000;
-                    return;
+                } else {
+                    dangerThresholdMs = 5 * 60 * 1000;
                 }
+
+                const pinTopRaw = localStorage.getItem('kdsPinCriticalTop');
+                pinCriticalTop = pinTopRaw === null ? true : pinTopRaw === '1';
+
+                const showNotesRaw = localStorage.getItem('kdsShowCustomerNotes');
+                showCustomerNotes = showNotesRaw === null ? true : showNotesRaw === '1';
+
+                const compactRaw = localStorage.getItem('kdsCompactCards');
+                compactCards = compactRaw === null ? false : compactRaw === '1';
+
+                const pulseRaw = localStorage.getItem('kdsCriticalPulse');
+                criticalPulse = pulseRaw === null ? true : pulseRaw === '1';
+                return;
             } catch (e) {
                 // localStorage erişilemiyorsa varsayılan süre kullan
             }
 
             dangerThresholdMs = 5 * 60 * 1000;
+            pinCriticalTop = true;
+            showCustomerNotes = true;
+            compactCards = false;
+            criticalPulse = true;
+        }
+
+        function applyRuntimeUiSettings() {
+            const root = document.getElementById('kdsPanelRoot');
+            if (root) {
+                root.classList.toggle('kds-compact-mode', compactCards);
+            }
+
+            document.querySelectorAll('.kds-customer-note').forEach(note => {
+                note.style.display = showCustomerNotes ? '' : 'none';
+            });
         }
 
         function updateTimers() {
@@ -290,12 +352,51 @@
                     timerText.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                 }
 
-                card.classList.toggle('kds-danger', diffMs > dangerThresholdMs);
+                const isCritical = diffMs > dangerThresholdMs;
+                card.dataset.critical = isCritical ? '1' : '0';
+                card.classList.toggle('kds-danger', criticalPulse && isCritical);
+            });
+
+            sortKdsCardsByPriority();
+        }
+
+        function sortKdsCardsByPriority() {
+            const grid = document.getElementById('kdsGrid');
+            if (!grid) {
+                return;
+            }
+
+            const cards = Array.from(grid.querySelectorAll('.kds-ticket-card'));
+            if (!cards.length) {
+                return;
+            }
+
+            cards.sort((a, b) => {
+                const aCritical = a.dataset.critical === '1' ? 1 : 0;
+                const bCritical = b.dataset.critical === '1' ? 1 : 0;
+
+                if (pinCriticalTop && aCritical !== bCritical) {
+                    // Kritik biletler üstte kalır.
+                    return bCritical - aCritical;
+                }
+
+                const aTime = Date.parse(a.dataset.tarih || '');
+                const bTime = Date.parse(b.dataset.tarih || '');
+                const safeATime = Number.isFinite(aTime) ? aTime : 0;
+                const safeBTime = Number.isFinite(bTime) ? bTime : 0;
+
+                // Aynı öncelikte eski siparişler üstte kalır.
+                return safeATime - safeBTime;
+            });
+
+            cards.forEach((card) => {
+                grid.appendChild(card);
             });
         }
 
         setInterval(updateTimers, 1000);
         loadRuntimeSettings();
+        applyRuntimeUiSettings();
         updateTimers();
 
         let refreshTimer = null;
@@ -326,11 +427,12 @@
                 if (yeniPanel && mevcutPanel) {
                     mevcutPanel.innerHTML = yeniPanel.innerHTML;
                     loadRuntimeSettings();
+                    applyRuntimeUiSettings();
                     updateTimers();
                 }
             } catch (err) {
                 console.error(err);
-                location.reload();
+                console.warn('Mutfak paneli güncellenemedi, mevcut içerik korunuyor.');
             } finally {
                 refreshInFlight = false;
             }

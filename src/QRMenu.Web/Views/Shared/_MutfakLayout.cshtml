@@ -170,7 +170,7 @@
         @@media (max-width: 1023px) {
             #kitchenSidebar {
                 display: flex;
-                width: 16rem;
+                width: min(88vw, 16rem);
                 transform: translateX(-100%);
             }
 
@@ -198,6 +198,13 @@
 
             #kitchenMain {
                 margin-left: 0 !important;
+            }
+        }
+
+        @@media (max-width: 640px) {
+            #kitchenTopbar {
+                padding-left: 0.85rem !important;
+                padding-right: 0.85rem !important;
             }
         }
     </style>
@@ -249,16 +256,16 @@
 
     <div class="kitchen-overlay" id="kitchenOverlay" onclick="closeKitchenSidebarMobile()"></div>
 
-    <header id="kitchenTopbar" class="fixed left-64 right-0 top-0 z-40 bg-white/75 backdrop-blur-xl flex items-center justify-between px-8 py-4 w-[calc(100%-16rem)] border-b border-[#eadfdb] shadow-[0_8px_30px_rgba(89,58,33,0.08)]">
-        <div class="flex items-center gap-4 flex-1 min-w-0">
+    <header id="kitchenTopbar" class="fixed left-64 right-0 top-0 z-40 bg-white/75 backdrop-blur-xl flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 w-[calc(100%-16rem)] border-b border-[#eadfdb] shadow-[0_8px_30px_rgba(89,58,33,0.08)]">
+        <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 w-full lg:w-auto">
             <button id="toggleKitchenSidebarBtn" type="button" class="material-symbols-outlined text-primary hover:opacity-70 transition-opacity">menu</button>
             <div class="min-w-0">
                 <p class="text-xs uppercase tracking-[0.22em] text-[#7e5f49] font-semibold">KDS Ekranı</p>
-                <h1 class="font-headline font-extrabold tracking-tight text-[22px] text-on-surface truncate">Mutfak Paneli</h1>
+                <h1 class="font-headline font-extrabold tracking-tight text-[18px] sm:text-[22px] text-on-surface truncate">Mutfak Paneli</h1>
             </div>
         </div>
 
-        <div class="flex items-center gap-6">
+        <div class="w-full lg:w-auto flex items-center justify-end gap-3 sm:gap-6">
             <div class="hidden md:flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#e6dbd6] bg-[#fff7f3]">
                 <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span class="text-xs font-bold tracking-wide text-[#8a6146]">SİSTEM AKTİF</span>
@@ -267,7 +274,7 @@
         </div>
     </header>
 
-    <main id="kitchenMain" class="relative z-10 ml-64 mt-[82px] h-[calc(100dvh-82px)] min-h-0 overflow-hidden">
+    <main id="kitchenMain" class="relative z-10 ml-64 mt-[94px] sm:mt-[82px] h-[calc(100dvh-94px)] sm:h-[calc(100dvh-82px)] min-h-0 overflow-hidden">
         <div class="@contentClass">
             @RenderBody()
         </div>
@@ -330,6 +337,14 @@
             if (window.innerWidth >= 1024) {
                 closeKitchenSidebarMobile();
             }
+        });
+
+        document.querySelectorAll('#kitchenSidebar a').forEach(function (link) {
+            link.addEventListener('click', function () {
+                if (window.innerWidth < 1024) {
+                    closeKitchenSidebarMobile();
+                }
+            });
         });
 
         function updateLayoutClock() {

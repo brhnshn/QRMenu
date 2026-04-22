@@ -143,6 +143,7 @@
         @@media (max-width: 1024px) {
             #kasaSidebar {
                 transform: translateX(-100%);
+                width: min(88vw, 16rem);
             }
 
             html.kasa-sidebar-open #kasaSidebar,
@@ -169,6 +170,13 @@
 
             #kasaMain {
                 margin-left: 0 !important;
+            }
+        }
+
+        @@media (max-width: 640px) {
+            #kasaTopbar {
+                padding-left: 0.85rem !important;
+                padding-right: 0.85rem !important;
             }
         }
     </style>
@@ -212,8 +220,8 @@
 
     <div class="kasa-layout-overlay" id="kasaLayoutOverlay" onclick="closeKasaSidebarMobile()"></div>
 
-    <header id="kasaTopbar" class="fixed left-64 right-0 top-0 z-40 bg-white/80 backdrop-blur-xl flex items-center justify-between px-8 py-4 w-[calc(100%-16rem)] shadow-sm">
-        <div class="flex items-center gap-4 flex-1 max-w-md">
+    <header id="kasaTopbar" class="fixed left-64 right-0 top-0 z-40 bg-white/80 backdrop-blur-xl flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 w-[calc(100%-16rem)] shadow-sm">
+        <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 w-full lg:w-auto lg:max-w-md">
             <button id="kasaSidebarToggle" type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors">
                 <span class="material-symbols-outlined">menu</span>
             </button>
@@ -222,12 +230,12 @@
                 <input id="kasaSearchInput" class="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-[#a23718]/20 transition-all" placeholder="Masa veya garson ara..." type="text" />
             </div>
         </div>
-        <div class="flex items-center gap-2">
-            <span class="text-lg font-black text-[#2e2f2f]">@pageTitle</span>
+        <div class="w-full lg:w-auto flex items-center justify-end gap-2">
+            <span class="text-base sm:text-lg font-black text-[#2e2f2f]">@pageTitle</span>
         </div>
     </header>
 
-    <main id="kasaMain" class="ml-64 mt-[72px] h-[calc(100dvh-72px)] min-h-0 overflow-hidden">
+    <main id="kasaMain" class="ml-64 mt-[82px] sm:mt-[72px] h-[calc(100dvh-82px)] sm:h-[calc(100dvh-72px)] min-h-0 overflow-hidden">
         @RenderBody()
     </main>
 
@@ -287,6 +295,14 @@
             if (window.innerWidth > 1024) {
                 closeKasaSidebarMobile();
             }
+        });
+
+        document.querySelectorAll('#kasaSidebar a').forEach(function (link) {
+            link.addEventListener('click', function () {
+                if (window.innerWidth <= 1024) {
+                    closeKasaSidebarMobile();
+                }
+            });
         });
     </script>
 
