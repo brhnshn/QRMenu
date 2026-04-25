@@ -1,305 +1,361 @@
 @{
     ViewData["Title"] = "Kullanıcı Yönetimi";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    ViewData["ActivePage"] = "Kullanicilar";
+    ViewData["PageTitle"] = "Kullanıcı Yönetimi";
 }
 
-<div class="admin-page-header">
-    <div class="header-left">
-        <h1>👥 Kullanıcı Yönetimi</h1>
-        <p class="subtitle">Personel hesaplarını ve rollerini yönetin</p>
-    </div>
-    <button class="btn-primary" onclick="modalAc('ekle')">
-        <span>+</span> Yeni Kullanıcı
-    </button>
-</div>
+@section Styles {
+    @* Sadece bu sayfaya özel, layout ile çakışmayan stiller *@
+    <style>
+        .admin-content { background: #f8f6f5; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .pill-btn.active {
+            background-color: #ffca57 !important;
+            color: #5d4300 !important;
+            box-shadow: 0 4px 12px rgba(255, 202, 87, 0.3);
+        }
+        .page-container { padding-top: 1.5rem; padding-bottom: 5rem; }
+        
+        /* Mavi focus halkalarını projenin ana rengine çekiyoruz */
+        input:focus, select:focus, textarea:focus {
+            --tw-ring-color: #a2371833 !important;
+            border-color: #a23718 !important;
+        }
+    </style>
+}
 
-<!-- Kullanıcı Tablosu -->
-<div class="table-card">
-    <div class="table-header">
-        <div class="search-box">
-            <span>🔍</span>
-            <input type="text" id="searchInput" placeholder="Kullanıcı ara..." oninput="filtrele(this.value)">
+<div class="font-body text-on-surface page-container px-4 md:px-8 max-w-7xl mx-auto">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+        <div>
+            <h2 class="font-headline text-4xl font-extrabold tracking-tight text-on-surface mb-2">Kullanıcı Yönetimi</h2>
+            <p class="text-outline text-lg">Personel hesaplarını ve rollerini yönetin</p>
         </div>
-        <div class="filter-pills" id="rolFilter">
-            <button class="pill active" data-rol="all">Tümü</button>
-            <button class="pill" data-rol="Admin">Admin</button>
-            <button class="pill" data-rol="Garson">Garson</button>
-            <button class="pill" data-rol="Kasa">Kasa</button>
-            <button class="pill" data-rol="Mutfak">Mutfak</button>
-            <button class="pill" data-rol="Barista">Barista</button>
-        </div>
+        <button onclick="modalAc('ekle')" class="bg-primary text-on-primary flex items-center gap-2 px-6 py-3 rounded-xl font-headline font-bold hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-primary/20">
+            <span class="material-symbols-outlined">add</span>
+            Yeni Kullanıcı
+        </button>
     </div>
 
-    <div class="table-responsive">
-        <table class="admin-table" id="kullaniciTable">
-            <thead>
-                <tr>
-                    <th>Kullanıcı Adı</th>
-                    <th>Ad Soyad</th>
-                    <th>Rol</th>
-                    <th>Durum</th>
-                    <th>İşlemler</th>
-                </tr>
-            </thead>
-            <tbody id="kullaniciBody">
-                <tr><td colspan="5" class="loading-row">⏳ Yükleniyor...</td></tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- KULLANICI EKLE MODALi -->
-<div class="modal-overlay" id="ekleModal" onclick="modalKapat('ekle')">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <h2>➕ Yeni Kullanıcı</h2>
-            <button class="modal-close" onclick="modalKapat('ekle')">✕</button>
+    <!-- Filters & Search Bento Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
+        <div class="lg:col-span-4 bg-white p-1 rounded-2xl flex items-center px-4 shadow-sm border border-stone-200">
+            <span class="material-symbols-outlined text-outline">search</span>
+            <input id="searchInput" oninput="filtrele(this.value)" class="w-full bg-transparent border-none focus:ring-0 py-4 px-3 text-on-surface placeholder:text-outline" placeholder="Kullanıcı ara..." type="text" />
         </div>
-        <div class="modal-body">
-            <form id="ekleForm" onsubmit="kullaniciEkle(event)">
-                <div class="form-group">
-                    <label>Kullanıcı Adı *</label>
-                    <input type="text" id="yeni_kullaniciAdi" class="form-control" required placeholder="örn: garson2">
-                </div>
-                <div class="form-group">
-                    <label>Ad Soyad *</label>
-                    <input type="text" id="yeni_adSoyad" class="form-control" required placeholder="örn: Ahmet Yılmaz">
-                </div>
-                <div class="form-group">
-                    <label>Şifre * (min 6 karakter)</label>
-                    <div class="input-group">
-                        <input type="password" id="yeni_sifre" class="form-control" required minlength="6">
-                        <button type="button" class="btn-eye" onclick="toggleSifre('yeni_sifre')">👁</button>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Rol *</label>
-                    <select id="yeni_rol" class="form-control">
-                        <option value="Garson">🍽️ Garson</option>
-                        <option value="Kasa">💰 Kasa</option>
-                        <option value="Mutfak">👨‍🍳 Mutfak</option>
-                        <option value="Barista">☕ Barista</option>
-                        <option value="Admin">🛡️ Admin</option>
-                    </select>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="modalKapat('ekle')">İptal</button>
-                    <button type="submit" class="btn-primary">✅ Kaydet</button>
-                </div>
-            </form>
+
+        <div class="lg:col-span-8 flex flex-wrap items-center gap-3" id="rolFilter">
+            <button data-rol="all" class="pill-btn active px-6 py-3 rounded-full bg-secondary-container text-on-secondary-container font-headline font-semibold text-sm transition-colors">Tümü</button>
+            <button data-rol="Admin" class="pill-btn px-6 py-3 rounded-full bg-stone-100 text-outline font-headline font-medium text-sm hover:bg-stone-200 transition-colors">Admin</button>
+            <button data-rol="Garson" class="pill-btn px-6 py-3 rounded-full bg-stone-100 text-outline font-headline font-medium text-sm hover:bg-stone-200 transition-colors">Garson</button>
+            <button data-rol="Kasa" class="pill-btn px-6 py-3 rounded-full bg-stone-100 text-outline font-headline font-medium text-sm hover:bg-stone-200 transition-colors">Kasa</button>
+            <button data-rol="Mutfak" class="pill-btn px-6 py-3 rounded-full bg-stone-100 text-outline font-headline font-medium text-sm hover:bg-stone-200 transition-colors">Mutfak</button>
         </div>
     </div>
-</div>
 
-<!-- KULLANICI DÜZENLE MODALi -->
-<div class="modal-overlay" id="duzenleModal" onclick="modalKapat('duzenle')">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <h2>✏️ Kullanıcı Düzenle</h2>
-            <button class="modal-close" onclick="modalKapat('duzenle')">✕</button>
+    <!-- Data Table Container -->
+    <div class="bg-white rounded-[2rem] overflow-hidden shadow-sm border border-stone-200">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-stone-50">
+                        <th class="px-8 py-5 text-xs font-bold text-outline tracking-widest uppercase font-headline">Kullanıcı Adı</th>
+                        <th class="px-8 py-5 text-xs font-bold text-outline tracking-widest uppercase font-headline">Ad Soyad</th>
+                        <th class="px-8 py-5 text-xs font-bold text-outline tracking-widest uppercase font-headline">Rol</th>
+                        <th class="px-8 py-5 text-xs font-bold text-outline tracking-widest uppercase font-headline">Durum</th>
+                        <th class="px-8 py-5 text-xs font-bold text-outline tracking-widest uppercase font-headline text-right">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody id="kullaniciBody" class="divide-y divide-stone-100">
+                    <!-- JS ile dolacak -->
+                </tbody>
+            </table>
         </div>
-        <div class="modal-body">
-            <form id="duzenleForm" onsubmit="kullaniciGuncelle(event)">
-                <input type="hidden" id="duz_id">
-                <div class="form-group">
-                    <label>Kullanıcı Adı *</label>
-                    <input type="text" id="duz_kullaniciAdi" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label>Ad Soyad *</label>
-                    <input type="text" id="duz_adSoyad" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label>Rol *</label>
-                    <select id="duz_rol" class="form-control">
-                        <option value="Garson">🍽️ Garson</option>
-                        <option value="Kasa">💰 Kasa</option>
-                        <option value="Mutfak">👨‍🍳 Mutfak</option>
-                        <option value="Barista">☕ Barista</option>
-                        <option value="Admin">🛡️ Admin</option>
-                    </select>
-                </div>
-                <div class="toggle-row">
-                    <label>Hesap Aktif</label>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="duz_aktifMi">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-warning" onclick="sifreModalAc(document.getElementById('duz_id').value)">🔑 Şifre</button>
-                    <button type="button" class="btn-secondary" onclick="modalKapat('duzenle')">İptal</button>
-                    <button type="submit" class="btn-primary">💾 Kaydet</button>
-                </div>
-            </form>
+        <!-- Pagination UI -->
+        <div class="px-8 py-6 flex items-center justify-between border-t border-stone-100 bg-stone-50/50" id="pagination">
+            <span class="text-sm text-outline font-medium" id="totalCountText">Toplam - kullanıcı gösteriliyor</span>
+            <div class="flex items-center gap-2" id="paginationButtons">
+                <button class="p-2 rounded-lg border border-stone-200 text-outline hover:bg-stone-100 transition-colors">
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </button>
+                <button class="w-10 h-10 rounded-lg bg-primary text-on-primary font-bold">1</button>
+                <button id="btnPage2" class="hidden w-10 h-10 rounded-lg text-outline hover:bg-stone-100 transition-colors font-medium">2</button>
+                <button class="p-2 rounded-lg border border-stone-200 text-outline hover:bg-stone-100 transition-colors">
+                    <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+            </div>
         </div>
+    </div>
+
+    <!-- Role Distribution Mini Bento Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12" id="statsContainer">
+        <!-- Stats will be loaded here -->
     </div>
 </div>
 
-<!-- ŞİFRE DEĞİŞTİR MODALi -->
-<div class="modal-overlay" id="sifreModal" onclick="modalKapat('sifre')">
-    <div class="modal-content modal-sm" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <h2>🔑 Şifre Değiştir</h2>
-            <button class="modal-close" onclick="modalKapat('sifre')">✕</button>
+<!-- Mobile Bottom Nav -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-stone-200 flex items-center justify-around h-16 z-40">
+    <a href="/admin/kullanicilar" class="flex flex-col items-center gap-1 text-primary">
+        <span class="material-symbols-outlined">group</span>
+        <span class="text-[10px] font-bold uppercase tracking-tighter">Personel</span>
+    </a>
+    <a href="/admin/urunler" class="flex flex-col items-center gap-1 text-outline">
+        <span class="material-symbols-outlined">restaurant</span>
+        <span class="text-[10px] font-bold uppercase tracking-tighter">Menü</span>
+    </a>
+    <a href="/admin/siparisler" class="flex flex-col items-center gap-1 text-outline">
+        <span class="material-symbols-outlined">analytics</span>
+        <span class="text-[10px] font-bold uppercase tracking-tighter">Siparişler</span>
+    </a>
+    <a href="/admin/masalar" class="flex flex-col items-center gap-1 text-outline">
+        <span class="material-symbols-outlined">grid_view</span>
+        <span class="text-[10px] font-bold uppercase tracking-tighter">Masalar</span>
+    </a>
+</nav>
+
+<!-- MODALS -->
+<div id="ekleModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-stone-200">
+        <div class="px-8 pt-8 pb-4 flex justify-between items-center">
+            <h3 class="font-headline text-2xl font-bold">Yeni Kullanıcı Ekle</h3>
+            <button onclick="modalKapat('ekle')" class="material-symbols-outlined text-outline hover:text-on-surface">close</button>
         </div>
-        <div class="modal-body">
-            <form id="sifreForm" onsubmit="sifreDegistir(event)">
-                <input type="hidden" id="sifre_id">
-                <div class="form-group">
-                    <label>Yeni Şifre (min 6 karakter)</label>
-                    <div class="input-group">
-                        <input type="password" id="yeni_sifre2" class="form-control" required minlength="6" placeholder="Yeni şifre girin">
-                        <button type="button" class="btn-eye" onclick="toggleSifre('yeni_sifre2')">👁</button>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="modalKapat('sifre')">İptal</button>
-                    <button type="submit" class="btn-danger">🔑 Şifreyi Değiştir</button>
-                </div>
-            </form>
-        </div>
+        <form class="p-8 space-y-4" onsubmit="kullaniciEkle(event)">
+            <div class="space-y-1">
+                <label class="text-sm font-bold text-outline uppercase tracking-wider">Kullanıcı Adı</label>
+                <input id="yeni_kullaniciAdi" required class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="text" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-bold text-outline uppercase tracking-wider">Ad Soyad</label>
+                <input id="yeni_adSoyad" required class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="text" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-bold text-outline uppercase tracking-wider">Şifre</label>
+                <input id="yeni_sifre" required minlength="6" class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="password" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-bold text-outline uppercase tracking-wider">Rol</label>
+                <select id="yeni_rol" class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20">
+                    <option value="Garson">Garson</option>
+                    <option value="Kasa">Kasa</option>
+                    <option value="Mutfak">Mutfak</option>
+                    <option value="Admin">Admin</option>
+                </select>
+            </div>
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="modalKapat('ekle')" class="flex-1 px-6 py-3 rounded-xl border border-stone-200 font-headline font-bold hover:bg-stone-50 transition-colors">Vazgeç</button>
+                <button type="submit" class="flex-1 bg-primary text-on-primary px-6 py-3 rounded-xl font-headline font-bold hover:opacity-90">Kaydet</button>
+            </div>
+        </form>
     </div>
 </div>
 
-<style>
-    .admin-page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-    .header-left h1 { font-size: 1.8rem; font-weight: 700; margin: 0; }
-    .header-left .subtitle { color: var(--text-muted); margin: 0.3rem 0 0 0; }
+<div id="duzenleModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-stone-200">
+        <div class="px-8 pt-8 pb-4 flex justify-between items-center">
+            <h3 class="font-headline text-2xl font-bold">Kullanıcı Düzenle</h3>
+            <button onclick="modalKapat('duzenle')" class="material-symbols-outlined text-outline hover:text-on-surface">close</button>
+        </div>
+        <form class="p-8 space-y-4" onsubmit="kullaniciGuncelle(event)">
+            <input type="hidden" id="duz_id" />
+            <div class="space-y-1">
+                <label class="text-sm font-bold text-outline uppercase tracking-wider">Kullanıcı Adı</label>
+                <input id="duz_kullaniciAdi" required class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="text" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-bold text-outline uppercase tracking-wider">Ad Soyad</label>
+                <input id="duz_adSoyad" required class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="text" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-bold text-outline uppercase tracking-wider">Rol</label>
+                <select id="duz_rol" class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20">
+                    <option value="Garson">Garson</option>
+                    <option value="Kasa">Kasa</option>
+                    <option value="Mutfak">Mutfak</option>
+                    <option value="Admin">Admin</option>
+                </select>
+            </div>
+            <div class="flex items-center justify-between py-2">
+                <div class="flex flex-col">
+                    <span class="font-headline font-bold text-on-surface">Hesap Aktif</span>
+                    <span class="text-xs text-outline">Personel geçiş yetkisi</span>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="duz_aktifMi" class="sr-only peer">
+                    <div class="w-11 h-6 bg-stone-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+            </div>
+            <div class="pt-4 flex flex-col gap-3">
+                <button type="button" onclick="sifreModalAc(document.getElementById('duz_id').value)" class="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-orange-50 text-orange-700 font-headline font-bold border border-orange-100">Şifre Sıfırla</button>
+                <div class="flex gap-3">
+                    <button type="button" onclick="modalKapat('duzenle')" class="flex-1 px-6 py-3 rounded-xl border border-stone-200 font-headline font-bold">İptal</button>
+                    <button type="submit" class="flex-1 bg-primary text-on-primary px-6 py-3 rounded-xl font-headline font-bold">Güncelle</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 
-    .table-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-    .table-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
-    .search-box { display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary, #f5f5f5); border-radius: 8px; padding: 0.5rem 1rem; flex: 1; min-width: 200px; }
-    .search-box input { border: none; background: transparent; outline: none; width: 100%; }
-    .filter-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .pill { padding: 0.35rem 0.9rem; border-radius: 20px; border: 1px solid var(--border); background: transparent; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
-    .pill.active { background: #007bff; color: white; border-color: #007bff; }
-    .pill:hover { background: rgba(0,123,255,0.1); }
+<div id="sifreModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4">
+    <div class="bg-white w-full max-w-xs rounded-3xl shadow-2xl overflow-hidden border border-stone-200">
+        <div class="px-8 pt-8 pb-4 flex justify-between items-center">
+            <h3 class="font-headline text-xl font-bold">Şifre Belirle</h3>
+            <button onclick="modalKapat('sifre')" class="material-symbols-outlined text-outline hover:text-on-surface">close</button>
+        </div>
+        <form class="p-8 space-y-4" onsubmit="sifreDegistir(event)">
+            <input type="hidden" id="sifre_id" />
+            <input id="yeni_sifre2" required minlength="6" class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3" type="password" />
+            <button type="submit" class="w-full bg-primary text-on-primary py-3 rounded-xl font-headline font-bold">Şifreyi Değiştir</button>
+        </form>
+    </div>
+</div>
 
-    .admin-table { width: 100%; border-collapse: collapse; }
-    .admin-table th { padding: 0.9rem 1.5rem; text-align: left; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); border-bottom: 1px solid var(--border); background: var(--bg-secondary, #f9f9f9); }
-    .admin-table td { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); }
-    .admin-table tr:hover td { background: rgba(0,123,255,0.04); }
-    .loading-row { text-align: center; padding: 2rem; color: var(--text-muted); }
-
-    .rol-badge { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
-    .rol-Admin { background: rgba(255,0,80,0.15); color: #cc0044; }
-    .rol-Garson { background: rgba(0,123,255,0.15); color: #0056b3; }
-    .rol-Kasa { background: rgba(40,167,69,0.15); color: #155724; }
-    .rol-Mutfak { background: rgba(255,193,7,0.15); color: #856404; }
-    .rol-Barista { background: rgba(111,66,193,0.15); color: #4b0082; }
-
-    .status-badge { padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
-    .status-aktif { background: rgba(40,167,69,0.15); color: #155724; }
-    .status-pasif { background: rgba(220,53,69,0.15); color: #721c24; }
-
-    .action-btns { display: flex; gap: 0.5rem; }
-    .btn-action { padding: 0.3rem 0.7rem; border-radius: 6px; border: 1px solid transparent; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
-    .btn-edit { background: rgba(0,123,255,0.1); color: #007bff; border-color: rgba(0,123,255,0.3); }
-    .btn-edit:hover { background: #007bff; color: white; }
-    .btn-delete { background: rgba(220,53,69,0.1); color: #dc3545; border-color: rgba(220,53,69,0.3); }
-    .btn-delete:hover { background: #dc3545; color: white; }
-
-    /* Modal */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
-    .modal-overlay.show { display: flex; }
-    .modal-content { background: var(--card-bg, white); border-radius: 14px; width: 90%; max-width: 500px; box-shadow: 0 25px 50px rgba(0,0,0,0.2); animation: slideIn 0.2s ease; }
-    .modal-content.modal-sm { max-width: 380px; }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border); }
-    .modal-header h2 { margin: 0; font-size: 1.1rem; font-weight: 700; }
-    .modal-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 0.2rem 0.5rem; border-radius: 6px; }
-    .modal-body { padding: 1.5rem; }
-    .modal-footer { display: flex; gap: 0.8rem; justify-content: flex-end; padding-top: 1rem; border-top: 1px solid var(--border); margin-top: 1rem; }
-
-    .form-group { margin-bottom: 1rem; }
-    .form-group label { display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem; }
-    .form-control { width: 100%; padding: 0.6rem 1rem; border: 1px solid var(--border); border-radius: 8px; background: var(--input-bg, #fff); box-sizing: border-box; }
-    .input-group { display: flex; }
-    .input-group .form-control { border-radius: 8px 0 0 8px; }
-    .btn-eye { padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-left: none; border-radius: 0 8px 8px 0; background: var(--bg-secondary, #f5f5f5); cursor: pointer; }
-    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 0; }
-    .toggle-switch { position: relative; display: inline-block; width: 50px; height: 26px; }
-    .toggle-switch input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 26px; transition: 0.4s; }
-    .slider:before { content: ""; position: absolute; width: 18px; height: 18px; left: 4px; bottom: 4px; background: white; border-radius: 50%; transition: 0.4s; }
-    input:checked + .slider { background: #28a745; }
-    input:checked + .slider:before { transform: translateX(24px); }
-
-    .btn-primary { padding: 0.6rem 1.2rem; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
-    .btn-primary:hover { background: #0056b3; }
-    .btn-secondary { padding: 0.6rem 1.2rem; background: transparent; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; }
-    .btn-warning { padding: 0.6rem 1.2rem; background: #ffc107; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
-    .btn-danger { padding: 0.6rem 1.2rem; background: #dc3545; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
-</style>
-
+@section Scripts {
 <script>
     let tumKullanicilar = [];
     let aktifRolFilter = 'all';
 
-    const rolIkon = { Admin: '🛡️', Garson: '🍽️', Kasa: '💰', Mutfak: '👨‍🍳', Barista: '☕' };
+    function showToast(msg, isSuccess = false) {
+        window.SavorAlert.fire({
+            toast: true,
+            position: 'top-end',
+            icon: isSuccess ? 'success' : 'error',
+            title: msg,
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+    }
+
+    const rolRenkler = {
+        Admin: 'bg-primary/10 text-primary',
+        Garson: 'bg-amber-100 text-amber-700',
+        Kasa: 'bg-stone-100 text-stone-600',
+        Mutfak: 'bg-stone-100 text-stone-600'
+    };
 
     async function veriYukle() {
-        const r = await fetch('/admin/kullanici-listesi');
-        const d = await r.json();
-        if (!d.success) return;
-        tumKullanicilar = d.data;
-        tabloGuncelle();
+        try {
+            const r = await fetch('/admin/kullanici-listesi');
+            const d = await r.json();
+            if (!d.success) return;
+            tumKullanicilar = d.data;
+            tabloGuncelle();
+            statlariYukle();
+        } catch(e) { console.error("Veri yüklenemedi", e); }
     }
 
     function tabloGuncelle() {
         const arama = document.getElementById('searchInput').value.toLowerCase();
         const filteredData = tumKullanicilar.filter(k => {
             const rolOk = aktifRolFilter === 'all' || k.rol === aktifRolFilter;
-            const aramaOk = !arama || k.kullaniciAdi.toLowerCase().includes(arama) || k.adSoyad.toLowerCase().includes(arama);
+            const aramaOk = !arama || k.kullaniciAdi.toLowerCase().includes(arama) || (k.adSoyad && k.adSoyad.toLowerCase().includes(arama));
             return rolOk && aramaOk;
         });
 
         const tbody = document.getElementById('kullaniciBody');
+        document.getElementById('totalCountText').innerText = `Toplam ${filteredData.length} kullanıcı gösteriliyor`;
+
+        const btn2 = document.getElementById('btnPage2');
+        if(filteredData.length > 10) { btn2.classList.remove('hidden'); } else { btn2.classList.add('hidden'); }
+
         if (filteredData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="loading-row">📭 Kullanıcı bulunamadı.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="px-8 py-12 text-center text-outline font-medium">📭 Kullanıcı bulunamadı.</td></tr>';
             return;
         }
 
         tbody.innerHTML = filteredData.map(function(k) {
-            return '<tr data-id="' + k.id + '" data-rol="' + k.rol + '">' +
-                '<td><strong>' + k.kullaniciAdi + '</strong></td>' +
-                '<td>' + k.adSoyad + '</td>' +
-                '<td><span class="rol-badge rol-' + k.rol + '">' + (rolIkon[k.rol] || '') + ' ' + k.rol + '</span></td>' +
-                '<td><span class="status-badge ' + (k.aktifMi ? 'status-aktif' : 'status-pasif') + '">' + (k.aktifMi ? '✅ Aktif' : '❌ Pasif') + '</span></td>' +
-                '<td><div class="action-btns">' +
-                '<button class="btn-action btn-edit" onclick=\'duzenleAc(' + JSON.stringify(k) + ')\' title="Düzenle">✏️</button>' +
-                '<button class="btn-action btn-warning bg-opacity-25" style="border:1px solid #ffcc00; background:rgba(255, 193, 7, 0.1); color:#856404; transition:all 0.2s;" onmouseover="this.style.background=\'#ffc107\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'rgba(255, 193, 7, 0.1)\';this.style.color=\'#856404\'" onclick="kullaniciToggle(\'' + k.id + '\')" title="Aktif/Pasif Yap">' + (k.aktifMi ? '⏸️' : '▶️') + '</button>' +
-                '<button class="btn-action btn-delete" onclick="kullaniciSil(\'' + k.id + '\', \'' + k.kullaniciAdi + '\')" title="Kalıcı Olarak Sil">🗑️</button>' +
-                '</div></td>' +
-                '</tr>';
+            const init = k.adSoyad ? k.adSoyad.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase() : '??';
+            const rolStili = rolRenkler[k.rol] || 'bg-stone-100 text-stone-600';
+            return `
+                <tr class="group hover:bg-stone-50 transition-colors">
+                    <td class="px-8 py-6 font-medium text-on-surface">@@${k.kullaniciAdi}</td>
+                    <td class="px-8 py-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">${init}</div>
+                            <span class="font-headline font-semibold text-on-surface">${k.adSoyad || ''}</span>
+                        </div>
+                    </td>
+                    <td class="px-8 py-6"><span class="px-3 py-1.5 rounded-lg ${rolStili} text-xs font-bold uppercase tracking-wider">${k.rol}</span></td>
+                    <td class="px-8 py-6">
+                        <div class="flex items-center gap-2 ${k.aktifMi ? '' : 'opacity-50'}">
+                            <span class="w-2 h-2 rounded-full ${k.aktifMi ? 'bg-emerald-500' : 'bg-stone-300'}"></span>
+                            <span class="text-sm font-medium ${k.aktifMi ? 'text-emerald-700' : 'text-stone-400'}">${k.aktifMi ? 'Aktif' : 'Pasif'}</span>
+                        </div>
+                    </td>
+                    <td class="px-8 py-6 text-right">
+                        <div class="flex items-center justify-end gap-3 transition-all">
+                            ${k.rol === 'Admin' 
+                                ? `<button title="Admin düzenlenemez" disabled class="material-symbols-outlined text-stone-200 cursor-not-allowed p-2 text-xl">edit</button>
+                                   <button title="Admin kapatılamaz" disabled class="material-symbols-outlined text-stone-200 cursor-not-allowed p-2 text-xl">${k.aktifMi ? 'pause_circle' : 'play_circle'}</button>
+                                   <button title="Admin kullanıcısı silinemez" disabled class="material-symbols-outlined text-stone-200 cursor-not-allowed p-2 text-xl">delete</button>`
+                                : `<button onclick='duzenleAc(${JSON.stringify(k)})' class="material-symbols-outlined text-outline hover:text-primary p-2 text-xl">edit</button>
+                                   <button onclick="kullaniciToggle('${k.id}')" class="material-symbols-outlined text-outline hover:text-secondary p-2 text-xl">${k.aktifMi ? 'pause_circle' : 'play_circle'}</button>
+                                   <button onclick="kullaniciSil('${k.id}', '${k.kullaniciAdi}')" class="material-symbols-outlined text-outline hover:text-error p-2 text-xl">delete</button>`
+                            }
+                        </div>
+                    </td>
+                </tr>`;
+        }).join('');
+    }
+
+    function statlariYukle() {
+        const stats = { Garson: 0, Mutfak: 0, Admin: 0, Kasa: 0 };
+        tumKullanicilar.forEach(k => { if(stats[k.rol] !== undefined) stats[k.rol]++; });
+        
+        const container = document.getElementById('statsContainer');
+        if(!container) return;
+
+        container.innerHTML = Object.keys(stats).map(rol => {
+            const count = stats[rol];
+            const percent = tumKullanicilar.length > 0 ? (count / tumKullanicilar.length) * 100 : 0;
+
+            return `
+                <div class="bg-white p-6 rounded-2xl flex flex-col gap-1 shadow-sm border border-stone-200 hover:scale-[1.02] transition-transform">
+                    <span class="text-outline text-xs font-bold uppercase tracking-wider">${rol}</span>
+                    <span class="text-3xl font-headline font-extrabold text-on-surface">${count}</span>
+                    <div class="w-full h-1 bg-stone-100 mt-3 rounded-full overflow-hidden">
+                        <div class="h-full bg-primary rounded-full" style="width: ${percent}%"></div>
+                    </div>
+                </div>`;
         }).join('');
     }
 
     function filtrele(val) { tabloGuncelle(); }
 
-    document.querySelectorAll('.pill').forEach(p => {
+    document.querySelectorAll('.pill-btn').forEach(p => {
         p.addEventListener('click', () => {
-            document.querySelectorAll('.pill').forEach(x => x.classList.remove('active'));
-            p.classList.add('active');
+            document.querySelectorAll('.pill-btn').forEach(x => {
+                x.classList.remove('active', 'bg-secondary-container', 'text-on-secondary-container', 'font-semibold');
+                x.classList.add('bg-stone-100', 'text-outline', 'font-medium');
+            });
+            p.classList.remove('bg-stone-100', 'text-outline', 'font-medium');
+            p.classList.add('active', 'bg-secondary-container', 'text-on-secondary-container', 'font-semibold');
             aktifRolFilter = p.dataset.rol;
             tabloGuncelle();
         });
     });
 
-    // Modaller
-    function modalAc(id) { document.getElementById(id + 'Modal').classList.add('show'); }
-    function modalKapat(id) { document.getElementById(id + 'Modal').classList.remove('show'); }
-    function sifreModalAc(id) { document.getElementById('sifre_id').value = id; modalKapat('duzenle'); modalAc('sifre'); }
+    function modalAc(id) { 
+        const el = document.getElementById(id + 'Modal');
+        if(el) { el.classList.remove('hidden'); el.classList.add('flex'); }
+    }
+    function modalKapat(id) { 
+        const el = document.getElementById(id + 'Modal');
+        if(el) { el.classList.add('hidden'); el.classList.remove('flex'); }
+    }
 
-    function toggleSifre(id) {
-        const el = document.getElementById(id);
-        el.type = el.type === 'password' ? 'text' : 'password';
+    function sifreModalAc(id) { 
+        document.getElementById('sifre_id').value = id; 
+        modalKapat('duzenle'); 
+        modalAc('sifre'); 
     }
 
     function duzenleAc(k) {
         document.getElementById('duz_id').value = k.id;
         document.getElementById('duz_kullaniciAdi').value = k.kullaniciAdi;
-        document.getElementById('duz_adSoyad').value = k.adSoyad;
+        document.getElementById('duz_adSoyad').value = k.adSoyad || '';
         document.getElementById('duz_rol').value = k.rol;
         document.getElementById('duz_aktifMi').checked = k.aktifMi;
         modalAc('duzenle');
@@ -318,8 +374,13 @@
             })
         });
         const d = await r.json();
-        if (d.success) { modalKapat('ekle'); veriYukle(); e.target.reset(); }
-        else alert('Hata: ' + d.message);
+        if (d.success) { 
+            modalKapat('ekle'); 
+            await veriYukle(); 
+            e.target.reset(); 
+            showToast('Kullanıcı başarıyla eklendi.', true);
+        }
+        else showToast(d.message);
     }
 
     async function kullaniciGuncelle(e) {
@@ -336,8 +397,12 @@
             })
         });
         const d = await r.json();
-        if (d.success) { modalKapat('duzenle'); veriYukle(); }
-        else alert('Hata: ' + d.message);
+        if (d.success) { 
+            modalKapat('duzenle'); 
+            await veriYukle(); 
+            showToast('Kullanıcı güncellendi.', true);
+        }
+        else showToast(d.message);
     }
 
     async function sifreDegistir(e) {
@@ -349,24 +414,42 @@
             body: JSON.stringify({ yeniSifre: document.getElementById('yeni_sifre2').value })
         });
         const d = await r.json();
-        if (d.success) { modalKapat('sifre'); alert('✅ Şifre başarıyla değiştirildi.'); e.target.reset(); }
-        else alert('Hata: ' + d.message);
+        if (d.success) { 
+            modalKapat('sifre'); 
+            showToast('Şifre başarıyla değiştirildi.', true); 
+            e.target.reset(); 
+        }
+        else showToast(d.message);
     }
 
     async function kullaniciSil(id, kullaniciAdi) {
-        if (!confirm(`DİKKAT: "${kullaniciAdi}" kullanıcısı kalıcı olarak silinecek. Emin misiniz?`)) return;
-        const r = await fetch(`/admin/kullanici-sil/${id}`, { method: 'POST' });
-        const d = await r.json();
-        if (d.success) veriYukle();
-        else alert('Hata: ' + d.message);
+        window.SavorAlert.fire({
+            title: 'Emin misiniz?',
+            text: `"${kullaniciAdi}" kullanıcısı kalıcı olarak silinecek!`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Sil',
+            cancelButtonText: 'Vazgeç'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                const r = await fetch(`/admin/kullanici-sil/${id}`, { method: 'POST' });
+                const d = await r.json();
+                if (d.success) { await veriYukle(); showToast('Kullanıcı silindi.', true); }
+                else showToast(d.message);
+            }
+        });
     }
 
     async function kullaniciToggle(id) {
         const r = await fetch(`/admin/kullanici-toggle/${id}`, { method: 'POST' });
         const d = await r.json();
-        if (d.success) veriYukle();
-        else alert('Hata: ' + d.message);
+        if (d.success) {
+            await veriYukle();
+            showToast(d.aktifMi ? 'Hesap aktifleştirildi.' : 'Hesap pasife alındı.', true);
+        }
+        else showToast(d.message);
     }
 
     veriYukle();
 </script>
+}

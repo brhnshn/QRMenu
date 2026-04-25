@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="utf-8">
+    <title>Hafta 5-2 — Veritabanı Taşıma, Görsel Optimizasyonu, Kalori Özelliği, QR Giriş Fix & Masa Durum Takibi
+    </title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.7;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            color: #e67e22;
+            font-size: 1.6rem;
+            margin-bottom: 6px;
+        }
+
+        h2 {
+            color: #2c3e50;
+            font-size: 1.2rem;
+            margin: 30px 0 12px;
+            border-bottom: 2px solid #e67e22;
+            padding-bottom: 6px;
+        }
+
+        h3 {
+            color: #555;
+            font-size: 1rem;
+            margin: 16px 0 8px;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 0.85rem;
+            margin-bottom: 24px;
+        }
+
+        pre {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            margin: 10px 0 16px;
+        }
+
+        .cmd {
+            color: #89b4fa;
+        }
+
+        .ok {
+            color: #a6e3a1;
+        }
+
+        .file {
+            color: #f9e2af;
+        }
+
+        .folder {
+            color: #fab387;
+        }
+
+        .comment {
+            color: #6c7086;
+        }
+
+        .keyword {
+            color: #cba6f7;
+        }
+
+        .str {
+            color: #a6e3a1;
+        }
+
+        .num {
+            color: #fab387;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 16px;
+            font-size: 0.85rem;
+        }
+
+        th {
+            background: #2c3e50;
+            color: #fff;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:nth-child(even) td {
+            background: #fafafa;
+        }
+
+        ul {
+            margin: 6px 0 12px 20px;
+            font-size: 0.9rem;
+        }
+
+        li {
+            margin: 3px 0;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-ok {
+            background: #d5f5e3;
+            color: #1e8449;
+        }
+
+        .badge-bonus {
+            background: #fcf3cf;
+            color: #b7950b;
+        }
+
+        .info-box {
+            background: #eaf2f8;
+            border-left: 4px solid #3498db;
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin: 12px 0;
+            font-size: 0.85rem;
+        }
+
+        .warn-box {
+            background: #fef9e7;
+            border-left: 4px solid #f39c12;
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin: 12px 0;
+            font-size: 0.85rem;
+        }
+
+        .error-box {
+            background: #fdedec;
+            border-left: 4px solid #e74c3c;
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin: 12px 0;
+            font-size: 0.85rem;
+        }
+
+        .state-box {
+            background: #f4ecf7;
+            border-left: 4px solid #8e44ad;
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin: 12px 0;
+            font-size: 0.85rem;
+        }
+
+        code {
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.82rem;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 10px 0;
+        }
+
+        .two-col>div {
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .two-col h4 {
+            color: #e67e22;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 600px) {
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <h1>📋 Hafta 5-2 — Veritabanı Taşıma, Görsel Optimizasyonu, Kalori Özelliği, QR Fix & Masa Takibi</h1>
+        <div class="subtitle">Proje: QR Menü Otomasyonu | Tarih: 26–27 Mart 2026 | Harcanan Süre: ~3 Saat</div>
+
+        <!-- ===== 1. ÖZET ===== -->
+        <h2>1. Genel Bakış</h2>
+        <div class="info-box">
+            Bu sprint kapsamında; Supabase veritabanı Stockholm sunucusundan Almanya (Frankfurt) sunucusuna taşındı,
+            veri bütünlüğü sorunları (sequence, FK, concurrency) çözüldü, ürün görselleri veritabanından dosya sistemine
+            taşınarak performans artırıldı, menüye kalori özelliği eklendi, garson paneli "0 ürün" hatası ve
+            QR giriş FK hatası düzeltildi, admin/garson masalar sayfasına dolu/boş durumu eklendi.
+        </div>
+
+        <!-- ===== 2. PLANLANAN VS GERÇEKLEŞEN ===== -->
+        <h2>2. Planlanan vs. Gerçekleşen</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Madde</th>
+                    <th>Durum</th>
+                    <th>Açıklama</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Supabase Veritabanı Taşıma</td>
+                    <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                    <td>Stockholm → Frankfurt. CSV ile veri aktarımı, sequence ve FK sorunları giderildi.</td>
+                </tr>
+                <tr>
+                    <td>Garson Paneli "0 Ürün" Hatası</td>
+                    <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                    <td><code>GarsonController.Masalar()</code> sorgusuna <code>ThenInclude(SiparisDetaylar)</code>
+                        eklendi.</td>
+                </tr>
+                <tr>
+                    <td>Görsel Yönetimi (DB → Static Files)</td>
+                    <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                    <td>Görseller artık <code>wwwroot/uploads/urunler/</code> klasörüne kaydediliyor. Eski URL'ler
+                        geriye dönük uyumlu.</td>
+                </tr>
+                <tr>
+                    <td>Menü Kalori Özelliği</td>
+                    <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                    <td><code>Urun.Kalori</code> (int?) alanı, EF migration, admin formu, menü kartları ve
+                        <code>/menu/json</code> API.</td>
+                </tr>
+                <tr>
+                    <td>Masa Dolu/Boş Durumu</td>
+                    <td><span class="badge badge-ok">✅ Tamamlandı</span></td>
+                    <td>Admin ve Garson masalar sayfasında aktif siparişe göre dinamik durum gösterimi.</td>
+                </tr>
+                <tr>
+                    <td><strong>QR Giriş FK Hatası</strong></td>
+                    <td><span class="badge badge-bonus">🐛 Bug Fix</span></td>
+                    <td>QR URL <code>MasaNo</code> gönderiyordu ama kod <code>MasaId</code> olarak kullanıyordu. DB
+                        lookup eklendi.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- ===== 3. VERİTABANI TAŞIMA ===== -->
+        <h2>3. Supabase Veritabanı Taşıma (Stockholm → Frankfurt)</h2>
+
+        <h3>3.1 Taşıma Süreci</h3>
+        <div class="state-box">
+            <strong>Sebep:</strong> Eski Supabase instance (Stockholm, eu-north-1) silinmişti. Yeni instance
+            Almanya (Frankfurt, eu-central-1) bölgesinde oluşturuldu. Tüm veriler CSV dosyalarından aktarıldı.
+        </div>
+
+        <h3>3.2 Karşılaşılan Sorunlar ve Çözümleri</h3>
+        <table>
+            <tr>
+                <th>Sorun</th>
+                <th>Açıklama</th>
+                <th>Çözüm</th>
+            </tr>
+            <tr>
+                <td><code>OVERRIDING SYSTEM VALUE</code> Gereksinimi</td>
+                <td>CSV'deki ID'ler ile PostgreSQL'in <code>GENERATED ALWAYS AS IDENTITY</code> kısıtlaması çakışıyordu.
+                </td>
+                <td>INSERT sorgularına <code>OVERRIDING SYSTEM VALUE</code> eklendi. FK kısıtlamalarını geçici devre
+                    dışı bırakmak için <code>session_replication_role = 'replica'</code> kullanıldı.</td>
+            </tr>
+            <tr>
+                <td><code>RowVersion NOT NULL</code> Hatası</td>
+                <td>CSV'deki boş <code>RowVersion</code> (byte[]) sütunları <code>NOT NULL</code> kısıtlamasını ihlal
+                    ediyordu.</td>
+                <td>Binary değerler <code>decode('0000000000000000', 'hex')</code> ile dolduruldu.</td>
+            </tr>
+            <tr>
+                <td>Duplicate Key (Sequence) Hatası</td>
+                <td>Veri aktarımından sonra PostgreSQL sequence sayaçları eski değerlerde kalmıştı.</td>
+                <td>Tüm tablolar için <code>setval()</code> ile sequence'lar en yüksek ID değerine güncellendi.</td>
+            </tr>
+
+        </table>
+
+        <h3>3.3 Sequence Güncelleme Script'i</h3>
+        <pre>
+<span class="comment">-- Tüm tablo sequence'larını en yüksek ID değerine güncelle</span>
+<span class="keyword">SELECT</span> <span class="cmd">setval</span>(pg_get_serial_sequence(<span class="str">'"Masalar"'</span>, <span class="str">'"Id"'</span>),
+       <span class="keyword">COALESCE</span>((<span class="keyword">SELECT MAX</span>(<span class="str">"Id"</span>) <span class="keyword">FROM</span> <span class="str">"Masalar"</span>), <span class="num">1</span>));
+<span class="keyword">SELECT</span> <span class="cmd">setval</span>(pg_get_serial_sequence(<span class="str">'"Siparisler"'</span>, <span class="str">'"Id"'</span>),
+       <span class="keyword">COALESCE</span>((<span class="keyword">SELECT MAX</span>(<span class="str">"Id"</span>) <span class="keyword">FROM</span> <span class="str">"Siparisler"</span>), <span class="num">1</span>));
+<span class="comment">-- ... diğer tablolar için tekrarlandı</span>
+        </pre>
+
+        <!-- ===== 4. GÖRSEL YÖNETİMİ ===== -->
+        <h2>4. Ürün Görselleri — Veritabanından Dosya Sistemine Taşıma</h2>
+
+        <h3>4.1 Eski Mimari (Sorunlu)</h3>
+        <div class="error-box">
+            <strong>Sorun:</strong> Görseller <code>UrunGorseller</code> tablosunda <code>byte[] Data</code> olarak
+            binary saklanıyordu.
+            Her görsel için ayrı DB sorgusu gerekiyordu (<code>/images/urun/{id}</code>). Admin panelinde ürünler
+            sayfası açıldığında
+            onlarca eş zamanlı DB isteği atılıyor, fotoğraflar gecikmeli yükleniyordu.
+        </div>
+
+        <h3>4.2 Yeni Mimari (Dosya Tabanlı)</h3>
+        <div class="two-col">
+            <div>
+                <h4>📁 Kaydetme</h4>
+                <ul>
+                    <li>Görseller <code>wwwroot/uploads/urunler/{id}.{ext}</code> olarak kaydediliyor</li>
+                    <li><code>SaveImageToFileAsync()</code> metodu: Max 2MB, jpg/png/webp</li>
+                    <li>Eski dosya varsa otomatik temizleniyor</li>
+                    <li><code>GorselUrl = "/uploads/urunler/5.jpg"</code></li>
+                </ul>
+            </div>
+            <div>
+                <h4>🔄 Geriye Dönük Uyumluluk</h4>
+                <ul>
+                    <li>Eski <code>/images/urun/{id}</code> endpoint'i korundu</li>
+                    <li>Önce static dosya arar → bulursa redirect</li>
+                    <li>Bulamazsa DB'den serve eder (eski veriler)</li>
+                    <li>Web sunucusu static dosyaları cache'leyerek sunar</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>4.3 Performans Karşılaştırması</h3>
+        <table>
+            <tr>
+                <th>Kriter</th>
+                <th>Eski (DB Binary)</th>
+                <th>Yeni (Static File)</th>
+            </tr>
+            <tr>
+                <td>Her görsel isteği</td>
+                <td>DB sorgusu + byte[] okuma</td>
+                <td>Dosya sisteminden doğrudan serve</td>
+            </tr>
+            <tr>
+                <td>Cache</td>
+                <td>ResponseCache (sunucu taraflı)</td>
+                <td>Web sunucusu native static file caching</td>
+            </tr>
+            <tr>
+                <td>DB yükü</td>
+                <td>Her görsel için SELECT sorgusu</td>
+                <td>DB'ye dokunmaz</td>
+            </tr>
+        </table>
+
+        <!-- ===== 5. KALORİ ===== -->
+        <h2>5. Menü Kalori Özelliği</h2>
+
+        <h3>5.1 Uygulanan Değişiklikler</h3>
+        <table>
+            <tr>
+                <th>Katman</th>
+                <th>Dosya</th>
+                <th>Değişiklik</th>
+            </tr>
+            <tr>
+                <td>Entity</td>
+                <td><code>Urun.cs</code></td>
+                <td><code>public int? Kalori { get; set; }</code> eklendi</td>
+            </tr>
+            <tr>
+                <td>Migration</td>
+                <td><code>KaloriAlani.cs</code></td>
+                <td>EF Core migration ile <code>Kalori</code> sütunu oluşturuldu</td>
+            </tr>
+            <tr>
+                <td>ViewModel</td>
+                <td><code>UrunYonetimViewModel.cs</code></td>
+                <td><code>public int? Kalori { get; set; }</code> eklendi</td>
+            </tr>
+            <tr>
+                <td>Controller</td>
+                <td><code>AdminController.cs</code></td>
+                <td><code>UrunEkle</code>, <code>UrunGuncelle</code>, <code>UrunDetay</code> metodlarına Kalori eklendi
+                </td>
+            </tr>
+            <tr>
+                <td>API</td>
+                <td><code>MenuController.cs</code></td>
+                <td><code>/menu/json</code> response'una <code>Kalori</code> alanı eklendi</td>
+            </tr>
+            <tr>
+                <td>Admin UI</td>
+                <td><code>Admin/Urunler.cshtml</code></td>
+                <td>Ürün ekleme/düzenleme formuna kalori input alanı eklendi</td>
+            </tr>
+            <tr>
+                <td>Menü UI</td>
+                <td><code>Menu/Index.cshtml</code></td>
+                <td>Ürün kartlarında <code>🔥 X kcal</code> rozeti gösterilir (server-rendered + SignalR)</td>
+            </tr>
+        </table>
+
+        <h3>5.2 Menü Kartı Kalori Gösterimi</h3>
+        <pre>
+<span class="comment">&lt;!-- Server-rendered (Razor) --&gt;</span>
+<span class="keyword">@if</span> (urun.Kalori.HasValue)
+{
+    <span class="str">&lt;span class="text-xs ..."&gt;🔥 @urun.Kalori kcal&lt;/span&gt;</span>
+}
+
+<span class="comment">// SignalR live-redraw (JavaScript)</span>
+<span class="keyword">if</span> (urun.<span class="cmd">kalori</span>) {
+    html += <span class="str">`&lt;span ...&gt;🔥 ${urun.kalori} kcal&lt;/span&gt;`</span>;
+}
+        </pre>
+
+        <!-- ===== 6. GARSON 0 ÜRÜN ===== -->
+        <h2>6. Garson Paneli — "0 Ürün" Hatası Düzeltmesi</h2>
+
+        <h3>6.1 Kök Neden Analizi</h3>
+        <div class="error-box">
+            <strong>Hata:</strong> Garson Masalar sayfasında (<code>/Garson/Masalar</code>) tüm masalarda "0 Ürün"
+            yazıyordu.<br>
+            <strong>Kök Neden:</strong> <code>GarsonController.Masalar()</code> sorgusu <code>Siparisler</code>'i
+            include ediyordu
+            ama <code>SiparisDetaylar</code>'ı include etmiyordu. View'da
+            <code>s.SiparisDetaylar.Sum(d => d.Adet)</code>
+            boş koleksiyon üzerinde çağrılınca hep 0 dönüyordu.
+        </div>
+
+        <h3>6.2 Çözüm</h3>
+        <pre>
+<span class="keyword">var</span> masalar = <span class="keyword">await</span> _context.Masalar
+    .Include(m => m.Siparisler.Where(s => ...))
+<span class="ok">        .ThenInclude(s => s.SiparisDetaylar)  // ← EKLENDİ</span>
+    .OrderBy(m => m.MasaNo)
+    .ToListAsync();
+        </pre>
+
+        <!-- ===== 7. MASA DURUMU ===== -->
+        <h2>7. Admin & Garson Masalar — Dolu/Boş Durumu</h2>
+
+        <h3>7.1 Yapılan Değişiklikler</h3>
+        <table>
+            <tr>
+                <th>Dosya</th>
+                <th>Değişiklik</th>
+            </tr>
+            <tr>
+                <td><code>QrKodViewModel.cs</code></td>
+                <td><code>public bool DoluMu { get; set; }</code> property eklendi</td>
+            </tr>
+            <tr>
+                <td><code>AdminController.Masalar()</code></td>
+                <td>Aktif siparişleri (<code>İptal</code>, <code>TamOdendi</code>, <code>İade</code> hariç) include
+                    ediyor, <code>DoluMu = m.Siparisler.Any()</code></td>
+            </tr>
+            <tr>
+                <td><code>Admin/Masalar.cshtml</code></td>
+                <td>Masa kartında dinamik <code>durum-dolu</code> / <code>durum-bos</code> CSS sınıfı ve "Dolu"/"Boş"
+                    etiketi</td>
+            </tr>
+        </table>
+
+        <!-- ===== 8. QR GİRİŞ FK HATASI ===== -->
+        <h2>8. QR Giriş FK Hatası — MasaNo vs MasaId Karışıklığı</h2>
+
+        <h3>8.1 Kök Neden Analizi</h3>
+        <div class="error-box">
+            <strong>Hata:</strong> Masa 5 ve 6'nın QR kodlarına girildiğinde
+            <code>FK_Oturumlar_Masalar_MasaId</code> hatası veriyordu.<br>
+            <strong>Kök Neden:</strong> QR URL <code>/qr/{masaNo}</code> formatında oluşturuluyordu
+            (<code>AdminController</code> satır 116: <code>$"{baseUrl}/qr/{masaNo}"</code>). Ancak
+            <code>QRController</code> bu değeri doğrudan <code>MasaId</code> olarak kullanıyordu.
+            CSV'den aktarılan masalarda <code>MasaNo=5</code> ama <code>Id=7</code> olabiliyordu — bu FK ihlali
+            oluşturuyordu.
+        </div>
+
+        <h3>8.2 Çözüm</h3>
+        <pre>
+<span class="comment">// ÖNCE (Hatalı — masaNo'yu doğrudan MasaId olarak kullanıyor)</span>
+[HttpGet(<span class="str">"/qr/{masaId:int}"</span>)]
+<span class="keyword">public async</span> Task&lt;IActionResult&gt; Index(<span class="keyword">int</span> masaId)
+{
+    <span class="keyword">var</span> (oturum, rawToken) = <span class="keyword">await</span> _tokenService.CreateSessionAsync(<span class="num">masaId</span>); <span class="comment">// ← FK hatası!</span>
+}
+
+<span class="comment">// SONRA (Doğru — MasaNo ile DB lookup yapıyor)</span>
+[HttpGet(<span class="str">"/qr/{masaNo:int}"</span>)]
+<span class="keyword">public async</span> Task&lt;IActionResult&gt; Index(<span class="keyword">int</span> masaNo)
+{
+<span class="ok">    var masa = await _context.Masalar</span>
+<span class="ok">        .FirstOrDefaultAsync(m => m.MasaNo == masaNo && m.AktifMi);</span>
+<span class="ok">    var masaId = masa.Id;  // ← Gerçek ID kullanılıyor</span>
+    <span class="keyword">var</span> (oturum, rawToken) = <span class="keyword">await</span> _tokenService.CreateSessionAsync(masaId);
+}
+        </pre>
+
+        <!-- ===== 9. DEĞİŞEN DOSYALAR ===== -->
+        <h2>9. Değişen Dosyalar Özeti</h2>
+        <table>
+            <tr>
+                <th>Dosya</th>
+                <th>Değişiklik Türü</th>
+                <th>Açıklama</th>
+            </tr>
+            <tr>
+                <td><code>appsettings.json</code></td>
+                <td>GÜNCELLENDİ</td>
+                <td>Yeni Supabase bağlantı dizesi (Frankfurt + port 6543)</td>
+            </tr>
+            <tr>
+                <td><code>Urun.cs</code></td>
+                <td>GÜNCELLENDİ</td>
+                <td><code>int? Kalori</code> property eklendi</td>
+            </tr>
+            <tr>
+                <td><code>UrunYonetimViewModel.cs</code></td>
+                <td>GÜNCELLENDİ</td>
+                <td><code>int? Kalori</code> property eklendi</td>
+            </tr>
+            <tr>
+                <td><code>QrKodViewModel.cs</code></td>
+                <td>GÜNCELLENDİ</td>
+                <td><code>bool DoluMu</code> property eklendi</td>
+            </tr>
+            <tr>
+                <td><code>AdminController.cs</code></td>
+                <td>GÜNCELLENDİ</td>
+                <td>Masalar (dolu/boş), görsel dosya tabanlı, kalori desteği</td>
+            </tr>
+            <tr>
+                <td><code>GarsonController.cs</code></td>
+                <td>GÜNCELLENDİ</td>
+                <td><code>ThenInclude(SiparisDetaylar)</code> — 0 ürün fix</td>
+            </tr>
+            <tr>
+                <td><code>MenuController.cs</code></td>
+                <td>GÜNCELLENDİ</td>
+                <td><code>/menu/json</code> response'una <code>Kalori</code> eklendi</td>
+            </tr>
+            <tr>
+                <td><code>QRController.cs</code></td>
+                <td>GÜNCELLENDİ</td>
+                <td>MasaNo → MasaId lookup ile FK hatası düzeltildi</td>
+            </tr>
+            <tr>
+                <td><code>Admin/Masalar.cshtml</code></td>
+                <td>GÜNCELLENDİ</td>
+                <td>Dinamik Dolu/Boş rozeti</td>
+            </tr>
+            <tr>
+                <td><code>Admin/Urunler.cshtml</code></td>
+                <td>GÜNCELLENDİ</td>
+                <td>Kalori input alanı + JS form verisi</td>
+            </tr>
+            <tr>
+                <td><code>Menu/Index.cshtml</code></td>
+                <td>GÜNCELLENDİ</td>
+                <td>Kalori rozeti (server-rendered + SignalR live-redraw)</td>
+            </tr>
+            <tr>
+                <td><code>KaloriAlani.cs</code></td>
+                <td>YENİ</td>
+                <td>EF Core migration — <code>Kalori</code> sütunu</td>
+            </tr>
+        </table>
+
+        <!-- ===== 10. HATALAR ===== -->
+        <h2>10. Karşılaşılan Hatalar ve Çözümleri</h2>
+        <table>
+            <tr>
+                <th>Hata</th>
+                <th>Kategori</th>
+                <th>Çözüm</th>
+            </tr>
+            <tr>
+                <td><code>duplicate key value violates unique constraint</code></td>
+                <td>DB / Sequence</td>
+                <td>CSV aktarımından sonra PostgreSQL sequence sayaçları <code>setval()</code> ile güncellendi.</td>
+            </tr>
+            <tr>
+                <td><code>null value in column "RowVersion" violates not-null constraint</code></td>
+                <td>DB / Concurrency</td>
+                <td><code>RowVersion</code> alanı <code>decode('0000000000000000', 'hex')</code> ile dolduruldu.</td>
+            </tr>
+            <tr>
+                <td><code>MaxClientsInSessionMode</code> bağlantı hatası</td>
+                <td>DB / Bağlantı</td>
+                <td>Port 5432 → 6543 (Transaction Pooler) olarak değiştirildi.</td>
+            </tr>
+            <tr>
+                <td><code>FK_Oturumlar_Masalar_MasaId</code> QR giriş hatası</td>
+                <td>Backend / Mantık</td>
+                <td><code>QRController</code>'da <code>MasaNo</code> → DB lookup → gerçek <code>MasaId</code> akışı
+                    eklendi.</td>
+            </tr>
+            <tr>
+                <td>Garson panelinde tüm masalarda "0 Ürün" Gösterilmesi</td>
+                <td>Backend / EF Core</td>
+                <td><code>GarsonController.Masalar()</code> sorgusuna <code>.ThenInclude(s => s.SiparisDetaylar)</code>
+                    eklendi.</td>
+            </tr>
+            <tr>
+                <td>Admin Masalar sayfasında tüm masalar "Boş" gösterilmesi</td>
+                <td>Backend / Sorgu</td>
+                <td><code>AdminController.Masalar()</code> sorgusuna sipariş include eklendi, <code>DoluMu</code>
+                    property hesaplandı.</td>
+            </tr>
+            <tr>
+                <td>Ürün görselleri gecikmeli yükleniyor (Admin + Menü)</td>
+                <td>Performans / Mimari</td>
+                <td>Görseller DB (binary) → dosya sistemi (static file) olarak taşındı. DB yükü ortadan kalktı.</td>
+            </tr>
+        </table>
+
+        <!-- ===== 11. TEST ===== -->
+        <h2>11. Test ve Doğrulama</h2>
+        <pre>
+<span class="cmd">&gt; dotnet build</span>
+<span class="ok">Başarılı oluşturun — 0 hata, 0 uyarı ✅</span>
+
+<span class="cmd">&gt; dotnet test</span>
+<span class="ok">Başarılı! - Başarısız: 0, Başarılı: 67, Atlanan: 0, Toplam: 67 ✅</span>
+
+<span class="cmd">&gt; dotnet ef migrations add KaloriAlani</span>
+<span class="ok">Build succeeded. Done. ✅</span>
+        </pre>
+
+        <!-- ===== 12. SONUÇ ===== -->
+        <h2>12. Sonuç ve Gelecek Hafta Planı</h2>
+        <div class="info-box">
+            Hafta 5-2 sonunda; veritabanı başarıyla yeni Supabase instance'ına taşındı, görsel yönetimi DB'den dosya
+            sistemine optimize edildi, menüye kalori bilgisi eklendi, garson ve admin panellerindeki veri eksikliği
+            hataları giderildi, QR giriş FK hatası düzeltildi. Tüm 67 unit test başarıyla geçti, build 0 hata ile
+            tamamlandı. <strong>Gelecek hafta</strong> Stitch Design System entegrasyonunun tamamlanması ve
+            Telegram bot bildirim sisteminin iyileştirilmesi hedeflenmektedir.
+        </div>
+
+    </div>
+</body>
+
+</html>

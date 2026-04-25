@@ -164,5 +164,36 @@ namespace QRMenu.Web.Controllers
             await _context.SaveChangesAsync();
             return Json(new { success = true });
         }
+        [HttpGet("/admin/oyun-istatistik")]
+        public async Task<IActionResult> GetIstatistik(string period = "today")
+        {
+            DateTime start, end;
+            var now = DateTime.UtcNow;
+
+            switch (period.ToLower())
+            {
+                case "yesterday":
+                    start = now.Date.AddDays(-1);
+                    end = now.Date;
+                    break;
+                case "week":
+                    start = now.Date.AddDays(-(int)now.DayOfWeek);
+                    end = now.Date.AddDays(1);
+                    break;
+                case "today":
+                default:
+                    start = now.Date;
+                    end = now.Date.AddDays(1);
+                    break;
+            }
+
+            var totalParticipations = await _context.Siparisler
+                .CountAsync(s => s.OyunOynandiMi && s.OlusturmaTarihi >= start && s.OlusturmaTarihi < end);
+
+            var totalWins = await _context.KazanilanIndirimler
+                .CountAsync(k => k.KazanmaTarihi >= start && k.KazanmaTarihi < end);
+
+            return Json(new { success = true, participations = totalParticipations, wins = totalWins });
+        }
     }
 }

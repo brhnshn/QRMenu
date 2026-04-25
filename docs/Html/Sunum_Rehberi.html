@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sunum Rehberi — QR Menü Otomasyonu (Hafta 1–4)</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --card: #1a1d27;
+            --border: #2a2d3a;
+            --accent: #6c5ce7;
+            --accent2: #00b894;
+            --accent3: #fdcb6e;
+            --accent4: #e17055;
+            --text: #e2e2e2;
+            --muted: #8a8d9b;
+            --success: #00b894;
+            --info: #74b9ff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            padding: 24px;
+        }
+
+        /* HEADER */
+        .header {
+            text-align: center;
+            padding: 40px 20px 30px;
+            border-bottom: 2px solid var(--accent);
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, var(--accent), var(--info));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        .header .subtitle {
+            color: var(--muted);
+            font-size: 1rem;
+        }
+        .header .badge-row {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .header .badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .badge-purple { background: rgba(108,92,231,0.2); color: #a29bfe; border: 1px solid rgba(108,92,231,0.4); }
+        .badge-green { background: rgba(0,184,148,0.2); color: #55efc4; border: 1px solid rgba(0,184,148,0.4); }
+        .badge-yellow { background: rgba(253,203,110,0.2); color: #ffeaa7; border: 1px solid rgba(253,203,110,0.4); }
+        .badge-blue { background: rgba(116,185,255,0.2); color: #74b9ff; border: 1px solid rgba(116,185,255,0.4); }
+
+        /* PAGE BREAK */
+        .page-break { page-break-before: always; }
+
+        /* WEEK SECTION */
+        .week-section {
+            margin-bottom: 50px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .week-header {
+            padding: 24px 30px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .week-header.w1 { background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%); }
+        .week-header.w2 { background: linear-gradient(135deg, #00b894 0%, #55efc4 100%); }
+        .week-header.w3 { background: linear-gradient(135deg, #fdcb6e 0%, #f8e71c 100%); color: #1a1d27; }
+        .week-header.w4 { background: linear-gradient(135deg, #e17055 0%, #fab1a0 100%); }
+        .week-header h2 { font-size: 1.5rem; flex: 1; }
+        .week-header .hours {
+            padding: 4px 14px;
+            background: rgba(0,0,0,0.25);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .week-body { padding: 30px; }
+
+        /* GOAL BOX */
+        .goal-box {
+            background: rgba(108,92,231,0.08);
+            border-left: 4px solid var(--accent);
+            padding: 16px 20px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 24px;
+            font-size: 1.05rem;
+        }
+        .goal-box strong { color: var(--info); }
+
+        /* SUBSECTION */
+        .subsection {
+            margin-bottom: 28px;
+        }
+        .subsection h3 {
+            font-size: 1.15rem;
+            color: var(--info);
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* TALK POINTS */
+        .talk-points {
+            list-style: none;
+            padding: 0;
+        }
+        .talk-points li {
+            padding: 10px 14px;
+            margin-bottom: 6px;
+            border-radius: 8px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            position: relative;
+            padding-left: 36px;
+        }
+        .talk-points li::before {
+            content: '💬';
+            position: absolute;
+            left: 10px;
+            top: 10px;
+        }
+        .talk-points li .term {
+            color: var(--accent3);
+            font-weight: 600;
+        }
+        .talk-points li .explain {
+            color: var(--muted);
+            font-size: 0.9rem;
+            display: block;
+            margin-top: 4px;
+            padding-left: 4px;
+            border-left: 2px solid var(--border);
+            margin-left: 0;
+            padding-top: 2px;
+            padding-bottom: 2px;
+        }
+
+        /* FEATURE LIST */
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 10px;
+        }
+        .feature-item {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .feature-item .icon {
+            font-size: 1.2rem;
+            min-width: 24px;
+            text-align: center;
+        }
+        .feature-item .text {
+            font-size: 0.92rem;
+        }
+        .feature-item .text strong {
+            color: var(--text);
+        }
+        .feature-item .text small {
+            color: var(--muted);
+            display: block;
+            margin-top: 2px;
+        }
+
+        /* STATS ROW */
+        .stats-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            flex: 1;
+            min-width: 120px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+        }
+        .stat-card .num {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .stat-card .label {
+            font-size: 0.78rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* DIAGRAM */
+        .diagram {
+            background: #12141c;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            white-space: pre;
+            color: var(--muted);
+            margin-bottom: 16px;
+        }
+        .diagram .hl { color: var(--accent); font-weight: 600; }
+        .diagram .g { color: var(--success); }
+        .diagram .y { color: var(--accent3); }
+        .diagram .r { color: var(--accent4); }
+        .diagram .b { color: var(--info); }
+
+        /* TERM TABLE */
+        .term-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+        .term-table th {
+            text-align: left;
+            padding: 10px 14px;
+            background: rgba(108,92,231,0.15);
+            color: var(--info);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .term-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.92rem;
+        }
+        .term-table td:first-child {
+            color: var(--accent3);
+            font-weight: 600;
+            white-space: nowrap;
+            width: 200px;
+        }
+        .term-table tr:hover td {
+            background: rgba(255,255,255,0.02);
+        }
+
+        /* BUG TABLE */
+        .bug-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+        .bug-table th {
+            text-align: left;
+            padding: 8px 12px;
+            background: rgba(225,112,85,0.15);
+            color: var(--accent4);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+        .bug-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.88rem;
+        }
+        .bug-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+        /* QUICK TIP */
+        .tip-box {
+            background: rgba(0,184,148,0.08);
+            border-left: 4px solid var(--success);
+            padding: 14px 18px;
+            border-radius: 0 8px 8px 0;
+            margin-top: 16px;
+            font-size: 0.92rem;
+        }
+        .tip-box::before {
+            content: '💡 ';
+        }
+        .tip-box strong { color: var(--success); }
+
+        /* TOTAL SUMMARY */
+        .total-summary {
+            background: linear-gradient(135deg, rgba(108,92,231,0.1) 0%, rgba(0,184,148,0.1) 100%);
+            border: 2px solid var(--accent);
+            border-radius: 16px;
+            padding: 30px;
+            margin: 40px 0;
+        }
+        .total-summary h2 {
+            text-align: center;
+            font-size: 1.6rem;
+            color: var(--accent);
+            margin-bottom: 24px;
+        }
+
+        /* PRINT */
+        @media print {
+            body { background: #fff; color: #222; padding: 0; }
+            .week-section { border: 1px solid #ccc; }
+            .week-header { color: #fff !important; }
+            .week-header.w3 { color: #1a1d27 !important; }
+            .feature-item, .stat-card, .talk-points li { background: #f8f9fa; border-color: #ddd; }
+            .diagram { background: #f5f5f5; color: #333; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== BAŞLIK ===== -->
+<div class="header">
+    <h1>☕ QR Menü Otomasyonu — Sunum Rehberi</h1>
+    <div class="subtitle">Hafta 1–4 | ASP.NET Core MVC + PostgreSQL + SignalR</div>
+    <div class="badge-row">
+        <span class="badge badge-purple">59 Unit Test</span>
+        <span class="badge badge-green">14 Entity</span>
+        <span class="badge badge-yellow">~93+ Saat</span>
+        <span class="badge badge-blue">4 Hafta</span>
+    </div>
+</div>
+
+<!-- ==================== HAFTA 1 ==================== -->
+<div class="week-section">
+    <div class="week-header w1">
+        <h2>📦 Hafta 1 — Proje Kurulumu & Veritabanı</h2>
+        <span class="hours">~8 Saat · 27 Şubat 2026</span>
+    </div>
+    <div class="week-body">
+
+        <div class="goal-box">
+            <strong>Hedef:</strong> Projenin iskeletini kurmak, veritabanı tablolarını tasarlayıp Supabase'e deploy etmek ve ilk testleri yazmak.
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card"><div class="num">4</div><div class="label">Proje Katmanı</div></div>
+            <div class="stat-card"><div class="num">14</div><div class="label">DB Tablosu</div></div>
+            <div class="stat-card"><div class="num">3</div><div class="label">Enum</div></div>
+            <div class="stat-card"><div class="num">8</div><div class="label">Unit Test</div></div>
+        </div>
+
+        <!-- Ne Anlatabilirim -->
+        <div class="subsection">
+            <h3>🎤 Sunumda Ne Anlatabilirim?</h3>
+            <ul class="talk-points">
+                <li>
+                    Projeyi <span class="term">katmanlı mimari</span> ile kurdum: Core, Data, Web ve Tests olmak üzere 4 ayrı proje var.
+                    <span class="explain">Katmanlı mimari = Her katmanın tek bir sorumluluğu var. Core sadece modelleri tutar, Data veritabanı işlemlerini yapar, Web ise kullanıcıya görünen kısımdır. Böylece kod karmaşası önlenir.</span>
+                </li>
+                <li>
+                    Veritabanında toplam <span class="term">14 tablo</span> tasarladım: Masa, Kategori, Ürün, Opsiyon, Oturum, Sepet, Sipariş, Ödeme, Kullanıcı, AuditLog ve ara tablolar.
+                    <span class="explain">Her tablo bir entity (varlık) sınıfına karşılık gelir. C# sınıfları yazıp "migration" komutu çalıştırınca EF Core bunları otomatik SQL komutlarına çevirir.</span>
+                </li>
+                <li>
+                    <span class="term">UrunOpsiyon</span> tablosu Many-to-Many ilişki. Bir ürünün birden çok opsiyonu, bir opsiyonun birden çok ürünü olabilir.
+                    <span class="explain">Örn: "Büyük Boy" opsiyonu hem Latte'de hem Filtre Kahve'de var. Bunu bağlantı tablosuyla (UrunId, OpsiyonId) sağlıyoruz.</span>
+                </li>
+                <li>
+                    <span class="term">Seed Data</span> ile 5 masa, 3 kategori, 10 ürün, 5 opsiyon ve 16 ürün-opsiyon bağlantısı sisteme önceden yükledim.
+                    <span class="explain">Seed Data = Uygulama ilk çalıştığında veritabanına otomatik eklenen başlangıç verisi. Test ve geliştirme için hazır veri sağlar.</span>
+                </li>
+                <li>
+                    <span class="term">Index</span> planı yaptım: Siparis.Durum, Siparis.MasaId, Urun.AktifMi, Oturum.TokenHash gibi sık sorgulanan alanlara index ekledim.
+                    <span class="explain">Index = Kitaptaki "dizin" gibi. Veritabanı tüm satırları taramak yerine index'e bakarak çok daha hızlı sorgu yapar.</span>
+                </li>
+                <li>
+                    <span class="term">InMemory Database</span> ile unit testler yazdım — gerçek veritabanına bağlanmadan testler çalışıyor.
+                    <span class="explain">Bellekte geçici bir veritabanı oluşturuluyor. Her test birbirinden bağımsız çalışıp sonra silinir. Hızlı ve güvenilir.</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Özellikler -->
+        <div class="subsection">
+            <h3>✅ Tamamlanan Özellikler</h3>
+            <div class="feature-list">
+                <div class="feature-item"><span class="icon">🏗️</span><span class="text"><strong>Solution Yapısı</strong><small>Core → Data → Web → Tests</small></span></div>
+                <div class="feature-item"><span class="icon">🗄️</span><span class="text"><strong>14 Entity + 3 Enum</strong><small>Masa, Kategori, Ürün, Opsiyon, Sepet, Sipariş...</small></span></div>
+                <div class="feature-item"><span class="icon">🔗</span><span class="text"><strong>FK + Index Planı</strong><small>7 index, unique constraint'ler</small></span></div>
+                <div class="feature-item"><span class="icon">🌱</span><span class="text"><strong>Seed Data</strong><small>5 masa, 3 kategori, 10 ürün, 5 opsiyon</small></span></div>
+                <div class="feature-item"><span class="icon">📦</span><span class="text"><strong>NuGet Paketleri</strong><small>EF Core, Npgsql, Serilog, QRCoder, xUnit, Moq</small></span></div>
+                <div class="feature-item"><span class="icon">🐘</span><span class="text"><strong>Migration → Supabase</strong><small>PostgreSQL canlı veritabanı</small></span></div>
+                <div class="feature-item"><span class="icon">🧪</span><span class="text"><strong>8 Unit Test</strong><small>Ürün CRUD testleri — tümü ✅</small></span></div>
+                <div class="feature-item"><span class="icon">⚙️</span><span class="text"><strong>Fluent API Konfigürasyon</strong><small>İlişkiler, cascade, composite key</small></span></div>
+            </div>
+        </div>
+
+        <!-- Terimler -->
+        <div class="subsection">
+            <h3>📖 Teknik Terimler Sözlüğü</h3>
+            <table class="term-table">
+                <tr><th>Terim</th><th>Ne Demek?</th></tr>
+                <tr><td>Entity Framework Core</td><td>C# nesneleriyle veritabanı tablolarını eşleyen araç (ORM). SQL yazmadan CRUD yapabiliyoruz.</td></tr>
+                <tr><td>Migration</td><td>Entity değişikliklerini veritabanına uygulayan versiyonlama sistemi. <code>dotnet ef migrations add</code> ile.</td></tr>
+                <tr><td>Fluent API</td><td>Entity konfigürasyonlarını kod ile yapmak (ilişkiler, index, constraint). OnModelCreating içinde.</td></tr>
+                <tr><td>Composite Key</td><td>Birden fazla sütunun birlikte primary key oluşturması. UrunOpsiyon(UrunId, OpsiyonId).</td></tr>
+                <tr><td>Dependency Injection</td><td>Servislerin dışarıdan verilmesi. <code>builder.Services.AddScoped&lt;IService, Service&gt;()</code> ile kayıt.</td></tr>
+                <tr><td>Supabase</td><td>Bulut tabanlı PostgreSQL veritabanı hizmeti. Ücretsiz katmanı var.</td></tr>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+<!-- ==================== HAFTA 2 ==================== -->
+<div class="week-section page-break">
+    <div class="week-header w2">
+        <h2>🔐 Hafta 2 — Güvenli Oturum (Token) Sistemi</h2>
+        <span class="hours">~20 Saat · 27–28 Şubat 2026</span>
+    </div>
+    <div class="week-body">
+
+        <div class="goal-box">
+            <strong>Hedef:</strong> QR kodu tarayan müşterinin güvenli oturumunu oluşturmak. Token üretimi, doğrulama, cookie yönetimi ve rate limiting.
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card"><div class="num">256</div><div class="label">Bit Token</div></div>
+            <div class="stat-card"><div class="num">90</div><div class="label">dk Oturum Süresi</div></div>
+            <div class="stat-card"><div class="num">8</div><div class="label">Yeni Test</div></div>
+            <div class="stat-card"><div class="num">+7</div><div class="label">Ekstra Özellik</div></div>
+        </div>
+
+        <!-- Ne Anlatabilirim -->
+        <div class="subsection">
+            <h3>🎤 Sunumda Ne Anlatabilirim?</h3>
+            <ul class="talk-points">
+                <li>
+                    Müşteri QR kodu tarayınca <span class="term">CSPRNG</span> ile 256 bitlik güvenli bir token üretiliyor, <span class="term">SHA256</span> ile hash'lenip veritabanına kaydediliyor.
+                    <span class="explain">CSPRNG = Kriptografik güvenli rastgele sayı üretici. Normal random'dan farkı: tahmin edilemez. SHA256 = Tek yönlü hash fonksiyonu: token'ı hash'e çevirebilirsin ama hash'ten token'ı bulamazsın.</span>
+                </li>
+                <li>
+                    Token <span class="term">HttpOnly + Secure + SameSite</span> cookie olarak tarayıcıya yazılıyor.
+                    <span class="explain">HttpOnly = JavaScript erişemez (XSS koruması). Secure = Sadece HTTPS üzerinden gönderilir. SameSite = Başka sitelerden gelen isteklerde cookie gönderilmez (CSRF koruması).</span>
+                </li>
+                <li>
+                    <span class="term">Sliding Expiration</span>: Her istekte süre 90 dakika uzar. Müşteri aktif olduğu sürece oturumu kapanmaz.
+                    <span class="explain">Örn: Saat 12:00'da QR taradın, 12:30'da menüye baktın → süre 14:00'a uzar. Ama hiç işlem yapmazsan 13:30'da oturum kapanır.</span>
+                </li>
+                <li>
+                    <span class="term">Replay Attack</span> koruması: Token bir kez kullanılınca "Kullanıldı" olarak işaretleniyor.
+                    <span class="explain">Birisi eski QR linki kopyalayıp tekrar açarsa, token zaten kullanılmış olduğu için reddedilir.</span>
+                </li>
+                <li>
+                    <span class="term">Middleware</span> yazdım: Her gelen istekte cookie'den token'ı okuyup veritabanından doğruluyor.
+                    <span class="explain">Middleware = İstek ile Controller arasında çalışan kontrol mekanizması. Bir nöbetçi gibi düşün — kimliği geçersizse içeri almıyor.</span>
+                </li>
+                <li>
+                    <span class="term">Rate Limiting</span> ekledim: Dakikada 10 istek sınırı + Garson çağır butonu 5 dakikada 3 kez sınırlı.
+                    <span class="explain">Kötü niyetli kullanıcının sunucuyu istek yağmuruna tutmasını engeller. Belirli sürede kaç istek yapılabileceğini sınırlıyor.</span>
+                </li>
+                <li>
+                    <strong>Ekstra:</strong> Admin layout (sidebar), Masa yönetimi (CRUD + QR kod üretimi) ve Müşteri menü sayfası UI'ını da bu hafta başlattım.
+                    <span class="explain">Plandan öne çekme! Admin paneli ve menü sayfası aslında 6-7. hafta konusuydu ama erken başladım.</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Token Akışı -->
+        <div class="subsection">
+            <h3>🔄 Token Akış Diyagramı</h3>
+            <div class="diagram"><span class="b">Müşteri QR Tarar</span> → /qr/{masaNo}
+       ↓
+<span class="hl">Token Üret</span>: RandomNumberGenerator → 256-bit hex string
+       ↓
+<span class="y">Hash'le</span>: SHA256(Token) → Oturum tablosuna kaydet
+       ↓
+<span class="g">Cookie Yaz</span>: HttpOnly + Secure + SameSite=Strict
+       ↓
+<span class="hl">Middleware</span>: Her istekte → cookie oku → hash'le → DB'den doğrula
+       ↓
+<span class="g">Geçerli?</span> → SonIslemTarihi güncelle (sliding)
+<span class="r">Geçersiz?</span> → 401 Unauthorized</div>
+        </div>
+
+        <!-- Özellikler -->
+        <div class="subsection">
+            <h3>✅ Tamamlanan Özellikler</h3>
+            <div class="feature-list">
+                <div class="feature-item"><span class="icon">🔑</span><span class="text"><strong>CSPRNG Token Üretimi</strong><small>256-bit kriptografik güvenli</small></span></div>
+                <div class="feature-item"><span class="icon">#️⃣</span><span class="text"><strong>SHA256 Hash</strong><small>Token DB'de hash olarak saklanır</small></span></div>
+                <div class="feature-item"><span class="icon">🍪</span><span class="text"><strong>Secure Cookie</strong><small>HttpOnly + SameSite=Strict</small></span></div>
+                <div class="feature-item"><span class="icon">⏳</span><span class="text"><strong>Sliding Expiration</strong><small>90 dk, her istekte yenilenir</small></span></div>
+                <div class="feature-item"><span class="icon">🛡️</span><span class="text"><strong>Replay Attack Koruması</strong><small>Token tek kullanımlık</small></span></div>
+                <div class="feature-item"><span class="icon">🚧</span><span class="text"><strong>Middleware Doğrulama</strong><small>Her istekte token kontrolü</small></span></div>
+                <div class="feature-item"><span class="icon">⚡</span><span class="text"><strong>Rate Limiting</strong><small>10/dk genel + 3/5dk garson</small></span></div>
+                <div class="feature-item"><span class="icon">🧪</span><span class="text"><strong>8 Yeni Test</strong><small>Token üretim, doğrulama, expiry</small></span></div>
+            </div>
+        </div>
+
+        <!-- Ekstra -->
+        <div class="subsection">
+            <h3>🚀 Ekstra Yapılanlar (Plandan Öne Çekme)</h3>
+            <div class="feature-list">
+                <div class="feature-item"><span class="icon">📐</span><span class="text"><strong>Admin Layout</strong><small>Sidebar + topbar, responsive hamburger menü</small></span></div>
+                <div class="feature-item"><span class="icon">🪑</span><span class="text"><strong>Masa CRUD</strong><small>Oluşturma, silme, QR kod üretimi (QRCoder)</small></span></div>
+                <div class="feature-item"><span class="icon">📱</span><span class="text"><strong>Menü Sayfası UI</strong><small>Koyu tema, kategori tab'ları, ürün kartları</small></span></div>
+                <div class="feature-item"><span class="icon">🎨</span><span class="text"><strong>CSS Modularizasyonu</strong><small>4 ayrı stylesheet (admin-layout, masalar, menu, site)</small></span></div>
+            </div>
+        </div>
+
+        <!-- Terimler -->
+        <div class="subsection">
+            <h3>📖 Teknik Terimler Sözlüğü</h3>
+            <table class="term-table">
+                <tr><th>Terim</th><th>Ne Demek?</th></tr>
+                <tr><td>CSPRNG</td><td>Kriptografik güvenli rastgele sayı üretici. Tahmin edilemez token üretmek için kullanılır.</td></tr>
+                <tr><td>SHA256</td><td>Tek yönlü hash fonksiyonu. Girdiyi sabit uzunlukta bir çıktıya çevirir, tersine çevrilemez.</td></tr>
+                <tr><td>HttpOnly Cookie</td><td>JavaScript'ten erişilemeyen cookie. XSS saldırılarında token çalınması engellenir.</td></tr>
+                <tr><td>SameSite=Strict</td><td>Cookie'nin yalnızca aynı siteden gelen isteklerde gönderilmesi. CSRF koruması sağlar.</td></tr>
+                <tr><td>Sliding Expiration</td><td>Her işlemde timeout süresinin sıfırlanması. Aktif kullanıcının oturumu kapanmaz.</td></tr>
+                <tr><td>Replay Attack</td><td>Eski token'ın tekrar kullanılma saldırısı. "Kullanıldı" bayrağı ile önlenir.</td></tr>
+                <tr><td>Middleware</td><td>İstek-yanıt boru hattında araya giren kontrol katmanı. Nöbetçi gibi her isteği filtreler.</td></tr>
+                <tr><td>Rate Limiting</td><td>Belirli sürede izin verilen istek sayısını sınırlamak. DDoS/spam koruması.</td></tr>
+            </table>
+        </div>
+
+        <!-- Hatalar -->
+        <div class="subsection">
+            <h3>🐛 Karşılaşılan & Çözülen Hatalar</h3>
+            <table class="bug-table">
+                <tr><th>#</th><th>Sorun</th><th>Çözüm</th></tr>
+                <tr><td>1</td><td>Cookie Secure flag localhost'ta çalışmıyor</td><td>Development ortamında Secure=false ayarlandı</td></tr>
+                <tr><td>2</td><td>CreateSession eski token'ı sıfırlıyordu</td><td>Eski hash korunacak şekilde düzeltildi</td></tr>
+                <tr><td>3</td><td>Masa değiştirmede oturum karışması</td><td>Cookie silinip yeni token oluşturuldu</td></tr>
+                <tr><td>4</td><td>QrKodViewModel namespace çakışması</td><td>ViewModels klasörüne taşındı</td></tr>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+<!-- ==================== HAFTA 3 ==================== -->
+<div class="week-section page-break">
+    <div class="week-header w3">
+        <h2>🛒 Hafta 3 — Sepet Sistemi & Mobil UX</h2>
+        <span class="hours">~25 Saat · 8 Mart 2026</span>
+    </div>
+    <div class="week-body">
+
+        <div class="goal-box">
+            <strong>Hedef:</strong> Müşterinin sepetini veritabanı üzerinden yönetmek — ürün ekleme/çıkarma, opsiyon seçimi, fiyat hesaplama ve modern mobil UI.
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card"><div class="num">6</div><div class="label">Sepet Endpoint</div></div>
+            <div class="stat-card"><div class="num">15</div><div class="label">Yeni Test</div></div>
+            <div class="stat-card"><div class="num">4x</div><div class="label">Hız Artışı</div></div>
+            <div class="stat-card"><div class="num">5</div><div class="label">Bug Fix</div></div>
+        </div>
+
+        <!-- Ne Anlatabilirim -->
+        <div class="subsection">
+            <h3>🎤 Sunumda Ne Anlatabilirim?</h3>
+            <ul class="talk-points">
+                <li>
+                    Sepet verisi <span class="term">PostgreSQL</span>'de saklanıyor, Redis gibi geçici bellekte değil. Tarayıcı kapansa bile sepet kaybolmuyor.
+                    <span class="explain">Redis = Bellekte çalışan geçici veri deposu, hızlı ama kaybolabilir. Biz DB kullandık → müşteri sayfayı yenilese bile sepeti durur.</span>
+                </li>
+                <li>
+                    Seçilen opsiyonlar (Büyük Boy, Tam Yağlı Süt gibi) <span class="term">JSON</span> formatında veritabanında saklanıyor.
+                    <span class="explain">Her sepet detayında SeciliOpsiyonlar sütununda şöyle bir yapı var: [{"Ad":"Büyük Boy","EkFiyat":20.00}]. PostgreSQL'in jsonb tipi bunu hızlıca sorgulatır.</span>
+                </li>
+                <li>
+                    <span class="term">Latency optimizasyonu</span> yaptım: Supabase sunucusu Stockholm'de, biz Türkiye'deyiz. 4 ayrı DB çağrısı yerine tek seferde hesaplayıp tek SaveChanges çağırısı yaptım.
+                    <span class="explain">Her DB çağrısı ~100-200ms ping sürüyor. 4 çağrı = 800ms. Tek çağrı = 200ms. 4 kat hız kazanımı!</span>
+                </li>
+                <li>
+                    Sepet işlemleri <span class="term">AJAX</span> ile çalışıyor — sayfa yenilenmeden ürün ekleniyor, adet değişiyor.
+                    <span class="explain">AJAX = Sayfayı yenilemeden arka planda sunucuyla iletişim kurma. fetch() API ile JSON veri gönderip alıyoruz.</span>
+                </li>
+                <li>
+                    Müşteri arayüzünü <span class="term">off-canvas</span> tasarımla yaptım: Sepet sağdan kayarak açılıyor, sayfa değişmiyor.
+                    <span class="explain">Off-canvas = Gizli panel. Bootstrap'ın Offcanvas bileşeni. Mobilde kullanıcı deneyimini çok artırıyor.</span>
+                </li>
+                <li>
+                    15 unit test yazdım: ekleme, çıkarma, adet güncelleme, boş sepet, opsiyon fiyat hesaplama, pasif ürün kontrolü...
+                    <span class="explain">Her olası senaryoyu test ediyorum. Mesela "pasif ürün eklenmeye çalışılırsa hata fırlatmalı" gibi edge case'ler.</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Sepet Akışı -->
+        <div class="subsection">
+            <h3>🔄 Sepet İşlem Akışı</h3>
+            <div class="diagram"><span class="b">Müşteri Ürün Seçer</span> → Opsiyon Modal açılır (varsa)
+       ↓
+<span class="hl">POST /sepet/ekle</span> → { urunId, adet, opsiyonIds[] }
+       ↓
+<span class="y">SepetService.AddItemAsync()</span>:
+  • Ürün aktif mi kontrol et
+  • Aynı ürün+opsiyon varsa → adet artır
+  • Yoksa → yeni SepetDetay ekle
+  • Opsiyon fiyatlarını JSON olarak kaydet
+  • ToplamTutar'ı yeniden hesapla
+       ↓
+<span class="g">Tek SaveChangesAsync()</span> → DB'ye atomik yazma
+       ↓
+<span class="b">Bottom Bar güncellenir</span>: "Sepeti Gör (₺145.00)"</div>
+        </div>
+
+        <!-- Özellikler -->
+        <div class="subsection">
+            <h3>✅ Tamamlanan Özellikler</h3>
+            <div class="feature-list">
+                <div class="feature-item"><span class="icon">🛒</span><span class="text"><strong>DB-Backed Sepet</strong><small>Sepet + SepetDetay tabloları</small></span></div>
+                <div class="feature-item"><span class="icon">➕</span><span class="text"><strong>Ürün Ekleme</strong><small>Opsiyon seçimiyle birlikte</small></span></div>
+                <div class="feature-item"><span class="icon">➖</span><span class="text"><strong>Ürün Çıkarma</strong><small>Tek kalem silme</small></span></div>
+                <div class="feature-item"><span class="icon">🔢</span><span class="text"><strong>Adet Güncelleme</strong><small>+/- butonları, 0 yapınca silme</small></span></div>
+                <div class="feature-item"><span class="icon">🧹</span><span class="text"><strong>Sepet Temizleme</strong><small>Tüm kalemleri temizle</small></span></div>
+                <div class="feature-item"><span class="icon">💰</span><span class="text"><strong>Toplam Hesaplama</strong><small>BirimFiyat × Adet + OpsiyonFiyat</small></span></div>
+                <div class="feature-item"><span class="icon">📱</span><span class="text"><strong>Off-Canvas Sepet UI</strong><small>Sağdan kayan modern panel</small></span></div>
+                <div class="feature-item"><span class="icon">🧪</span><span class="text"><strong>15 Unit Test</strong><small>Tüm sepet senaryoları ✅</small></span></div>
+            </div>
+        </div>
+
+        <!-- Ekstra UX -->
+        <div class="subsection">
+            <h3>🚀 Ekstra: Modern Mobil UX (Hafta 7 Öne Çekme)</h3>
+            <div class="feature-list">
+                <div class="feature-item"><span class="icon">📲</span><span class="text"><strong>Sticky Bottom Bar</strong><small>"Garson Çağır" + "Sepeti Gör" sabit altta</small></span></div>
+                <div class="feature-item"><span class="icon">📑</span><span class="text"><strong>Kategori Tab'ları</strong><small>Yatay scroll ile filtre</small></span></div>
+                <div class="feature-item"><span class="icon">🃏</span><span class="text"><strong>Ürün Kartları</strong><small>Görsel + ad + fiyat + açıklama + badge</small></span></div>
+                <div class="feature-item"><span class="icon">🌙</span><span class="text"><strong>Koyu Tema</strong><small>Göz yormayan modern tasarım</small></span></div>
+            </div>
+        </div>
+
+        <!-- Terimler -->
+        <div class="subsection">
+            <h3>📖 Teknik Terimler Sözlüğü</h3>
+            <table class="term-table">
+                <tr><th>Terim</th><th>Ne Demek?</th></tr>
+                <tr><td>AJAX (Fetch API)</td><td>Sayfa yenilemeden arka planda sunucuyla veri alışverişi yapma. Modern web'in temel taşı.</td></tr>
+                <tr><td>JSONB</td><td>PostgreSQL'in binary JSON tipi. Opsiyon verilerini tek sütunda sakla, hızlı sorgula.</td></tr>
+                <tr><td>Off-Canvas</td><td>Ekranın dışından kayan gizli panel. Bootstrap 5 bileşeni. Mobilde çok kullanılır.</td></tr>
+                <tr><td>Atomic Operation</td><td>"Ya hep ya hiç" prensibi. Tek SaveChanges ile tüm değişiklikler birlikte yazılır veya hiçbiri yazılmaz.</td></tr>
+                <tr><td>Latency</td><td>İstek-yanıt arası gecikme süresi. Supabase Stockholm'de → her DB çağrısı ~100-200ms.</td></tr>
+                <tr><td>Sticky Positioning</td><td>CSS ile elemanın scroll sırasında sabitlenmesi. Bottom bar hep altta kalıyor.</td></tr>
+            </table>
+        </div>
+
+        <!-- Hatalar -->
+        <div class="subsection">
+            <h3>🐛 Karşılaşılan & Çözülen Hatalar</h3>
+            <table class="bug-table">
+                <tr><th>#</th><th>Sorun</th><th>Çözüm</th></tr>
+                <tr><td>1</td><td>Duplicate DbSet exception</td><td>DbContext'te tekrarlayan set kaldırıldı</td></tr>
+                <tr><td>2</td><td>JSON Unicode escape (Türkçe karakterler)</td><td>Testlerde string yerine ID kontrol</td></tr>
+                <tr><td>3</td><td>Supabase Port 5432 bloklanmış</td><td>Port 6543 (Transaction Pooler) kullanıldı</td></tr>
+                <tr><td>4</td><td>dotnet watch sonsuz reload</td><td>.csproj'da Logs klasörü exclude edildi</td></tr>
+                <tr><td>5</td><td>JSON PascalCase uyumsuzluğu</td><td>View'lar PascalCase'e düzeltildi</td></tr>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+<!-- ==================== HAFTA 4 ==================== -->
+<div class="week-section page-break">
+    <div class="week-header w4">
+        <h2>🚀 Hafta 4 — Sipariş Motoru, SignalR, Admin Panel, CI/CD</h2>
+        <span class="hours">~40+ Saat · 8–10 Mart 2026</span>
+    </div>
+    <div class="week-body">
+
+        <div class="goal-box">
+            <strong>Hedef:</strong> Sepetten siparişe dönüşüm, 9 durumlu State Machine, RowVersion ile eş zamanlılık kontrolü, SignalR gerçek zamanlı bildirimler, Admin Panel CRUD, CI/CD pipeline.
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card"><div class="num">9</div><div class="label">Sipariş Durumu</div></div>
+            <div class="stat-card"><div class="num">28</div><div class="label">Yeni Test</div></div>
+            <div class="stat-card"><div class="num">19</div><div class="label">API Endpoint</div></div>
+            <div class="stat-card"><div class="num">11</div><div class="label">SignalR Event</div></div>
+            <div class="stat-card"><div class="num">+14</div><div class="label">Ekstra Özellik</div></div>
+        </div>
+
+        <!-- Ne Anlatabilirim -->
+        <div class="subsection">
+            <h3>🎤 Sunumda Ne Anlatabilirim?</h3>
+            <ul class="talk-points">
+                <li>
+                    Sipariş sistemi <span class="term">State Machine</span> pattern ile çalışıyor. 9 farklı durum var ve her durumdan sadece belirli durumlara geçilebilir.
+                    <span class="explain">State Machine = Geçerli durumları ve geçiş kurallarını tanımlayan yapı. Örn: "Hazır" durumundaki sipariş "Onaylandı"ya geri dönemez — sadece "Teslim Edildi"ye geçebilir. Geçersiz geçiş denemesi hata fırlatır.</span>
+                </li>
+                <li>
+                    Sepetten siparişe dönüşüm <span class="term">Transaction</span> ile atomik çalışıyor: sipariş oluşturma + sepet temizleme ya birlikte başarılı olur ya da ikisi de geri alınır.
+                    <span class="explain">Transaction = "Ya hep ya hiç" garantisi. Elektrik gitse bile veritabanı tutarsız kalmaz. Sepet silindi ama sipariş oluşmadı gibi bir durum imkansız.</span>
+                </li>
+                <li>
+                    <span class="term">RowVersion (Optimistic Locking)</span>: İki garson aynı anda aynı siparişin durumunu değiştirmeye çalışırsa sistem çakışmayı algılar.
+                    <span class="explain">Her sipariş kaydının bir "versiyon numarası" var. Güncelleme sırasında versiyon kontrol edilir — eğer biri araya girip değiştirmiş ise "sayfa yenile" uyarısı verilir.</span>
+                </li>
+                <li>
+                    <span class="term">SignalR</span> ile gerçek zamanlı bildirimler: Admin ürün değiştirince müşteri menüsü anında güncelleniyor. Yeni sipariş gelince admin paneline alarm çalıyor.
+                    <span class="explain">SignalR = WebSocket tabanlı gerçek zamanlı iletişim kütüphanesi. Sunucu, istemciye veri "push" edebilir (istemci sormadan). 11 farklı bildirim noktam var.</span>
+                </li>
+                <li>
+                    Admin panelinde <span class="term">CRUD</span> sayfaları yaptım: Kategori, Ürün, Opsiyon ekleme/düzenleme/silme + Fotoğraf upload + Sipariş durum yönetimi.
+                    <span class="explain">CRUD = Create, Read, Update, Delete. Dört temel veritabanı işlemi. Admin tüm menü içeriğini web üzerinden yönetebilir.</span>
+                </li>
+                <li>
+                    <span class="term">GitHub Actions</span> ile CI/CD pipeline: Kod push'landığında otomatik build → test → deploy çalışıyor.
+                    <span class="explain">CI/CD = Sürekli Entegrasyon / Sürekli Dağıtım. Her commit'te otomatik: 1) Projeyi derle, 2) 59 testi çalıştır, 3) Başarılıysa sunucuya gönder.</span>
+                </li>
+                <li>
+                    <strong>Ekstra:</strong> Garson çağırma (alarm sesli), sipariş fiş görüntüleme, tekrar sipariş verme, opsiyon zorunlu/opsiyonel toggle, ürün açıklamaları ve emoji placeholder sistemi.
+                </li>
+            </ul>
+        </div>
+
+        <!-- State Machine -->
+        <div class="subsection">
+            <h3>🔄 Sipariş State Machine (9 Durum)</h3>
+            <div class="diagram"><span class="b">[0: Sepette]</span> ──→ <span class="g">[1: Onaylandı]</span> ──→ <span class="y">[2: Hazırlanıyor]</span> ──→ <span class="hl">[3: Hazır]</span> ──→ <span class="g">[4: Teslim Edildi]</span>
+                                     ↓                    ↓                                         ↓
+                                <span class="r">[7: İptal]</span>            <span class="r">[7: İptal]</span>                          <span class="y">[5: Kısmi Ödendi]</span>
+                                                                                                     ↓
+                                                                                              <span class="g">[6: Tam Ödendi]</span>
+                                                                                                     ↓
+                                                                                              <span class="r">[8: İade]</span>
+
+<span class="r">İptal(7) ve İade(8) → Terminal durum</span> (başka duruma geçilemez)</div>
+        </div>
+
+        <!-- SignalR -->
+        <div class="subsection">
+            <h3>📡 SignalR Gerçek Zamanlı Akış</h3>
+            <div class="diagram"><span class="hl">Admin Paneli</span> → Ürün/Kategori/Opsiyon değişikliği
+       ↓
+SaveChangesAsync() + <span class="b">_menuHub.SendAsync("MenuGuncellendi")</span>
+       ↓
+<span class="y">WebSocket Broadcast</span> → Tüm bağlı istemcilere anlık gönderim
+       ↓
+<span class="g">Müşteri Menü Sayfası</span>:
+  → fetch('/menu/json') → DOM yeniden render (sayfa yenilenmeden!)
+
+───────────────────────────────────────────
+
+<span class="hl">Müşteri</span> → POST /siparis/olustur
+       ↓
+<span class="b">_menuHub.SendAsync("SiparisGuncellendi")</span>
+       ↓
+<span class="g">Admin Siparişler Sayfası</span>:
+  → Tablo güncelle + Stat kartları güncelle
+  → <span class="r">🔊 Alarm sesi çal (Web Audio API: 830Hz→1100Hz)</span></div>
+        </div>
+
+        <!-- Özellikler -->
+        <div class="subsection">
+            <h3>✅ Planlanan Özellikler</h3>
+            <div class="feature-list">
+                <div class="feature-item"><span class="icon">⚙️</span><span class="text"><strong>State Machine</strong><small>9 durum, geçiş kuralları enforced</small></span></div>
+                <div class="feature-item"><span class="icon">💎</span><span class="text"><strong>Atomik Transaction</strong><small>Sepet→Sipariş tek işlemde</small></span></div>
+                <div class="feature-item"><span class="icon">🔒</span><span class="text"><strong>RowVersion Concurrency</strong><small>Eş zamanlı erişim kontrolü</small></span></div>
+                <div class="feature-item"><span class="icon">📡</span><span class="text"><strong>SignalR Hub</strong><small>11 gerçek zamanlı event</small></span></div>
+                <div class="feature-item"><span class="icon">🏬</span><span class="text"><strong>Admin Ürün CRUD</strong><small>Kategori/Ürün/Opsiyon + fotoğraf</small></span></div>
+                <div class="feature-item"><span class="icon">📋</span><span class="text"><strong>Admin Siparişler</strong><small>Durum güncelleme, progress stepper</small></span></div>
+                <div class="feature-item"><span class="icon">🚀</span><span class="text"><strong>CI/CD Pipeline</strong><small>GitHub Actions: build→test→deploy</small></span></div>
+                <div class="feature-item"><span class="icon">🧪</span><span class="text"><strong>28 Yeni Test</strong><small>State geçişleri, concurrency, iptal</small></span></div>
+            </div>
+        </div>
+
+        <div class="subsection">
+            <h3>🚀 Ekstra Yapılanlar (14 Özellik)</h3>
+            <div class="feature-list">
+                <div class="feature-item"><span class="icon">🔔</span><span class="text"><strong>Garson Çağırma</strong><small>Rate limited buton + SignalR alarm sesi</small></span></div>
+                <div class="feature-item"><span class="icon">🧾</span><span class="text"><strong>Sipariş Fiş Overlay</strong><small>Courier font, tam ekran detay görüntüleme</small></span></div>
+                <div class="feature-item"><span class="icon">🔄</span><span class="text"><strong>Tekrar Sipariş</strong><small>Gönderdikten sonra yeni sipariş verebilme</small></span></div>
+                <div class="feature-item"><span class="icon">⭐</span><span class="text"><strong>Zorunlu Opsiyon Toggle</strong><small>DB migration + admin UI switch</small></span></div>
+                <div class="feature-item"><span class="icon">📝</span><span class="text"><strong>47 Ürün Açıklaması</strong><small>Detaylı iştah açıcı açıklamalar</small></span></div>
+                <div class="feature-item"><span class="icon">☕</span><span class="text"><strong>Emoji Placeholder</strong><small>Kategoriye göre CSS emoji sistemi</small></span></div>
+                <div class="feature-item"><span class="icon">🍽️</span><span class="text"><strong>Menü Seed Data</strong><small>11 kategori, 47 ürün, 24 opsiyon</small></span></div>
+                <div class="feature-item"><span class="icon">⏰</span><span class="text"><strong>UTC Saat Düzeltmesi</strong><small>ToLocalTime() ile TR saati</small></span></div>
+                <div class="feature-item"><span class="icon">📐</span><span class="text"><strong>Progress Stepper UI</strong><small>Yatay adım çubuğu tasarımı</small></span></div>
+                <div class="feature-item"><span class="icon">🔊</span><span class="text"><strong>Web Audio API</strong><small>Programatik bildirim sesi</small></span></div>
+                <div class="feature-item"><span class="icon">📲</span><span class="text"><strong>Bottom Bar Always Visible</strong><small>Sepet boş olsa bile görünür</small></span></div>
+                <div class="feature-item"><span class="icon">🔐</span><span class="text"><strong>AJAX-Aware 401</strong><small>JSON vs HTML hata yanıtı</small></span></div>
+                <div class="feature-item"><span class="icon">🖼️</span><span class="text"><strong>Fotoğraf Upload Sistemi</strong><small>2MB limit, GUID naming, format kontrol</small></span></div>
+                <div class="feature-item"><span class="icon">🔗</span><span class="text"><strong>OturumTemizleyici</strong><small>Background service: 24 saat eski oturumlar silinir</small></span></div>
+            </div>
+        </div>
+
+        <!-- Terimler -->
+        <div class="subsection">
+            <h3>📖 Teknik Terimler Sözlüğü</h3>
+            <table class="term-table">
+                <tr><th>Terim</th><th>Ne Demek?</th></tr>
+                <tr><td>State Machine</td><td>Sipariş durumlarını ve geçiş kurallarını yöneten yapı. "Hazır" olan sipariş "Onaylandı"ya dönemez.</td></tr>
+                <tr><td>Transaction (ACID)</td><td>Birden fazla DB işlemini tek birim olarak çalıştırma. Ya hepsi başarılı olur ya hiçbiri. Atomicity garantisi.</td></tr>
+                <tr><td>RowVersion</td><td>Optimistic Locking. Her kaydın versiyon numarası var — eş zamanlı güncelleme çakışmasını algılar.</td></tr>
+                <tr><td>Concurrency</td><td>Eş zamanlı erişim. İki kişi aynı anda aynı kaydı değiştirmeye çalışma durumu.</td></tr>
+                <tr><td>SignalR</td><td>ASP.NET Core'un WebSocket tabanlı gerçek zamanlı iletişim kütüphanesi. Sunucu → istemci push.</td></tr>
+                <tr><td>WebSocket</td><td>İki yönlü sürekli bağlantı protokolü. HTTP'den farklı olarak sunucu da istemciye veri gönderebilir.</td></tr>
+                <tr><td>Hub</td><td>SignalR'ın merkezi bileşeni. İstemciler Hub'a bağlanır, Hub tüm bağlı istemcilere veri yayınlar.</td></tr>
+                <tr><td>Web Audio API</td><td>Tarayıcıda programatik ses üretme. Dosya gerekmez — frekans ve dalga şekliyle ses oluşturulur.</td></tr>
+                <tr><td>CI/CD</td><td>Continuous Integration / Continuous Deployment. Kod push'lanınca otomatik derle → test et → dağıt.</td></tr>
+                <tr><td>GitHub Actions</td><td>GitHub'ın CI/CD servisi. .yml dosyasıyla workflow tanımlanır, her push'ta otomatik çalışır.</td></tr>
+                <tr><td>ExecutionStrategy</td><td>EF Core'da geçici hataları otomatik tekrar deneme mekanizması. Supabase ile kullanım zorunlu.</td></tr>
+                <tr><td>HostedService</td><td>Arka planda çalışan zamanlayıcı servis. OturumTemizleyici saatte bir eski oturumları siler.</td></tr>
+                <tr><td>Provider-Aware</td><td>Aynı kodun farklı DB provider'larda (InMemory vs PostgreSQL) çalışabilmesi. Test kolaylığı sağlar.</td></tr>
+            </table>
+        </div>
+
+        <!-- Hatalar -->
+        <div class="subsection">
+            <h3>🐛 Karşılaşılan & Çözülen Hatalar (15 adet)</h3>
+            <table class="bug-table">
+                <tr><th>#</th><th>Sorun</th><th>Çözüm</th></tr>
+                <tr><td>1</td><td>InMemory Transaction desteklemiyor</td><td>Provider-aware tasarım: PostgreSQL'de transaction, InMemory'de atlama</td></tr>
+                <tr><td>2</td><td>RowVersion null geliyor (InMemory)</td><td>Array.Empty&lt;byte&gt;() default değer</td></tr>
+                <tr><td>3</td><td>ExecutionStrategy InMemory uyumsuzluğu</td><td>Runtime'da provider name kontrolü ile dallanma</td></tr>
+                <tr><td>4</td><td>AJAX 401 JSON parse hatası</td><td>Middleware'de request tipi algılama + uygun yanıt formatı</td></tr>
+                <tr><td>5</td><td>Menü görselleri görünmüyor</td><td>Koşullu render: GorselUrl varsa img, yoksa placeholder</td></tr>
+                <tr><td>6</td><td>ICollection instantiation hatası</td><td>new() → new List&lt;UrunOpsiyon&gt;() değiştirildi</td></tr>
+                <tr><td>7</td><td>FK Constraint ürün silmede</td><td>Önce UrunOpsiyon ilişkileri temizleniyor</td></tr>
+                <tr><td>8</td><td>Opsiyon fiyat input step hatası</td><td>step="any" ile ondalık kabul eden input</td></tr>
+                <tr><td>9</td><td>Android QR SameSite problemi</td><td>SameSite=Lax ile Android uyumluluğu</td></tr>
+                <tr><td>10</td><td>Sipariş saati 3 saat geri</td><td>UTC → ToLocalTime() ile Türkiye saati</td></tr>
+                <tr><td>11</td><td>Sipariş sonrası tekrar sipariş verilememe</td><td>Sepet sıfırlama + buton reset + toast</td></tr>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+<!-- ==================== TOPLAM ÖZET ==================== -->
+<div class="total-summary page-break">
+    <h2>📊 4 Hafta — Toplam Özet</h2>
+
+    <div class="stats-row">
+        <div class="stat-card"><div class="num" style="color:#6c5ce7">93+</div><div class="label">Toplam Saat</div></div>
+        <div class="stat-card"><div class="num" style="color:#00b894">59</div><div class="label">Unit Test</div></div>
+        <div class="stat-card"><div class="num" style="color:#fdcb6e">14</div><div class="label">DB Tablosu</div></div>
+        <div class="stat-card"><div class="num" style="color:#e17055">19</div><div class="label">API Endpoint</div></div>
+        <div class="stat-card"><div class="num" style="color:#74b9ff">24</div><div class="label">Bug Fix</div></div>
+    </div>
+
+    <div class="subsection">
+        <h3>Hafta Bazlı İlerleme</h3>
+        <table class="term-table">
+            <tr><th>Hafta</th><th>Konu</th><th>Test</th><th>Saat</th><th>Bug Fix</th><th>Ekstra</th></tr>
+            <tr><td style="color:#a29bfe">Hafta 1</td><td>Proje Kurulumu & Veritabanı</td><td>8</td><td>~8</td><td>0</td><td>0</td></tr>
+            <tr><td style="color:#55efc4">Hafta 2</td><td>Token Güvenlik Sistemi</td><td>8</td><td>~20</td><td>4</td><td>7</td></tr>
+            <tr><td style="color:#ffeaa7">Hafta 3</td><td>Sepet Sistemi & Mobil UX</td><td>15</td><td>~25</td><td>5</td><td>5</td></tr>
+            <tr><td style="color:#fab1a0">Hafta 4</td><td>Sipariş Motoru, SignalR, CI/CD</td><td>28</td><td>~40+</td><td>15</td><td>14</td></tr>
+            <tr><td><strong>TOPLAM</strong></td><td></td><td><strong>59</strong></td><td><strong>93+</strong></td><td><strong>24</strong></td><td><strong>26</strong></td></tr>
+        </table>
+    </div>
+
+    <div class="subsection">
+        <h3>Kullanılan Teknolojiler</h3>
+        <div class="feature-list">
+            <div class="feature-item"><span class="icon">🟣</span><span class="text"><strong>ASP.NET Core 8 MVC</strong><small>Ana framework</small></span></div>
+            <div class="feature-item"><span class="icon">🐘</span><span class="text"><strong>PostgreSQL (Supabase)</strong><small>Bulut veritabanı</small></span></div>
+            <div class="feature-item"><span class="icon">🔷</span><span class="text"><strong>Entity Framework Core</strong><small>ORM + Migrations</small></span></div>
+            <div class="feature-item"><span class="icon">📡</span><span class="text"><strong>SignalR</strong><small>Gerçek zamanlı iletişim</small></span></div>
+            <div class="feature-item"><span class="icon">🔑</span><span class="text"><strong>CSPRNG + SHA256</strong><small>Token güvenliği</small></span></div>
+            <div class="feature-item"><span class="icon">📊</span><span class="text"><strong>QRCoder</strong><small>QR kod üretimi</small></span></div>
+            <div class="feature-item"><span class="icon">📝</span><span class="text"><strong>Serilog</strong><small>Yapılandırılmış loglama</small></span></div>
+            <div class="feature-item"><span class="icon">🧪</span><span class="text"><strong>xUnit + Moq</strong><small>Test framework</small></span></div>
+            <div class="feature-item"><span class="icon">🎨</span><span class="text"><strong>Bootstrap 5</strong><small>Responsive UI</small></span></div>
+            <div class="feature-item"><span class="icon">⚡</span><span class="text"><strong>GitHub Actions</strong><small>CI/CD pipeline</small></span></div>
+        </div>
+    </div>
+
+    <div class="subsection">
+        <h3>🎯 Sunum İpuçları</h3>
+        <ul class="talk-points">
+            <li>
+                <strong>Demo sırası:</strong> QR kodu göster → Menüden ürün seç → Sepete ekle → Sipariş ver → Admin panelden durumu güncelle.
+                <span class="explain">Canlı demo en etkili sunum yöntemi. Uçtan uca akışı göster.</span>
+            </li>
+            <li>
+                <strong>Güvenliği vurgula:</strong> "Token tahmin edilemez çünkü CSPRNG kullanıyorum, cookie çalınamaz çünkü HttpOnly, cross-site ataklar engelli çünkü SameSite var."
+                <span class="explain">Güvenlik konusu akademik sunumlarda puanlıdır. Somut örneklerle anlat.</span>
+            </li>
+            <li>
+                <strong>State Machine'i beyaz tahtada çiz:</strong> 9 kutu ve aralarındaki oklar çok anlaşılır bir görsel oluşturur.
+                <span class="explain">Diyagram > Kod. İzleyiciler görsel anlatımı çok daha iyi kavrar.</span>
+            </li>
+            <li>
+                <strong>SignalR canlı göster:</strong> İki sekme aç — birinden admin panelden ürünü güncelle, diğerinde müşteri menüsünün anında değiştiğini göster.
+                <span class="explain">Gerçek zamanlı güncelleme izleyicileri çok etkiler. "Sayfa yenilenmeden!" vurgusu yap.</span>
+            </li>
+            <li>
+                <strong>Test sayısını belirt:</strong> "59 unit test var ve tamamı geçiyor. State Machine'in geçersiz geçişlerini de test ediyorum."
+                <span class="explain">Test yazmak profesyonellik göstergesi. Edge case testleri özellikle önemli.</span>
+            </li>
+        </ul>
+    </div>
+
+    <div class="tip-box">
+        <strong>Sunumda canlı terminal gösterebilirsin:</strong> <code>dotnet test</code> çalıştır → 59 test'in yeşil geçtiğini izleyicilere göster. Çok etkileyici!
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+
+<html class="light" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Maitre D' Admin - Products &amp; Categories</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-dim": "#d5d4d4",
+                        "primary-dim": "#922c0c",
+                        "surface-tint": "#a23718",
+                        "on-primary-fixed-variant": "#581200",
+                        "tertiary-fixed": "#ffffff",
+                        "secondary-fixed-dim": "#f6ba2d",
+                        "surface-container-highest": "#dedcdc",
+                        "outline-variant": "#aeadac",
+                        "on-error-container": "#570008",
+                        "secondary-fixed": "#ffca57",
+                        "surface": "#f8f6f5",
+                        "on-background": "#2e2f2f",
+                        "error-container": "#fb5151",
+                        "surface-bright": "#f8f6f5",
+                        "inverse-surface": "#0e0e0e",
+                        "tertiary": "#5c5b5b",
+                        "surface-container-high": "#e4e2e2",
+                        "primary": "#a23718",
+                        "on-tertiary-container": "#636262",
+                        "on-primary": "#ffefec",
+                        "inverse-primary": "#fd7954",
+                        "tertiary-fixed-dim": "#f3f0f0",
+                        "surface-variant": "#dedcdc",
+                        "surface-container": "#eae8e7",
+                        "on-secondary": "#fff1dc",
+                        "on-error": "#ffefee",
+                        "tertiary-dim": "#504f4f",
+                        "error-dim": "#9f0519",
+                        "background": "#f8f6f5",
+                        "on-primary-fixed": "#000000",
+                        "primary-container": "#fd7954",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface": "#2e2f2f",
+                        "on-secondary-fixed": "#453100",
+                        "inverse-on-surface": "#9e9d9c",
+                        "primary-fixed": "#fd7954",
+                        "on-tertiary-fixed": "#505050",
+                        "on-surface-variant": "#5c5b5b",
+                        "primary-fixed-dim": "#ec6d49",
+                        "on-secondary-fixed-variant": "#694c00",
+                        "on-primary-container": "#480d00",
+                        "on-tertiary-fixed-variant": "#6e6d6d",
+                        "tertiary-container": "#ffffff",
+                        "on-tertiary": "#f5f2f1",
+                        "secondary-container": "#ffca57",
+                        "secondary": "#765600",
+                        "error": "#b31b25",
+                        "surface-container-low": "#f2f0f0",
+                        "outline": "#777776",
+                        "on-secondary-container": "#5d4300",
+                        "secondary-dim": "#674b00"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Be Vietnam Pro"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        .font-headline { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+</head>
+<body class="bg-surface text-on-background min-h-screen flex">
+<!-- SideNavBar Shell -->
+<aside class="hidden md:flex flex-col h-screen w-72 left-0 border-r border-surface-container-high bg-surface sticky top-0 overflow-y-auto">
+<!-- Brand Header -->
+<div class="px-8 py-8">
+<h1 class="text-xl font-bold text-primary font-headline">Savor &amp; Slate</h1>
+<p class="text-[10px] uppercase tracking-widest text-tertiary mt-1 font-label">Savor &amp; Slate Yönetim</p>
+</div>
+<!-- Navigation Clusters -->
+<nav class="flex-1 px-4 space-y-8">
+<!-- ANA MENÜ -->
+<div>
+<h3 class="px-4 mb-3 text-[10px] font-bold tracking-[0.2em] text-outline uppercase font-label">ANA MENÜ</h3>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-4 text-on-surface-variant py-3 px-4 hover:text-on-surface hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label text-sm uppercase tracking-widest">DASHBOARD</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 text-on-surface-variant py-3 px-4 hover:text-on-surface hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">qr_code_2</span>
+<span class="font-label text-sm uppercase tracking-widest">MASALAR</span>
+</a>
+</li>
+</ul>
+</div>
+<!-- YÖNETİM -->
+<div>
+<h3 class="px-4 mb-3 text-[10px] font-bold tracking-[0.2em] text-outline uppercase font-label">YÖNETİM</h3>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-4 bg-surface-container-lowest text-primary font-bold rounded-r-full py-3 px-4 shadow-sm hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">restaurant_menu</span>
+<span class="font-label text-sm uppercase tracking-widest">ÜRÜNLER</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 text-on-surface-variant py-3 px-4 hover:text-on-surface hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">casino</span>
+<span class="font-label text-sm uppercase tracking-widest">ŞANS OYUNLARI</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 text-on-surface-variant py-3 px-4 hover:text-on-surface hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label text-sm uppercase tracking-widest">SİPARİŞLER</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 text-on-surface-variant py-3 px-4 hover:text-on-surface hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">badge</span>
+<span class="font-label text-sm uppercase tracking-widest">PERSONEL</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 text-on-surface-variant py-3 px-4 hover:text-on-surface hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">schedule</span>
+<span class="font-label text-sm uppercase tracking-widest">İNDİRİM SAATLERİ</span>
+</a>
+</li>
+</ul>
+</div>
+<!-- OPERASYON -->
+<div>
+<h3 class="px-4 mb-3 text-[10px] font-bold tracking-[0.2em] text-outline uppercase font-label">OPERASYON</h3>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-4 text-on-surface-variant py-3 px-4 hover:text-on-surface hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">person_celebrate</span>
+<span class="font-label text-sm uppercase tracking-widest">GARSON PANELİ</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 text-on-surface-variant py-3 px-4 hover:text-on-surface hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label text-sm uppercase tracking-widest">KASA PANELİ</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 text-on-surface-variant py-3 px-4 hover:text-on-surface hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">chef_hat</span>
+<span class="font-label text-sm uppercase tracking-widest">MUTFAK PANELİ</span>
+</a>
+</li>
+</ul>
+</div>
+<!-- AYARLAR -->
+<div class="pb-8">
+<h3 class="px-4 mb-3 text-[10px] font-bold tracking-[0.2em] text-outline uppercase font-label">AYARLAR</h3>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-4 text-on-surface-variant py-3 px-4 hover:text-on-surface hover:translate-x-1 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label text-sm uppercase tracking-widest">AYARLAR</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Profile -->
+<div class="mt-auto border-t border-surface-container p-6 bg-surface-container-low">
+<div class="flex items-center gap-3">
+<img alt="Admin Profile" class="w-10 h-10 rounded-full object-cover" data-alt="professional portrait of a restaurant manager in a sharp grey suit with a modern bright office background, cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvMYEUegxseFcViEtVq8EcYeqosgbNR1K3M5UcBtVK1g5qfvVbcA-OLi8Q8QpH8DHFg7u8gY2kUu3EzzIzXl_B3Tjy2NDrcLi9famURuxUnHPMT7L5g8ugfRHpHQHGyo_UhH6DrNiiX6ZykCZFzwNTk-ujQXF4tGWA6hRWAsJ5YayJZBiDIb8UM63cpZUHfGGiG_P0BN0XCSSeYFCndBtlYG5WfkboyplHLmbgN9O8W2ioyBbpPn2U_j4OpCEYXinu3NX_kmtK4Fk"/>
+<div>
+<p class="text-sm font-bold text-on-surface font-headline">Admin User</p>
+<p class="text-xs text-on-surface-variant">General Manager</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 min-w-0 flex flex-col overflow-y-auto">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-40 bg-surface/80 backdrop-blur-md px-8 py-4 flex justify-between items-center w-full">
+<div class="flex items-center gap-4">
+<h2 class="text-2xl font-black text-on-surface font-headline tracking-tight">Maitre D' Admin</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="hidden lg:flex items-center bg-surface-container rounded-full px-4 py-2 gap-3 min-w-[320px]">
+<span class="material-symbols-outlined text-outline">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm font-body w-full" placeholder="Ürün veya kategori ara..." type="text"/>
+</div>
+</div>
+</header>
+<div class="p-8">
+<!-- Breadcrumbs & Header Actions -->
+<div class="flex justify-between items-end mb-8">
+<div>
+<div class="flex items-center gap-2 text-xs font-semibold text-stone-400 uppercase tracking-widest mb-1">
+<span>Management</span>
+<span class="material-symbols-outlined text-[14px]" data-icon="chevron_right">chevron_right</span>
+<span class="text-primary">Products &amp; Categories</span>
+</div>
+<h2 class="text-3xl font-extrabold text-stone-900 font-headline">Kategori Yönetimi</h2>
+</div>
+<div class="flex gap-3">
+<button class="bg-white border-2 border-surface-container-high text-on-surface px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-surface-container transition-colors shadow-sm">
+<span class="material-symbols-outlined" data-icon="move_item">move_item</span>
+                    Ürün Taşı
+                </button>
+<button class="bg-primary text-on-primary px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-md">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                    Yeni Ürün Ekle
+                </button>
+</div>
+</div>
+<!-- Category Filter Chips -->
+<div class="flex flex-wrap gap-3 mb-10 overflow-x-auto pb-2 scrollbar-hide">
+<button class="bg-secondary-container text-on-secondary-container px-6 py-2.5 rounded-full font-bold text-sm flex items-center gap-2 shadow-sm whitespace-nowrap">
+                Tüm Kategoriler
+            </button>
+<button class="bg-white text-stone-600 border border-transparent hover:border-outline-variant px-6 py-2.5 rounded-full font-semibold text-sm whitespace-nowrap transition-all">
+                Ana Yemekler
+            </button>
+<button class="bg-white text-stone-600 border border-transparent hover:border-outline-variant px-6 py-2.5 rounded-full font-semibold text-sm whitespace-nowrap transition-all">
+                Başlangıçlar
+            </button>
+<button class="bg-white text-stone-600 border border-transparent hover:border-outline-variant px-6 py-2.5 rounded-full font-semibold text-sm whitespace-nowrap transition-all">
+                Tatlılar
+            </button>
+<button class="bg-white text-stone-600 border border-transparent hover:border-outline-variant px-6 py-2.5 rounded-full font-semibold text-sm whitespace-nowrap transition-all">
+                İçecekler
+            </button>
+<button class="bg-white text-stone-600 border border-transparent hover:border-outline-variant px-6 py-2.5 rounded-full font-semibold text-sm whitespace-nowrap transition-all">
+                Mezeler
+            </button>
+<button class="bg-surface-container-high text-stone-400 p-2.5 rounded-full hover:bg-stone-300 transition-colors">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</div>
+<!-- Product Management Container -->
+<div class="bg-white rounded-[2rem] border border-stone-200/50 overflow-hidden shadow-sm">
+<!-- Filter Bar -->
+<div class="p-6 bg-surface-container-low flex flex-col md:flex-row gap-4 border-b border-stone-100">
+<div class="flex-1 flex gap-4">
+<div class="flex-1 relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-stone-400" data-icon="search">search</span>
+<input class="w-full bg-white border-none rounded-xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-primary/20 text-sm" placeholder="İsme göre filtrele..." type="text"/>
+</div>
+<select class="bg-white border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 text-sm font-semibold min-w-[200px]">
+<option>Tüm Durumlar</option>
+<option>Aktif</option>
+<option>Pasif</option>
+</select>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-3 bg-white text-stone-600 rounded-xl hover:bg-stone-50 transition-colors">
+<span class="material-symbols-outlined" data-icon="filter_list">filter_list</span>
+</button>
+<button class="p-3 bg-white text-stone-600 rounded-xl hover:bg-stone-50 transition-colors">
+<span class="material-symbols-outlined" data-icon="sort_by_alpha">sort_by_alpha</span>
+</button>
+</div>
+</div>
+<!-- Product Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-white border-b border-stone-100">
+<th class="px-8 py-5 text-[11px] font-extrabold text-stone-400 uppercase tracking-widest">Ürün Detayı</th>
+<th class="px-6 py-5 text-[11px] font-extrabold text-stone-400 uppercase tracking-widest">Kategori</th>
+<th class="px-6 py-5 text-[11px] font-extrabold text-stone-400 uppercase tracking-widest">Fiyat</th>
+<th class="px-6 py-5 text-[11px] font-extrabold text-stone-400 uppercase tracking-widest">Durum</th>
+<th class="px-8 py-5 text-[11px] font-extrabold text-stone-400 uppercase tracking-widest text-right">İşlemler</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-stone-50">
+<!-- Product Row 1 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-8 py-4">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-2xl overflow-hidden bg-stone-100 flex-shrink-0">
+<img alt="Grilled Ribeye Steak" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUqQLxPzSRiTX4ao3PClqwfAmsjZatFmM8Llpi2ahdhNW3HjhH84run4-pJIy43HTg11RlsR3TcuMwAKxXCNg3VFW-I3UsfAf3pxjKnwTVtOYuusL0ydvPRVbQof8PomgmQ-qhL6y5RXEnylFEj5GSAHC9QRu_opUqB-jAJpdzLRlGLVJ6TJy_q2oKdExwQUEtjuzWA1s3NA1KVbuPWENJi6JFuA-0H07UElRSOW_OTj0qGtIAfRY74ZA9z4H0GutEMAm04HGmH5s"/>
+</div>
+<div>
+<p class="font-bold text-stone-900 mb-0.5">Izgara Antrikot</p>
+<p class="text-xs text-stone-500 line-clamp-1">300g dinlendirilmiş et, taze kekik, fırın patates</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-surface-container-high text-on-surface-variant rounded-full text-[11px] font-bold">Ana Yemekler</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-stone-900 font-extrabold">₺850,00</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+<span class="text-xs font-bold text-emerald-600">Aktif</span>
+</div>
+</td>
+<td class="px-8 py-4 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 text-stone-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+<button class="p-2 text-stone-400 hover:text-secondary transition-colors" onclick="document.getElementById('optionsModal').classList.remove('hidden')">
+<span class="material-symbols-outlined" data-icon="settings_suggest">settings_suggest</span>
+</button>
+<button class="p-2 text-stone-400 hover:text-error transition-colors">
+<span class="material-symbols-outlined" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Product Row 2 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-8 py-4">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-2xl overflow-hidden bg-stone-100 flex-shrink-0">
+<img alt="Artisanal Tiramisu" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqgAolxfNyDRNGED5HGU6NpwnAY3rkULAAKigVAjoxddhKk-_vwYCbcHyqz95iX7jz1W5rFNbpR1fNtD8EGGcxCVntrlrdJ51NOYEePppmDY6H9lwnC9l3O3An-GfHZw0s2fMrkFgHA9BDhRA_ffgHDG5yInN22psFQNNgVzoETeaTq86BLY89mF-5LF3TabYCK2LW7uQPunMXXLQ9bEjlSGQU4W5c0d-m5oAgtPp2kThDqNIYVjVPQ5wtJG965Eqn6vitcvv_JDY"/>
+</div>
+<div>
+<p class="font-bold text-stone-900 mb-0.5">Klasik Tiramisu</p>
+<p class="text-xs text-stone-500 line-clamp-1">Espresso aromalı mascarpone kremalı İtalyan tatlısı</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-surface-container-high text-on-surface-variant rounded-full text-[11px] font-bold">Tatlılar</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-stone-900 font-extrabold">₺240,00</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-stone-300"></div>
+<span class="text-xs font-bold text-stone-400">Pasif</span>
+</div>
+</td>
+<td class="px-8 py-4 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 text-stone-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+<button class="p-2 text-stone-400 hover:text-secondary transition-colors">
+<span class="material-symbols-outlined" data-icon="settings_suggest">settings_suggest</span>
+</button>
+<button class="p-2 text-stone-400 hover:text-error transition-colors">
+<span class="material-symbols-outlined" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Product Row 3 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-8 py-4">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-2xl overflow-hidden bg-stone-100 flex-shrink-0">
+<img alt="Burrata Salad" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxZwT5XQhrNMek2lctecy5iFp2JCIwcMmEwPbYVnEbvqa29mctmQDNM_i53CxGhlxCo3CRnR0iM3C5Me8wp7FaHZXIdOa4vEsyt6WZW12QhCBBATqxrz3__JHeFECC1TVkjEyuOMJCILJCo1C4stD4YnfPW7gd5IpGBL5CEc8IzktiZJEdmG_0m-iJx1Bo2Rx_KdR-dj0GkoTuHefl3FZFxDCQ1hGjNbBtwk9fbC50yD4pA88l7M851Nzmt2xRCumwbOI-yGBrrQg"/>
+</div>
+<div>
+<p class="font-bold text-stone-900 mb-0.5">Burrata Salata</p>
+<p class="text-xs text-stone-500 line-clamp-1">Taze burrata peyniri, baby roka, balzamik havyar</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-surface-container-high text-on-surface-variant rounded-full text-[11px] font-bold">Başlangıçlar</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-stone-900 font-extrabold">₺320,00</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+<span class="text-xs font-bold text-emerald-600">Aktif</span>
+</div>
+</td>
+<td class="px-8 py-4 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 text-stone-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+<button class="p-2 text-stone-400 hover:text-secondary transition-colors">
+<span class="material-symbols-outlined" data-icon="settings_suggest">settings_suggest</span>
+</button>
+<button class="p-2 text-stone-400 hover:text-error transition-colors">
+<span class="material-symbols-outlined" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Footer -->
+<div class="px-8 py-6 flex justify-between items-center border-t border-stone-100">
+<p class="text-xs font-bold text-stone-400 uppercase tracking-widest">Görüntülenen: 1-10 / 45</p>
+<div class="flex gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-xl border border-stone-200 text-stone-400 hover:bg-stone-50">
+<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-xl bg-primary text-on-primary font-bold">1</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-xl text-stone-600 hover:bg-stone-50 font-bold">2</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-xl text-stone-600 hover:bg-stone-50 font-bold">3</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-xl border border-stone-200 text-stone-400 hover:bg-stone-50">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Options Modal -->
+<div class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-stone-900/40 backdrop-blur-sm" id="optionsModal">
+<div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+<div class="p-8 border-b border-stone-100 flex justify-between items-center bg-surface-container-low">
+<div>
+<h3 class="text-2xl font-black text-stone-900">Opsiyon Yönetimi</h3>
+<p class="text-sm text-stone-500 font-medium">Izgara Antrikot için ek seçenekler ve varyasyonlar</p>
+</div>
+<button class="p-2 hover:bg-stone-200 rounded-full transition-colors" onclick="document.getElementById('optionsModal').classList.add('hidden')">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<div class="p-8 max-h-[614px] overflow-y-auto">
+<div class="space-y-6">
+<!-- Option Group 1 -->
+<div class="bg-surface-container-lowest border border-stone-200 rounded-2xl p-6">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h4 class="font-bold text-stone-900">Pişirme Derecesi</h4>
+<p class="text-xs text-stone-400">Tekil seçim zorunlu</p>
+</div>
+<button class="text-xs font-bold text-primary hover:underline">Düzenle</button>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-white border border-stone-100 rounded-lg text-xs font-bold text-stone-600">Az Pişmiş</span>
+<span class="px-3 py-1 bg-white border border-stone-100 rounded-lg text-xs font-bold text-stone-600">Orta Az</span>
+<span class="px-3 py-1 bg-white border border-stone-100 rounded-lg text-xs font-bold text-stone-600">Orta</span>
+<span class="px-3 py-1 bg-white border border-stone-100 rounded-lg text-xs font-bold text-stone-600">Orta İyi</span>
+<span class="px-3 py-1 bg-white border border-stone-100 rounded-lg text-xs font-bold text-stone-600">Çok Pişmiş</span>
+</div>
+</div>
+<!-- Option Group 2 -->
+<div class="bg-surface-container-lowest border border-stone-200 rounded-2xl p-6">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h4 class="font-bold text-stone-900">Yan Ürünler</h4>
+<p class="text-xs text-stone-400">Çoklu seçim yapılabilir</p>
+</div>
+<button class="text-xs font-bold text-primary hover:underline">Düzenle</button>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-center text-sm">
+<span class="text-stone-600">Ekstra Fırın Patates</span>
+<span class="font-bold text-stone-900">+₺85.00</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-stone-600">Izgara Kuşkonmaz</span>
+<span class="font-bold text-stone-900">+₺120.00</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-stone-600">Mantar Sos</span>
+<span class="font-bold text-stone-900">+₺45.00</span>
+</div>
+</div>
+</div>
+</div>
+<button class="w-full mt-8 border-2 border-dashed border-stone-200 py-4 rounded-2xl text-stone-400 font-bold hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+                Yeni Opsiyon Grubu Ekle
+            </button>
+</div>
+<div class="p-8 bg-surface-container-low border-t border-stone-100 flex justify-end gap-4">
+<button class="px-8 py-3 rounded-xl font-bold text-stone-600 hover:bg-white transition-colors" onclick="document.getElementById('optionsModal').classList.add('hidden')">Kapat</button>
+<button class="px-8 py-3 rounded-xl font-bold bg-primary text-on-primary shadow-lg shadow-primary/20 hover:opacity-90 transition-all">Değişiklikleri Kaydet</button>
+</div>
+</div>
+</div>
+</body></html>

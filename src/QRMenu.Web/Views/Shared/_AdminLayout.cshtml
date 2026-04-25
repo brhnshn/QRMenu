@@ -1,203 +1,203 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" class="light">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] — Admin Paneli</title>
-    <script>
-        (function () {
-            try {
-                if (localStorage.getItem('adminSidebarCollapsed') === '1') {
-                    document.documentElement.classList.add('admin-sidebar-collapsed');
+    <title>@ViewData["Title"]</title>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            important: true,
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-dim": "#d5d4d4", "primary-dim": "#922c0c", "surface-tint": "#a23718", "on-primary-fixed-variant": "#581200", "tertiary-fixed": "#ffffff", "secondary-fixed-dim": "#f6ba2d", "surface-container-highest": "#dedcdc", "outline-variant": "#aeadac", "on-error-container": "#570008", "secondary-fixed": "#ffca57", "surface": "#f8f6f5", "on-background": "#2e2f2f", "error-container": "#fb5151", "surface-bright": "#f8f6f5", "inverse-surface": "#0e0e0e", "tertiary": "#5c5b5b", "surface-container-high": "#e4e2e2", "primary": "#a23718", "on-tertiary-container": "#636262", "on-primary": "#ffefec", "inverse-primary": "#fd7954", "tertiary-fixed-dim": "#f3f0f0", "surface-variant": "#dedcdc", "surface-container": "#eae8e7", "on-secondary": "#fff1dc", "on-error": "#ffefee", "tertiary-dim": "#504f4f", "error-dim": "#9f0519", "background": "#f8f6f5", "on-primary-fixed": "#000000", "primary-container": "#fd7954", "surface-container-lowest": "#ffffff", "on-surface": "#2e2f2f", "on-secondary-fixed": "#453100", "inverse-on-surface": "#9e9d9c", "primary-fixed": "#fd7954", "on-tertiary-fixed": "#505050", "on-surface-variant": "#5c5b5b", "primary-fixed-dim": "#ec6d49", "on-secondary-fixed-variant": "#694c00", "on-primary-container": "#480d00", "on-tertiary-fixed-variant": "#6e6d6d", "tertiary-container": "#ffffff", "on-tertiary": "#f5f2f1", "secondary-container": "#ffca57", "secondary": "#765600", "error": "#b31b25", "surface-container-low": "#f2f0f0", "outline": "#777776", "on-secondary-container": "#5d4300", "secondary-dim": "#674b00"
+                    },
+                    "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                    "fontFamily": { "headline": ["Plus Jakarta Sans"], "body": ["Be Vietnam Pro"], "label": ["Plus Jakarta Sans"] }
                 }
-            } catch (e) {
-                // localStorage erişilemiyorsa varsayılan düzenle devam et
             }
-        })();
+        }
     </script>
+    <style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; background-color: #f8f6f5; color: #2e2f2f; }
+        .font-headline { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .btn-primary { background-color: #a23718 !important; border-color: #a23718 !important; color: #ffefec !important; }
+        .btn-primary:hover { background-color: #922c0c !important; border-color: #922c0c !important; }
+        .bg-primary { background-color: #a23718 !important; }
+        .text-primary { color: #a23718 !important; }
+    </style>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet" />
-    <link href="~/css/admin-layout.css" rel="stylesheet" />
     @RenderSection("Styles", required: false)
 </head>
-<body>
+<body class="bg-surface text-on-background min-h-screen flex">
 
 @if (User.IsInRole("Admin"))
 {
-    <!-- Admin Sidebar -->
-    <aside class="admin-sidebar" id="sidebar">
-        <div class="sidebar-brand">
-            <i class="bi bi-qr-code brand-icon"></i>
-            <span>QR Menü</span>
-            <a href="/Auth/Logout" class="ms-auto text-danger p-2" title="Çıkış Yap" onclick="return confirm('Çıkış yapmak istediğinize emin misiniz?');">
-                <i class="bi bi-box-arrow-right"></i>
-            </a>
+    <aside class="hidden md:flex flex-col h-screen w-64 left-0 border-r border-surface-container-high bg-surface sticky top-0 overflow-y-auto z-50">
+        <div class="px-6 py-6 flex justify-between items-center">
+            <h1 class="text-lg font-black text-primary font-headline uppercase tracking-tighter">YÖNETİM PANELİ</h1>
+            <button class="md:hidden text-on-surface" id="closeSidebarMobile"><span class="material-symbols-outlined">close</span></button>
         </div>
-        <nav class="sidebar-nav">
-            <div class="nav-label">Ana Menü</div>
-            <a class="nav-item disabled" href="#">
-                <i class="bi bi-speedometer2"></i> Dashboard
-                <span class="badge-soon">Yakında</span>
-            </a>
-            <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Masalar" ? "active" : "")" href="/admin/masalar">
-                <i class="bi bi-grid-3x3-gap"></i> Masalar (QR)
-            </a>
-
-            <div class="nav-label">Yönetim</div>
-            <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Urunler" ? "active" : "")" href="/admin/urunler">
-                <i class="bi bi-cup-hot"></i> Ürünler
-            </a>
-            <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Oyunlar" ? "active" : "")" href="/admin/oyunlar">
-                <i class="bi bi-dice-5"></i> Şans Oyunları
-            </a>
-            <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Siparisler" ? "active" : "")" href="/admin/siparisler">
-                <i class="bi bi-receipt"></i> Siparişler
-            </a>
-            <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "Kullanicilar" ? "active" : "")" href="/admin/kullanicilar">
-                <i class="bi bi-people"></i> Personel
-            </a>
-            <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "HappyHour" ? "active" : "")" href="/admin/happy-hour">
-                <i class="bi bi-stars"></i> İndirim Saatleri
-            </a>
-
-            <div class="nav-label">Operasyon</div>
-            <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "GarsonMasalar" ? "active" : "")" href="/Garson/Masalar">
-                <i class="bi bi-person-badge"></i> Garson Paneli
-            </a>
-            <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "KasaMasalar" ? "active" : "")" href="/Kasa/Masalar">
-                <i class="bi bi-cash-coin"></i> Kasa Paneli
-            </a>
-            <a class="nav-item @(ViewData["ActivePage"]?.ToString() == "MutfakPaneli" ? "active" : "")" href="/Mutfak/Panel">
-                <i class="bi bi-egg-fried"></i> Mutfak Paneli
-            </a>
-
-            <div class="nav-label">Ayarlar</div>
+        <nav class="flex-1 px-3 space-y-4 pb-4">
+            <div>
+                <h3 class="px-4 mb-2 text-[9px] font-bold tracking-[0.2em] text-outline uppercase font-label">ANA MENÜ</h3>
+                <ul class="space-y-0.5">
+                    <li>
+                        <a class="flex items-center gap-2.5 py-1.5 px-4 transition-transform duration-300 rounded-r-full @(ViewData["ActivePage"]?.ToString() == "Dashboard" ? "bg-surface-container-lowest text-primary font-bold shadow-sm" : "text-on-surface-variant hover:text-on-surface hover:translate-x-1")" href="#">
+                            <span class="material-symbols-outlined text-[20px]">dashboard</span>
+                            <span class="font-label text-[11px] uppercase tracking-widest">DASHBOARD</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="flex items-center gap-2.5 py-1.5 px-4 transition-transform duration-300 rounded-r-full @(ViewData["ActivePage"]?.ToString() == "Masalar" ? "bg-surface-container-lowest text-primary font-bold shadow-sm" : "text-on-surface-variant hover:text-on-surface hover:translate-x-1")" href="/admin/masalar">
+                            <span class="material-symbols-outlined text-[20px]">qr_code_2</span>
+                            <span class="font-label text-[11px] uppercase tracking-widest">MASALAR</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="px-4 mb-2 text-[9px] font-bold tracking-[0.2em] text-outline uppercase font-label">YÖNETİM</h3>
+                <ul class="space-y-0.5">
+                    <li>
+                        <a class="flex items-center gap-2.5 py-1.5 px-4 transition-transform duration-300 rounded-r-full @(ViewData["ActivePage"]?.ToString() == "Urunler" ? "bg-surface-container-lowest text-primary font-bold shadow-sm" : "text-on-surface-variant hover:text-on-surface hover:translate-x-1")" href="/admin/urunler">
+                            <span class="material-symbols-outlined text-[20px]" style="@(ViewData["ActivePage"]?.ToString() == "Urunler" ? "font-variation-settings: 'FILL' 1;" : "")">restaurant_menu</span>
+                            <span class="font-label text-[11px] uppercase tracking-widest">ÜRÜNLER</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="flex items-center gap-2.5 py-1.5 px-4 transition-transform duration-300 rounded-r-full @(ViewData["ActivePage"]?.ToString() == "Oyunlar" ? "bg-surface-container-lowest text-primary font-bold shadow-sm" : "text-on-surface-variant hover:text-on-surface hover:translate-x-1")" href="/admin/oyunlar">
+                            <span class="material-symbols-outlined text-[20px]">casino</span>
+                            <span class="font-label text-[11px] uppercase tracking-widest">OYUNLAR</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="flex items-center gap-2.5 py-1.5 px-4 transition-transform duration-300 rounded-r-full @(ViewData["ActivePage"]?.ToString() == "Siparisler" ? "bg-surface-container-lowest text-primary font-bold shadow-sm" : "text-on-surface-variant hover:text-on-surface hover:translate-x-1")" href="/admin/siparisler">
+                            <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+                            <span class="font-label text-[11px] uppercase tracking-widest">SİPARİŞLER</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="flex items-center gap-2.5 py-1.5 px-4 transition-transform duration-300 rounded-r-full @(ViewData["ActivePage"]?.ToString() == "Kullanicilar" ? "bg-surface-container-lowest text-primary font-bold shadow-sm" : "text-on-surface-variant hover:text-on-surface hover:translate-x-1")" href="/admin/kullanicilar">
+                            <span class="material-symbols-outlined text-[20px]">badge</span>
+                            <span class="font-label text-[11px] uppercase tracking-widest">PERSONEL</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="flex items-center gap-2.5 py-1.5 px-4 transition-transform duration-300 rounded-r-full @(ViewData["ActivePage"]?.ToString() == "HappyHour" ? "bg-surface-container-lowest text-primary font-bold shadow-sm" : "text-on-surface-variant hover:text-on-surface hover:translate-x-1")" href="/admin/happy-hour">
+                            <span class="material-symbols-outlined text-[20px]">schedule</span>
+                            <span class="font-label text-[11px] uppercase tracking-widest">İNDİRİM SAATLERİ</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="px-4 mb-2 text-[9px] font-bold tracking-[0.2em] text-outline uppercase font-label">OPERASYON</h3>
+                <ul class="space-y-0.5">
+                    <li><a class="flex items-center gap-2.5 py-1.5 px-4 transition-all rounded-r-full text-on-surface-variant hover:text-on-surface hover:translate-x-1" href="/Garson/Masalar"><span class="material-symbols-outlined text-[20px]">person_celebrate</span><span class="font-label text-[11px] uppercase tracking-widest">GARSON PANELİ</span></a></li>
+                    <li><a class="flex items-center gap-2.5 py-1.5 px-4 transition-all rounded-r-full text-on-surface-variant hover:text-on-surface hover:translate-x-1" href="/Kasa/Masalar"><span class="material-symbols-outlined text-[20px]">payments</span><span class="font-label text-[11px] uppercase tracking-widest">KASA PANELİ</span></a></li>
+                    <li><a class="flex items-center gap-2.5 py-1.5 px-4 transition-all rounded-r-full text-on-surface-variant hover:text-on-surface hover:translate-x-1" href="/Mutfak/Panel"><span class="material-symbols-outlined text-[20px]">chef_hat</span><span class="font-label text-[11px] uppercase tracking-widest">MUTFAK PANELİ</span></a></li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="px-4 mb-2 text-[9px] font-bold tracking-[0.2em] text-outline uppercase font-label">AYARLAR</h3>
+                <ul class="space-y-0.5">
+                    <li>
+                        <a class="flex items-center gap-2.5 text-error py-1.5 px-4 hover:bg-error/10 hover:translate-x-1 transition-all rounded-r-full" href="/Auth/Logout" onclick="cikisYap(event, '/Auth/Logout')">
+                            <span class="material-symbols-outlined text-[20px]">logout</span>
+                            <span class="font-label text-[11px] uppercase tracking-widest">ÇIKIŞ YAP</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </nav>
+        <div class="mt-auto border-t border-surface-container p-5 bg-surface-container-low">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">A</div>
+                <div><p class="text-xs font-bold text-on-surface font-headline">Admin User</p><p class="text-[10px] text-on-surface-variant">General Manager</p></div>
+            </div>
+        </div>
     </aside>
 
-    <!-- Overlay (mobil) -->
-    <div class="sidebar-overlay" id="overlay"></div>
+    <div class="fixed inset-0 bg-black/50 z-40 hidden md:hidden" id="mobileOverlay"></div>
 
-    <!-- Topbar -->
-    <header class="admin-topbar" id="topbar">
-        <button class="topbar-toggle" id="toggleAdminSidebarBtn" type="button" aria-label="Menüyü Aç/Kapat">
-            <i class="bi bi-list"></i>
-        </button>
-        <span class="topbar-title">@ViewData["PageTitle"]</span>
-    </header>
-
-    <main class="admin-content">
-        @RenderBody()
+    <main class="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto bg-surface relative">
+        <header class="sticky top-0 z-30 bg-surface/80 backdrop-blur-md px-4 md:px-6 py-3 flex justify-between items-center w-full border-b border-surface-container-high">
+            <div class="flex items-center gap-3">
+                <button class="md:hidden p-2 text-on-surface hover:bg-surface-container rounded-full" id="openSidebarMobile"><span class="material-symbols-outlined">menu</span></button>
+                <h2 class="text-lg md:text-xl font-black text-on-surface font-headline tracking-tight">@ViewData["PageTitle"]</h2>
+            </div>
+        </header>
+        <div class="flex-1">@RenderBody()</div>
     </main>
 }
 else
 {
-    <!-- Personel Layout (No Sidebar) -->
     <style>
-        .personel-layout { background: #f8f9fa; min-height: 100vh; }
-        .personel-header {
-            background: #0f172a;
-            color: #fff;
-            height: 60px;
-            display: flex;
-            align-items: center;
-            padding: 0 24px;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            justify-content: space-between;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .personel-body { padding-top: 80px; padding-left: 20px; padding-right: 20px; padding-bottom: 40px; }
+        .personel-layout { background: #f8f6f5; min-height: 100vh; width: 100%; display: flex; flex-direction: column; }
+        .personel-header { background: #a23718; color: #fff; height: 50px; display: flex; align-items: center; padding: 0 20px; position: fixed; top: 0; left: 0; right: 0; z-index: 1000; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .personel-body { padding-top: 60px; padding-left: 15px; padding-right: 15px; padding-bottom: 20px; flex: 1; }
     </style>
-
     <div class="personel-layout">
         <header class="personel-header">
-            <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-qr-code fs-4"></i>
-                <span class="fw-bold fs-5">QR Menü</span>
-            </div>
-            <div class="d-flex align-items-center gap-4">
-                <span class="d-none d-md-inline fw-semibold text-white-50">@ViewData["PageTitle"]</span>
-                <a href="/Auth/Logout" class="btn btn-outline-danger btn-sm px-3 fw-bold" onclick="return confirm('Çıkış yapmak istediğinize emin misiniz?');">
-                    <i class="bi bi-box-arrow-right"></i> Çıkış Yap
-                </a>
+            <div class="d-flex align-items-center gap-2"><span class="material-symbols-outlined text-lg">restaurant</span><span class="fw-bold font-headline">Savor & Slate</span></div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="d-none d-md-inline fw-semibold text-white-50 text-xs">@ViewData["PageTitle"]</span>
+                <a href="/Auth/Logout" class="flex items-center gap-1 bg-white/20 hover:bg-white/30 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition-colors" onclick="cikisYap(event, '/Auth/Logout')"><span class="material-symbols-outlined" style="font-size: 16px;">logout</span> Çıkış</a>
             </div>
         </header>
-        <main class="personel-body">
-            @RenderBody()
-        </main>
+        <main class="personel-body">@RenderBody()</main>
     </div>
 }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    const adminSidebarStorageKey = 'adminSidebarCollapsed';
-
-    function setAdminDesktopCollapsed(isCollapsed) {
-        document.body.classList.toggle('admin-sidebar-collapsed', isCollapsed);
-        document.documentElement.classList.toggle('admin-sidebar-collapsed', isCollapsed);
-        try {
-            localStorage.setItem(adminSidebarStorageKey, isCollapsed ? '1' : '0');
-        } catch (e) {
-            // localStorage erişilemiyorsa yalnızca anlık sınıf değiştir
-        }
-    }
-
-    function openAdminSidebarMobile() {
-        document.body.classList.add('admin-sidebar-open');
-        document.documentElement.classList.add('admin-sidebar-open');
-    }
-
-    function closeAdminSidebarMobile() {
-        document.body.classList.remove('admin-sidebar-open');
-        document.documentElement.classList.remove('admin-sidebar-open');
-    }
-
-    (function initAdminSidebarState() {
-        let collapsed = false;
-        try {
-            collapsed = localStorage.getItem(adminSidebarStorageKey) === '1';
-        } catch (e) {
-            collapsed = false;
-        }
-        setAdminDesktopCollapsed(collapsed);
-    })();
-
-    const toggleAdminSidebarBtn = document.getElementById('toggleAdminSidebarBtn');
-    const adminSidebarOverlay = document.getElementById('overlay');
-
-    if (toggleAdminSidebarBtn) {
-        toggleAdminSidebarBtn.addEventListener('click', function () {
-            if (window.innerWidth <= 768) {
-                const isOpen = document.body.classList.contains('admin-sidebar-open');
-                if (isOpen) {
-                    closeAdminSidebarMobile();
-                } else {
-                    openAdminSidebarMobile();
-                }
-                return;
-            }
-
-            const isCollapsed = !document.body.classList.contains('admin-sidebar-collapsed');
-            setAdminDesktopCollapsed(isCollapsed);
-        });
-    }
-
-    if (adminSidebarOverlay) {
-        adminSidebarOverlay.addEventListener('click', function () {
-            closeAdminSidebarMobile();
-        });
-    }
-
-    window.addEventListener('resize', function () {
-        if (window.innerWidth > 768) {
-            closeAdminSidebarMobile();
+    window.SavorAlert = Swal.mixin({
+        buttonsStyling: false,
+        padding: 0,
+        customClass: {
+            popup: 'rounded-2xl shadow-2xl bg-white border-0 overflow-hidden',
+            confirmButton: 'bg-[#a23718] text-white font-bold py-2 px-4 rounded-lg shadow-lg hover:scale-[1.02] transition-transform border-0 m-1',
+            cancelButton: 'bg-[#e4e0de] text-[#2e2f2f] font-bold py-2 px-4 rounded-lg hover:bg-[#d5cfcc] transition-colors border-0 m-1'
         }
     });
+
+    function cikisYap(e, url) {
+        e.preventDefault();
+        window.SavorAlert.fire({ title: 'Çıkış Yap', text: 'Hesabınızdan çıkış yapmak üzeresiniz.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Evet', cancelButtonText: 'İptal' })
+            .then((result) => { if (result.isConfirmed) window.location.href = url; });
+    }
+
+    const sidebar = document.querySelector('aside');
+    const openBtn = document.getElementById('openSidebarMobile');
+    const closeBtn = document.getElementById('closeSidebarMobile');
+    const overlay = document.getElementById('mobileOverlay');
+
+    function toggleSidebar() {
+        if(sidebar && sidebar.classList.contains('hidden')) {
+            sidebar.classList.remove('hidden');
+            sidebar.classList.add('fixed', 'z-50');
+            overlay.classList.remove('hidden');
+        } else if(sidebar) {
+            sidebar.classList.add('hidden');
+            sidebar.classList.remove('fixed', 'z-50');
+            overlay.classList.add('hidden');
+        }
+    }
+
+    if(openBtn) openBtn.addEventListener('click', toggleSidebar);
+    if(closeBtn) closeBtn.addEventListener('click', toggleSidebar);
+    if(overlay) overlay.addEventListener('click', toggleSidebar);
 </script>
 @RenderSection("Scripts", required: false)
 </body>

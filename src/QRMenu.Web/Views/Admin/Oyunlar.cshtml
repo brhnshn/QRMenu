@@ -2,293 +2,216 @@
 @{
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
     ViewData["Title"] = "Oyun & Ödül Yönetimi";
-    ViewData["PageTitle"] = "Oyun Seçimi & İndirim Havuzu";
 }
 
 @section Styles {
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600&display=swap" rel="stylesheet"/>
     <style>
-        .admin-oyun-card {
-            border-radius: 1.25rem;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            background: #fff;
-            border: 1px solid rgba(0,0,0,0.05);
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+        :root {
+            --primary: #a23718;
+            --primary-dim: #922c0c;
+            --secondary: #765600;
+            --tertiary: #5c5b5b;
+            --on-primary: #ffefec;
+            --surface: #f8f6f5;
+            --on-surface: #2e2f2f;
+            --surface-container-low: #f2f0f0;
+            --surface-container-lowest: #ffffff;
+            --outline-variant: #aeadac;
         }
-        .admin-oyun-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
-        }
-        .admin-oyun-header {
-            border-radius: 1.25rem 1.25rem 0 0;
-            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-            border-bottom: 1px solid rgba(0,0,0,0.08);
-            padding: 1.25rem 1.5rem;
-        }
-        .admin-odul-item {
-            background: #fff;
-            border-radius: 0.75rem;
-            border: 1px solid rgba(0,0,0,0.06);
-            margin-bottom: 0.75rem;
-            padding: 1rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-        .admin-odul-item:hover {
-            border-color: rgba(13,110,253,0.2);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.04);
-        }
-        .admin-odul-item:last-child {
-            margin-bottom: 0;
-        }
-        .oran-input-group {
-            border-radius: 0.5rem;
-            overflow: hidden;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-            border: 1px solid #ced4da;
-            transition: box-shadow 0.2s ease, border-color 0.2s ease;
-        }
-        .oran-input-group:focus-within {
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-            border-color: #86b7fe;
-        }
-        .oran-input-group .form-control {
-            border: none;
-            box-shadow: none;
-            background: transparent;
-        }
-        .oran-input-group .input-group-text {
-            background-color: #f8f9fa;
-            border: none;
-            border-right: 1px solid #ced4da;
-        }
-        .oran-input-group .btn {
-            border-radius: 0;
-        }
-        .game-badge {
-            font-size: 0.75rem;
-            font-weight: 600;
-            padding: 0.4em 0.7em;
-            border-radius: 0.4rem;
-            background-color: rgba(108, 117, 125, 0.08);
-            color: #495057;
-            border: 1px solid rgba(108, 117, 125, 0.2);
-        }
-        .card-body-container {
-            background: #fcfcfd;
-            border-radius: 0 0 1.25rem 1.25rem;
-            padding: 1.5rem;
-        }
-        .section-title {
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 700;
-            color: #6c757d;
-            margin-bottom: 1rem;
-        }
-        .add-reward-box {
-            background-color: #fff;
-            border-radius: 0.75rem;
-            padding: 1.25rem;
-            border: 1px dashed rgba(0,0,0,0.1);
-        }
+        body { font-family: 'Be Vietnam Pro', sans-serif; background-color: var(--surface); }
+        .font-headline { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        
+        .oyun-card { background: white; border-radius: 1.25rem; padding: 1.25rem; border: 1px solid rgba(174, 173, 172, 0.2); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .box-input { background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; display: flex; align-items: center; padding: 0 0.5rem; height: 2.25rem; }
+        .box-input span { font-size: 9px; font-weight: 800; color: #9ca3af; text-transform: uppercase; margin-right: 0.25rem; flex-shrink: 0; }
+        .box-input input { border: none; background: transparent; width: 100%; font-size: 13px; font-weight: 700; color: #1f2937; padding: 0; text-align: right; }
+        .box-input input:focus { ring: 0; outline: none; }
+        
+        /* Compact Performance Style */
+        .perf-compact { background: var(--primary); color: white; border-radius: 0.75rem; padding: 0.75rem; position: relative; overflow: hidden; min-width: 450px; flex-grow: 0; }
+        .perf-compact h2 { font-size: 0.75rem; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 0.4rem; opacity: 0.9; }
+        .perf-compact .stat-box { background: rgba(255,255,255,0.1); border-radius: 0.5rem; padding: 0.4rem 0.75rem; border: 1px solid rgba(255,255,255,0.05); }
+        .perf-compact .stat-val { font-size: 1.1rem; font-weight: 900; }
+        .perf-compact .stat-lbl { font-size: 8px; font-weight: 800; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.05em; }
     </style>
 }
 
-<div class="row">
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="max-w-md ml-8">
+        <h2 class="text-xl font-black text-stone-900 font-headline tracking-tight">Oyun & Ödül Yönetimi</h2>
+        <p class="text-stone-500 text-xs font-medium">Müşteri bağlılığı için ödülleri yönetin. Toplam %100 olmalıdır.</p>
+    </div>
+    
+    <!-- Relocated Performance Card -->
+    <section class="perf-compact shadow-md">
+        <div class="relative z-10">
+            <div class="flex justify-between items-center mb-3">
+                <h2>Genel Performans</h2>
+                <div class="flex bg-white/10 rounded-full p-0.5">
+                    <button onclick="updateStats('today')" class="px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest transition-all bg-white text-primary" id="btn-today">Bugün</button>
+                    <button onclick="updateStats('yesterday')" class="px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest transition-all hover:bg-white/10" id="btn-yesterday">Dün</button>
+                    <button onclick="updateStats('week')" class="px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest transition-all hover:bg-white/10" id="btn-week">Hafta</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="stat-box">
+                    <p class="stat-lbl">Katılım</p>
+                    <p class="stat-val" id="stat-participations">--</p>
+                </div>
+                <div class="stat-box">
+                    <p class="stat-lbl">Ödül</p>
+                    <p class="stat-val" id="stat-wins">--</p>
+                </div>
+            </div>
+        </div>
+        <div class="absolute -right-2 -bottom-2 opacity-10">
+            <span class="material-symbols-outlined text-5xl rotate-12">leaderboard</span>
+        </div>
+    </section>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
     @foreach(var oyun in Model)
     {
-        <div class="col-md-4 mb-4">
-            <div class="card admin-oyun-card h-100">
-                <div class="admin-oyun-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold d-flex align-items-center">
-                        @if (oyun.Tip == "CARKIFELEK") { <i class="bi bi-vinyl fs-5 me-2 text-primary"></i> }
-                        else if (oyun.Tip == "HAFIZA") { <i class="bi bi-grid-3x3 fs-5 me-2 text-warning"></i> }
-                        else { <i class="bi bi-ticket-detailed fs-5 me-2 text-success"></i> }
-                        @oyun.Ad
-                    </h5>
-                    <div class="form-check form-switch m-0">
-                        <input class="form-check-input fs-5" type="checkbox" role="switch" id="toggle-@oyun.Id" 
-                            @(oyun.AktifMi ? "checked" : "") onchange="toggleOyun(@oyun.Id)">
+        var icon = oyun.Tip == "CARKIFELEK" ? "progress_activity" : (oyun.Tip == "HAFIZA" ? "memory" : "texture");
+        var colorClass = oyun.Tip == "CARKIFELEK" ? "text-primary bg-primary/10" : (oyun.Tip == "HAFIZA" ? "text-amber-600 bg-amber-50" : "text-stone-600 bg-stone-100");
+        var toplamIhtimal = oyun.Oduller.Sum(x => x.IhtimalYuzdesi);
+
+        <section class="oyun-card flex flex-col gap-4">
+            <div class="flex justify-between items-start">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg @colorClass flex items-center justify-center">
+                        <span class="material-symbols-outlined text-xl">@icon</span>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold font-headline text-stone-900">@oyun.Ad</h2>
+                        <span class="text-[9px] font-bold text-stone-400 uppercase tracking-widest">@(oyun.Tip == "CARKIFELEK" ? "Çarkıfelek" : (oyun.Tip == "HAFIZA" ? "Hafıza Oyunu" : "Kazı Kazan"))</span>
                     </div>
                 </div>
-                <div class="card-body-container">
-                    <p class="section-title">Ödül Havuzu</p>
-                    @if (oyun.Tip == "CARKIFELEK")
-                    {
-                        <div class="alert alert-info py-2 px-3 small mx-0 mb-3 d-flex align-items-center rounded-3 border-0 bg-primary bg-opacity-10 text-primary">
-                            <i class="bi bi-info-circle-fill me-2 fs-6"></i>
-                            <div>Çark diliminde görünecek yazı doğrudan <strong>Tanım</strong> alanından alınır.</div>
-                        </div>
-                    }
-                    <form id="oranForm-@oyun.Id" onsubmit="event.preventDefault(); topluOranKaydet(@oyun.Id)">
-                        <div class="mb-3" id="odulList-@oyun.Id">
-                            @foreach(var odul in oyun.Oduller)
-                            {
-                                <div class="admin-odul-item d-flex justify-content-between align-items-center">
-                                    <div class="flex-grow-1 me-3">
-                                        <div class="fw-bold mb-1" style="color: #343a40;">@odul.OdulTanim</div>
-                                        <div class="d-flex align-items-center flex-wrap gap-2 mt-1">
-                                            <div class="oran-input-group d-flex" style="width: 140px;">
-                                                <span class="input-group-text py-1 px-2 small">%</span>
-                                                <input type="number" id="tekliOran-@odul.Id" class="form-control form-control-sm py-1 px-1 text-center ihtimal-input-@oyun.Id" data-odul-id="@odul.Id" value="@odul.IhtimalYuzdesi" step="0.01" min="0" max="100">
-                                                <button type="button" class="btn btn-primary btn-sm py-0 px-2" onclick="tekliOranKaydet(@odul.Id)" title="Bu Oranı Kaydet">
-                                                    <i class="bi bi-check2"></i>
-                                                </button>
-                                            </div>
-                                            <div class="mt-1 mt-sm-0">
-                                                @if (odul.IndirimYuzdesi > 0)
-                                                {
-                                                    <span class="game-badge text-success border-success bg-success bg-opacity-10">@($"%{odul.IndirimYuzdesi} İnd.")</span>
-                                                }
-                                                else if (odul.IndirimTutari > 0)
-                                                {
-                                                    <span class="game-badge text-primary border-primary bg-primary bg-opacity-10">@($"{odul.IndirimTutari} TL İnd.")</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="game-badge">
-                                                        @(oyun.Tip == "CARKIFELEK" ? "Boş Dilim" : "Boş Sonuç")
-                                                    </span>
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button type="button" class="btn btn-outline-danger btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; flex-shrink: 0;" onclick="odulSil(@odul.Id)">
-                                        <i class="bi bi-trash fs-6"></i>
-                                    </button>
-                                </div>
-                            }
-                            @if(!oyun.Oduller.Any())
-                            {
-                                <div class="admin-odul-item text-center text-muted small py-4 bg-transparent border-dashed">
-                                    <i class="bi bi-inbox fs-3 d-block mb-2 opacity-50"></i>
-                                    Henüz ödül yok.
-                                </div>
-                            }
-                        </div>
-                        @if(oyun.Oduller.Any())
-                        {
-                            var toplamIhtimal = oyun.Oduller.Sum(x => x.IhtimalYuzdesi);
-                            <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-white rounded-3 border">
-                                <div class="small">Toplam: <strong class="fs-5 @(toplamIhtimal == 100 ? "text-success" : "text-danger")">%@toplamIhtimal</strong></div>
-                                <button type="submit" class="btn btn-success btn-sm px-3 rounded-pill fw-medium shadow-sm"><i class="bi bi-check2-all me-1"></i> Tüm Oranları Onayla</button>
-                            </div>
-                        }
-                    </form>
-                    
-                    <div class="add-reward-box shadow-sm mb-3">
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="bi bi-plus-circle-fill text-primary me-2 fs-5"></i>
-                            <h6 class="mb-0 fw-bold">Yeni Ödül Ekle</h6>
-                        </div>
-                        <form id="formOdul-@oyun.Id" onsubmit="event.preventDefault(); odulEkle(@oyun.Id, 'formOdul-@oyun.Id')">
-                            <div class="mb-2">
-                                <label class="form-label small text-muted mb-1">Tanım</label>
-                                <input type="text" id="odulTanim-@oyun.Id" class="form-control form-control-sm" placeholder="@(oyun.Tip == "CARKIFELEK" ? "Çarkta görünen (Örn: %10 İndirim)" : "Örn: %10 İndirim")" required>
-                            </div>
-                            <div class="row g-2 mb-3">
-                                <div class="col-6">
-                                    <label class="form-label small text-muted mb-1">İnd. %</label>
-                                    <input type="number" id="odulYuzde-@oyun.Id" class="form-control form-control-sm" placeholder="Zorunlu" min="1" max="100" required>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label small text-muted mb-1">İhtimal %</label>
-                                    <input type="number" id="odulİhtimal-@oyun.Id" class="form-control form-control-sm" placeholder="Zorunlu" min="1" max="100" required>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary btn-sm w-100 rounded-pill fw-medium"><i class="bi bi-plus"></i> Ekle</button>
-                        </form>
-                    </div>
+                <label class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="toggle-@oyun.Id" class="sr-only peer" @(oyun.AktifMi ? "checked" : "") onchange="toggleOyun(@oyun.Id)">
+                    <div class="relative w-9 h-5 bg-stone-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                    <span class="ms-2 text-[9px] font-black text-stone-500 uppercase tracking-widest">@(oyun.AktifMi ? "Aktif" : "Pasif")</span>
+                </label>
+            </div>
 
-                    @if (oyun.Tip == "CARKIFELEK" || oyun.Tip == "HAFIZA" || oyun.Tip == "KAZIKAZAN")
+            <!-- Reward List -->
+            <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-[9px] font-black text-stone-400 uppercase tracking-widest">Ödül Havuzu</h3>
+                    <span class="text-[9px] font-black px-2 py-1 bg-stone-100 rounded text-stone-500 uppercase tracking-widest">@oyun.Oduller.Count Ödül</span>
+                </div>
+                
+                <div class="bg-stone-50 rounded-xl p-3 min-h-[80px]">
+                    @foreach(var odul in oyun.Oduller)
                     {
-                        <div class="p-3 rounded-3 border bg-white shadow-sm">
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="bi bi-circle text-secondary me-2"></i>
-                                <div class="fw-semibold small">@(oyun.Tip == "CARKIFELEK" ? "Boş Dilim Ekle" : "Boş Sonuç Ekle")</div>
+                        <div class="grid grid-cols-12 gap-2 items-center mb-3 last:mb-0">
+                            <div class="col-span-5">
+                                <p class="text-xs font-bold text-stone-800 font-headline truncate">@odul.OdulTanim</p>
+                                <p class="text-[8px] text-stone-400 font-black uppercase tracking-widest">
+                                    @if(odul.IndirimYuzdesi > 0) { <span>İndirim</span> }
+                                    else if(odul.IndirimTutari > 0) { <span>Tutar</span> }
+                                    else { <span>Boş</span> }
+                                </p>
                             </div>
-                            <div class="small text-muted mb-2" style="font-size: 0.75rem;">Bu ihtimal gelirse indirim uygulanmaz, boş sonuç çıkar.</div>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-light">%</span>
-                                <input type="number" id="bosIhtimal-@oyun.Id" class="form-control" min="1" max="100" value="10" placeholder="İhtimal" />
-                                <button class="btn btn-secondary px-3" type="button" onclick="bosSecenekEkle(@oyun.Id, '@oyun.Tip')">Ekle</button>
+                            <div class="col-span-3">
+                                <div class="box-input">
+                                    <span>%</span>
+                                    <input type="number" value="@(odul.IndirimYuzdesi > 0 ? odul.IndirimYuzdesi : (odul.IndirimTutari > 0 ? (int)odul.IndirimTutari : 0))" readonly />
+                                </div>
+                            </div>
+                            <div class="col-span-3">
+                                <div class="box-input">
+                                    <span>İht</span>
+                                    <input type="number" class="ihtimal-input-@oyun.Id" data-odul-id="@odul.Id" value="@odul.IhtimalYuzdesi" />
+                                </div>
+                            </div>
+                            <div class="col-span-1 flex justify-end">
+                                <button onclick="odulSil(@odul.Id)" class="text-stone-300 hover:text-red-500 transition-colors border-0 bg-transparent p-0">
+                                    <span class="material-symbols-outlined text-base">delete</span>
+                                </button>
                             </div>
                         </div>
                     }
                 </div>
             </div>
-        </div>
+
+            <!-- Add Reward Form -->
+            <div class="pt-3 border-t border-stone-100">
+                <form id="formOdul-@oyun.Id" onsubmit="event.preventDefault(); odulEkle(@oyun.Id, 'formOdul-@oyun.Id')" class="space-y-3">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <input type="text" id="odulTanim-@oyun.Id" class="w-full bg-stone-100 border-none rounded-lg text-xs focus:ring-1 focus:ring-primary py-2 px-3 font-bold text-stone-700" placeholder="Tanım" required />
+                        <input type="number" id="odulYuzde-@oyun.Id" class="w-full bg-stone-100 border-none rounded-lg text-xs focus:ring-1 focus:ring-primary py-2 px-3 font-bold text-stone-700" placeholder="İndirim %" required />
+                        <input type="number" id="odulİhtimal-@oyun.Id" class="w-full bg-stone-100 border-none rounded-lg text-xs focus:ring-1 focus:ring-primary py-2 px-3 font-bold text-stone-700" placeholder="İhtimal %" required />
+                    </div>
+                    <button type="submit" class="w-full bg-primary text-on-primary py-1.5 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-primary-dim transition-all border-0">Ekle</button>
+                </form>
+            </div>
+
+            <!-- Probability Check -->
+            <div class="bg-stone-50 rounded-xl p-3 flex justify-between items-center border @(toplamIhtimal == 100 ? "border-emerald-100" : "border-red-100")">
+                <span class="text-[9px] font-black text-stone-400 uppercase tracking-widest">Toplam Dağılım</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-lg font-black font-headline @(toplamIhtimal == 100 ? "text-emerald-600" : "text-red-600")">@toplamIhtimal%</span>
+                    @if(toplamIhtimal == 100) {
+                        <span class="material-symbols-outlined text-emerald-600 text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                    } else {
+                        <button onclick="topluOranKaydet(@oyun.Id)" class="bg-stone-900 text-white text-[8px] px-3 py-1 rounded-full font-black uppercase tracking-widest hover:bg-stone-700 transition-colors border-0">Kaydet</button>
+                    }
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <button onclick="bosSecenekEkle(@oyun.Id, '@oyun.Tip')" class="text-[8px] font-black text-stone-400 hover:text-stone-600 uppercase tracking-widest border-0 bg-transparent underline">Boş Seçenek Ekle</button>
+            </div>
+        </section>
     }
 </div>
 
-    <!-- ═══ TOAST Bildirimi ═══ -->
-    <div class="position-fixed pointer-events-none" style="bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 9999;" id="toastContainer">
-        <div id="toastBildirim" class="bg-primary text-white px-4 py-2 shadow-sm d-flex align-items-center gap-2" 
-             style="border-radius: 50px; opacity: 0; transition: all 0.3s ease; transform: translateY(16px); pointer-events: auto;">
-            <span id="toastMesaj" style="font-weight: 600; font-size: 0.9rem;"></span>
-        </div>
-    </div>
-
-    <!-- ═══ TOAST Onay Pencersi (Custom Confirm) ═══ -->
-    <div class="position-fixed d-flex align-items-center justify-content-center" style="top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10000; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); opacity: 0; pointer-events: none; transition: opacity 0.3s ease;" id="customConfirmOverlay">
-        <div class="bg-white p-4 shadow-lg text-center" style="border-radius: 24px; transform: translateY(20px); transition: transform 0.3s ease; max-width: 350px; width: 90%;">
-            <div class="mb-3 text-warning">
-                <i class="bi bi-exclamation-circle" style="font-size: 3rem;"></i>
-            </div>
-            <p id="customConfirmMessage" class="mb-4 text-dark" style="font-size: 1rem; font-weight: 600;"></p>
-            <div class="d-flex gap-3 justify-content-center">
-                <button id="customConfirmBtnNo" class="btn btn-light rounded-pill px-4" style="font-weight: 600; border: 1px solid #ddd;">Hayır</button>
-                <button id="customConfirmBtnYes" class="btn btn-primary rounded-pill px-4" style="font-weight: 600;">Evet</button>
-            </div>
-        </div>
-    </div>
-
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        // Custom Confirm (Evet / Hayır)
-        function customConfirm(msg) {
-            return new Promise((resolve) => {
-                const overlay = document.getElementById('customConfirmOverlay');
-                const box = overlay.querySelector('div');
-                const btnYes = document.getElementById('customConfirmBtnYes');
-                const btnNo = document.getElementById('customConfirmBtnNo');
-
-                document.getElementById('customConfirmMessage').textContent = msg;
-                overlay.style.opacity = '1';
-                overlay.style.pointerEvents = 'auto';
-                box.style.transform = 'translateY(0)';
-
-                const cleanup = (result) => {
-                    overlay.style.opacity = '0';
-                    overlay.style.pointerEvents = 'none';
-                    box.style.transform = 'translateY(20px)';
-                    
-                    // Event listener'ları temizle ki memory leak olmasın
-                    btnYes.replaceWith(btnYes.cloneNode(true));
-                    btnNo.replaceWith(btnNo.cloneNode(true));
-                    
-                    resolve(result);
-                };
-
-                btnYes.addEventListener('click', () => cleanup(true));
-                btnNo.addEventListener('click', () => cleanup(false));
+        function showToast(msg, isError = false) {
+            Swal.fire({
+                title: msg,
+                icon: isError ? 'error' : 'success',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                background: isError ? '#fee2e2' : '#ecfdf5',
+                color: isError ? '#991b1b' : '#065f46'
             });
         }
-        // Bildirim fonksiyonu
-        function showToast(msg, isError = false) {
-            const el = document.getElementById('toastBildirim');
-            el.className = 'text-white px-4 py-2 shadow-lg d-flex align-items-center gap-2 ' + (isError ? 'bg-danger' : 'bg-primary');
-            document.getElementById('toastMesaj').textContent = msg;
-            
-            el.style.opacity = '1';
-            el.style.transform = 'translateY(0)';
-            
-            setTimeout(() => { 
-                el.style.opacity = '0'; 
-                el.style.transform = 'translateY(16px)'; 
-            }, 3000);
+
+        async function updateStats(period) {
+            ['today', 'yesterday', 'week'].forEach(p => {
+                const btn = document.getElementById('btn-' + p);
+                if (p === period) {
+                    btn.classList.add('bg-white', 'text-primary');
+                    btn.classList.remove('hover:bg-white/10');
+                } else {
+                    btn.classList.remove('bg-white', 'text-primary');
+                    btn.classList.add('hover:bg-white/10');
+                }
+            });
+
+            try {
+                const res = await fetch('/admin/oyun-istatistik?period=' + period);
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('stat-participations').innerText = data.participations;
+                    document.getElementById('stat-wins').innerText = data.wins;
+                }
+            } catch (e) {
+                console.error('Stats load error', e);
+            }
         }
+
+        updateStats('today');
+
         async function topluOranKaydet(oyunId) {
             var inputs = document.querySelectorAll('.ihtimal-input-' + oyunId);
             var oranlar = {};
@@ -300,72 +223,22 @@
             });
 
             if (toplam > 100) {
-                 showToast('Toplam ihtimal oranı %100\'ü geçemez! Mevcut toplam: %' + toplam, true);
+                 showToast('Toplam ihtimal oranı %100\'ü geçemez!', true);
                  return;
-            }
-
-            if (toplam < 100) {
-                 const onayla = await customConfirm('Toplam oran %' + toplam + ' yapıyor. Eksik olduğu için oyun PASİFE alınacak. Devam etmek istiyor musunuz?');
-                 if (!onayla) {
-                     return;
-                 }
             }
 
             var res = await fetch('/admin/odul-toplu-kaydet/' + oyunId, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(oranlar)
             });
 
             var data = await res.json();
             if (data.success) {
-                if (toplam !== 100) {
-                    showToast(data.message, false);
-                } else {
-                    showToast('Oranlar başarıyla kaydedildi!', false);
-                }
-                setTimeout(() => location.reload(), 1500);
+                showToast('Oranlar kaydedildi!');
+                setTimeout(() => location.reload(), 1000);
             } else {
                 showToast(data.message, true);
-            }
-        }
-
-        async function tekliOranKaydet(odulId) {
-            var input = document.getElementById('tekliOran-' + odulId);
-            var btn = input.nextElementSibling;
-            var orgHtml = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-            btn.disabled = true;
-
-            var val = parseFloat(input.value.replace(',', '.')) || 0;
-            var formData = new FormData();
-            formData.append('yeniOran', val);
-
-            try {
-                var res = await fetch('/admin/odul-tekli-kaydet/' + odulId, {
-                    method: 'POST',
-                    body: formData
-                });
-                var data = await res.json();
-
-                if (data.success) {
-                    if (data.kapatildi) {
-                        showToast(data.message, false);
-                    } else {
-                        showToast('Oran güncellendi!', false);
-                    }
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    showToast(data.message || 'Hata oluştu.', true);
-                    btn.innerHTML = orgHtml;
-                    btn.disabled = false;
-                }
-            } catch (err) {
-                showToast('Beklenmeyen bir hata oluştu', true);
-                btn.innerHTML = orgHtml;
-                btn.disabled = false;
             }
         }
 
@@ -373,22 +246,15 @@
             var res = await fetch('/admin/oyun-toggle/' + id, { method: 'POST' });
             var data = await res.json();
             if(!data.success) {
-                showToast(data.message || 'Bir hata oluştu.', true);
-                var toggle = document.getElementById('toggle-' + id);
-                if (toggle) toggle.checked = false;
-            } else {
-                showToast('Durum değiştirildi!', false);
+                showToast(data.message || 'Hata oluştu.', true);
                 setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('Güncellendi!');
+                setTimeout(() => location.reload(), 500);
             }
         }
 
         async function odulEkle(id, formId) {
-            const formObj = document.getElementById(formId);
-            if (!formObj.checkValidity()) {
-                formObj.reportValidity();
-                return;
-            }
-
             var tanim = document.getElementById('odulTanim-' + id).value;
             var yuzde = document.getElementById('odulYuzde-' + id).value || 0;
             var ihtimal = document.getElementById('odulİhtimal-' + id).value;
@@ -396,35 +262,6 @@
             var formData = new FormData();
             formData.append('tanim', tanim);
             formData.append('indirimYuzdesi', yuzde);
-            formData.append('indirimTutari', 0); // Şimdilik 0
-            formData.append('ihtimal', ihtimal);
-
-            var res = await fetch('/admin/odul-baslat/' + id, {
-                method: 'POST',
-                body: formData
-            });
-            var data = await res.json();
-            if(data.success) {
-                showToast('Ödül eklendi!', false);
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                showToast(data.message || 'Ödül eklenemedi.', true);
-            }
-        }
-
-        async function bosSecenekEkle(id, oyunTipi) {
-            var ihtimalEl = document.getElementById('bosIhtimal-' + id);
-            if (!ihtimalEl) return;
-
-            var ihtimal = parseFloat(ihtimalEl.value || '0');
-            if (!(ihtimal > 0)) {
-                showToast('Boş seçenek için geçerli bir ihtimal girin.', true);
-                return;
-            }
-
-            var formData = new FormData();
-            formData.append('tanim', oyunTipi === 'CARKIFELEK' ? 'Boş Dilim' : 'Boş Sonuç');
-            formData.append('indirimYuzdesi', 0);
             formData.append('indirimTutari', 0);
             formData.append('ihtimal', ihtimal);
 
@@ -433,29 +270,55 @@
                 body: formData
             });
             var data = await res.json();
-            if (data.success) {
-                showToast('Boş seçenek başarıyla eklendi!', false);
-                setTimeout(() => location.reload(), 1000);
+            if(data.success) {
+                showToast('Ödül eklendi!');
+                setTimeout(() => location.reload(), 500);
             } else {
-                showToast(data.message || 'Boş seçenek eklenemedi.', true);
+                showToast(data.message || 'Hata.', true);
             }
         }
 
         async function odulSil(id) {
-            const onayla = await customConfirm('Bu ödülü silmek istediğinize emin misiniz?');
-            if(!onayla) return;
-
-            try {
+            const result = await Swal.fire({
+                title: 'Silinsin mi?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sil',
+                confirmButtonColor: '#d33'
+            });
+            
+            if (result.isConfirmed) {
                 var res = await fetch('/admin/odul-sil/' + id, { method: 'POST' });
                 var data = await res.json();
                 if(data.success) {
-                    showToast('Ödül başarıyla silindi!', false);
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast('Silinirken bir hata oluştu.', true);
+                    showToast('Silindi!');
+                    setTimeout(() => location.reload(), 500);
                 }
-            } catch {
-                showToast('Bir hata oluştu.', true);
+            }
+        }
+
+        async function bosSecenekEkle(id, oyunTipi) {
+            const { value: ihtimal } = await Swal.fire({
+                title: 'Boş Seçenek',
+                input: 'number',
+                inputValue: 10,
+                showCancelButton: true,
+                confirmButtonColor: '#a23718'
+            });
+
+            if (ihtimal && ihtimal > 0) {
+                var formData = new FormData();
+                formData.append('tanim', oyunTipi === 'CARKIFELEK' ? 'Boş Dilim' : 'Boş Sonuç');
+                formData.append('indirimYuzdesi', 0);
+                formData.append('indirimTutari', 0);
+                formData.append('ihtimal', ihtimal);
+
+                var res = await fetch('/admin/odul-baslat/' + id, { method: 'POST', body: formData });
+                var data = await res.json();
+                if (data.success) {
+                    showToast('Eklendi!');
+                    setTimeout(() => location.reload(), 500);
+                }
             }
         }
     </script>

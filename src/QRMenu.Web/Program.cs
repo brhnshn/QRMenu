@@ -81,7 +81,8 @@ builder.Services.AddScoped<ISiparisService, SiparisService>();
 builder.Services.AddScoped<IOdemeService, OdemeService>();
 
 // MVC
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews()
+    .AddRazorRuntimeCompilation();
 
 // ASP.NET Identity
 builder.Services.AddIdentity<Kullanici, IdentityRole>(options =>
@@ -112,6 +113,13 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.Name = "QRMenuAuth";
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
+});
+
+// Güvenlik damgası (SecurityStamp) doğrulamasını her istekte yap
+// Böylece rol değişikliği veya hesabın pasife alınması anında yansır (kullanıcı çıkışa zorlanır)
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.ValidationInterval = TimeSpan.Zero;
 });
 
 // SignalR — Gerçek zamanlı menü güncellemeleri
@@ -150,6 +158,20 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(5),
                 QueueLimit = 0,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            });
+    });
+
+    // Gizli Kurtarma (Sistem Yöneticisi Oluşturma) ekranı için brute-force (kaba kuvvet) engelleme
+    // 15 dakikada en fazla 5 deneme yapılabilir (IP bazlı)
+    options.AddPolicy("RecoveryLimitPolicy", context =>
+    {
+        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown_ip";
+        return RateLimitPartition.GetFixedWindowLimiter($"recovery_{ip}", _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0
             });
     });
 });

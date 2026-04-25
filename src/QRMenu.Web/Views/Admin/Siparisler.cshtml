@@ -1,4 +1,4 @@
-﻿@model List<QRMenu.Core.Entities.Siparis>
+@model List<QRMenu.Core.Entities.Siparis>
 @{
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
     ViewData["Title"] = "Sipariş Arşivi ve Raporlama";
@@ -317,7 +317,22 @@
 @section Scripts {
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // İlk girişte Filtre çalışsın (Sadece bugün seçili geldiği için)
+            const urlParams = new URLSearchParams(window.location.search);
+            const masaId = urlParams.get('masaId');
+            
+            if (masaId) {
+                // Eger URL'den masaId geldiyse, tarihi "Tüm Zamanlar" yap, durumu "Tüm Durumlar" yap ve masayı seç
+                const filterTarih = document.getElementById('filterTarih');
+                if (filterTarih) filterTarih.value = 'all';
+                
+                const filterMasa = document.getElementById('filterMasa');
+                if (filterMasa) filterMasa.value = masaId;
+                
+                const filterDurum = document.getElementById('filterDurum');
+                if (filterDurum) filterDurum.value = 'all';
+            }
+            
+            // İlk girişte Filtre çalışsın
             filtreleTablo();
         });
 

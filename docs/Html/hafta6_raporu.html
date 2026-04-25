@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 QR Menü — 6. Hafta Geliştirme Raporu - </title>
+    <style>
+        :root {
+            --bg: #0a0e1a;
+            --bg2: #111827;
+            --card: #161d2e;
+            --border: #1e2d4a;
+            --accent: #3b82f6;
+            --accent2: #8b5cf6;
+            --accent3: #10b981;
+            --warn: #f59e0b;
+            --danger: #ef4444;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --done: #10b981;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 3rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .header-tag {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: white;
+            padding: 0.4rem 1.2rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+        }
+
+        .header h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .header-subtitle {
+            color: var(--muted);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header-meta {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 10px;
+            padding: 0.8rem 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .meta-item span {
+            color: var(--muted);
+            display: block;
+            font-size: 0.75rem;
+        }
+
+        .meta-item strong {
+            color: var(--accent);
+            font-size: 1rem;
+        }
+
+        /* MAIN */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* STATUS OVERVIEW */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.5rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .stat-card.green::before {
+            background: linear-gradient(90deg, var(--done), #059669);
+        }
+
+        .stat-card.blue::before {
+            background: linear-gradient(90deg, var(--accent), #6366f1);
+        }
+
+        .stat-card.purple::before {
+            background: linear-gradient(90deg, var(--accent2), #ec4899);
+        }
+
+        .stat-card.amber::before {
+            background: linear-gradient(90deg, var(--warn), #ea580c);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card.green .stat-number {
+            color: var(--done);
+        }
+
+        .stat-card.blue .stat-number {
+            color: var(--accent);
+        }
+
+        .stat-card.purple .stat-number {
+            color: var(--accent2);
+        }
+
+        .stat-card.amber .stat-number {
+            color: var(--warn);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+
+        /* SECTIONS */
+        .section {
+            margin: 2rem 0;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 1.2rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-title .icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .icon-blue {
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        .icon-green {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .icon-purple {
+            background: rgba(139, 92, 246, 0.15);
+        }
+
+        .icon-amber {
+            background: rgba(245, 158, 11, 0.15);
+        }
+
+        .icon-red {
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        /* FEATURE CARDS */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.2rem;
+        }
+
+        .feature-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.5rem;
+            transition: all 0.2s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .feature-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .feature-title {
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .feature-subtitle {
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .feature-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-new {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--done);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-improved {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .badge-existing {
+            background: rgba(148, 163, 184, 0.1);
+            color: var(--muted);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .feature-list {
+            list-style: none;
+            margin-top: 0.8rem;
+        }
+
+        .feature-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            padding: 0.4rem 0;
+            font-size: 0.9rem;
+            color: var(--muted);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-list li .check {
+            color: var(--done);
+            flex-shrink: 0;
+        }
+
+        /* ISSUES TABLE */
+        .issues-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .issues-table th {
+            padding: 1rem 1.2rem;
+            text-align: left;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .issues-table td {
+            padding: 1rem 1.2rem;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            vertical-align: top;
+        }
+
+        .issues-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .issue-type {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .type-syntax {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+        }
+
+        .type-scope {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fcd34d;
+        }
+
+        .type-razor {
+            background: rgba(139, 92, 246, 0.15);
+            color: #c4b5fd;
+        }
+
+        .type-security {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6ee7b7;
+        }
+
+        .fix-text {
+            color: var(--done);
+            font-size: 0.85rem;
+        }
+
+        .error-text {
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        /* CODE BLOCK */
+        .code-block {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.2rem 1.5rem;
+            font-family: 'Consolas', 'Cascadia Code', monospace;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            overflow-x: auto;
+            margin: 0.8rem 0;
+        }
+
+        .code-block .kw {
+            color: #ff7b72;
+        }
+
+        .code-block .fn {
+            color: #d2a8ff;
+        }
+
+        .code-block .str {
+            color: #a5d6ff;
+        }
+
+        .code-block .cm {
+            color: #8b949e;
+            font-style: italic;
+        }
+
+        .code-block .num {
+            color: #79c0ff;
+        }
+
+        /* TIMELINE */
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--accent), var(--accent2), transparent);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 1.5rem;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.2rem;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -2.4rem;
+            top: 1.2rem;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid var(--bg);
+        }
+
+        .timeline-item h4 {
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+            font-size: 0.95rem;
+        }
+
+        .timeline-item p {
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .timeline-item code {
+            font-family: monospace;
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent);
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.82rem;
+        }
+
+        /* FOOTER */
+        .footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 0.9rem;
+            margin-top: 3rem;
+        }
+
+        .footer strong {
+            color: var(--accent);
+        }
+
+        /* ACCORDION */
+        .accordion {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .accordion-item {
+            border-bottom: 1px solid var(--border);
+        }
+
+        .accordion-item:last-child {
+            border-bottom: none;
+        }
+
+        .accordion-btn {
+            width: 100%;
+            background: var(--card);
+            border: none;
+            color: var(--text);
+            padding: 1rem 1.5rem;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .accordion-btn:hover {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .accordion-body {
+            display: none;
+            padding: 1.2rem 1.5rem;
+            background: rgba(0, 0, 0, 0.2);
+            font-size: 0.9rem;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .accordion-body.open {
+            display: block;
+        }
+
+        .arrow {
+            transition: transform 0.3s;
+        }
+
+        .arrow.open {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-tag">📅 Hafta 6 / 10 — Nisan 2026</div>
+        <h1>Admin Paneli & Arka Plan İşleri</h1>
+        <p class="header-subtitle">Yönetim işlevleri, güvenlik yükseltmesi ve akıllı arka plan temizlik servisleri</p>
+        <div class="header-meta">
+            <div class="meta-item"><span>Proje</span><strong>QR Menü Sistemi</strong></div>
+            <div class="meta-item"><span>Sprint</span><strong>6. Hafta</strong></div>
+            <div class="meta-item"><span>Durum</span><strong>✅ Tamamlandı</strong></div>
+            <div class="meta-item"><span>Build</span><strong>🟢 0 Hata</strong></div>
+            <div class="meta-item"><span>Saat</span><strong>5 Saat</strong></div>
+
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- 6. HAFTA PLAN CHECKLİST -->
+        <div class="section">
+            <div class="section-title">
+                <div class="icon icon-green">📋</div>
+                6. Hafta Plan Kontrol Listesi
+            </div>
+            <div style="background:rgba(239,68,68,0.12); border:2px solid rgba(239,68,68,0.45); border-radius:14px; padding:1rem 1.2rem; margin-bottom:1rem;">
+                <div style="font-weight:800; color:#fca5a5; font-size:1rem; letter-spacing:0.03em;">ONEMLI GUNCELLEME - REGISTER KALDIRILDI</div>
+                <div style="color:#fecaca; font-size:0.9rem; margin-top:0.35rem; line-height:1.6;">
+                    Public <code>/Auth/Register</code> kayit akisi is akisindaki karmasa nedeniyle kaldirildi.
+                    Kullanici olusturma ve personel yonetimi artik sadece <strong>Admin Panel &gt; Personel</strong> uzerinden yapilir.
+                </div>
+            </div>
+            <div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1.5rem;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="border-bottom:1px solid var(--border);">
+                            <th style="padding:0.6rem 1rem; text-align:left; color:var(--muted); font-size:0.8rem; text-transform:uppercase;">Madde</th>
+                            <th style="padding:0.6rem 1rem; text-align:center; color:var(--muted); font-size:0.8rem; text-transform:uppercase;">Durum</th>
+                            <th style="padding:0.6rem 1rem; text-align:left; color:var(--muted); font-size:0.8rem; text-transform:uppercase;">Not</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                            <td style="padding:0.8rem 1rem; font-size:0.9rem;">Ürün Yönetimi (ekle/düzenle/aktif-pasif/fiyat)</td>
+                            <td style="text-align:center;"><span style="color:var(--done); font-size:1.2rem;">✅</span></td>
+                            <td style="padding:0.8rem 1rem; color:var(--muted); font-size:0.85rem;">AdminController + Views/Admin/Urunler.cshtml</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                            <td style="padding:0.8rem 1rem; font-size:0.9rem;">Kategori Yönetimi</td>
+                            <td style="text-align:center;"><span style="color:var(--done); font-size:1.2rem;">✅</span></td>
+                            <td style="padding:0.8rem 1rem; color:var(--muted); font-size:0.85rem;">AdminController içinde tam CRUD</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                            <td style="padding:0.8rem 1rem; font-size:0.9rem;">Opsiyon Yönetimi</td>
+                            <td style="text-align:center;"><span style="color:var(--done); font-size:1.2rem;">✅</span></td>
+                            <td style="padding:0.8rem 1rem; color:var(--muted); font-size:0.85rem;">Opsiyon grubu + zorunlu/opsiyonel + ek fiyat</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                            <td style="padding:0.8rem 1rem; font-size:0.9rem;">Masa Yönetimi + QRCoder ile QR kod üretimi (PNG)</td>
+                            <td style="text-align:center;"><span style="color:var(--done); font-size:1.2rem;">✅</span></td>
+                            <td style="padding:0.8rem 1rem; color:var(--muted); font-size:0.85rem;">⚠️ QR kod üretimi önceki haftalarda tamamlandı — AdminController masa sayfası aktif</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                            <td style="padding:0.8rem 1rem; font-size:0.9rem;">Happy Hour: Saat aralığı + indirim oranı</td>
+                            <td style="text-align:center;"><span style="color:var(--done); font-size:1.2rem;">✅</span></td>
+                            <td style="padding:0.8rem 1rem; color:var(--muted); font-size:0.85rem;">HappyHour entity + Admin sayfası + SiparisService entegrasyonu</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                            <td style="padding:0.8rem 1rem; font-size:0.9rem;">Basit Çoklu Dil: AdEN kolonu</td>
+                            <td style="text-align:center;"><span style="color:var(--done); font-size:1.2rem;">✅</span></td>
+                            <td style="padding:0.8rem 1rem; color:var(--muted); font-size:0.85rem;">Urun ve Kategori tablolarında AdEN, AciklamaEN alanları var</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                            <td style="padding:0.8rem 1rem; font-size:0.9rem;">Rol Bazlı Yetkilendirme [Authorize(Roles=...)]</td>
+                            <td style="text-align:center;"><span style="color:var(--done); font-size:1.2rem;">✅</span></td>
+                            <td style="padding:0.8rem 1rem; color:var(--muted); font-size:0.85rem;">Admin, Garson, Kasa, Mutfak tüm controllerlarda uygulandı</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                            <td style="padding:0.8rem 1rem; font-size:0.9rem;">Kullanıcı Yönetimi: ASP.NET Identity ile login</td>
+                            <td style="text-align:center;"><span style="color:var(--done); font-size:1.2rem;">✅</span></td>
+                            <td style="padding:0.8rem 1rem; color:var(--muted); font-size:0.85rem;">6. Hafta sonunda ASP.NET Identity'ye geçildi — UserManager, SignInManager, rol seed. Public Register akışı iş akışındaki karmaşa nedeniyle kaldırıldı; kullanıcı açma sadece Admin Panel > Personel ekranından yapılır.</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                            <td style="padding:0.8rem 1rem; font-size:0.9rem;">HostedService: 2 saat işlem görmeyen masalar</td>
+                            <td style="text-align:center;"><span style="color:var(--done); font-size:1.2rem;">✅</span></td>
+                            <td style="padding:0.8rem 1rem; color:var(--muted); font-size:0.85rem;">OturumTemizleyici İş 1 — Her 30 dakikada çalışır</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                            <td style="padding:0.8rem 1rem; font-size:0.9rem;">HostedService: Süresi dolan tokenları sil</td>
+                            <td style="text-align:center;"><span style="color:var(--done); font-size:1.2rem;">✅</span></td>
+                            <td style="padding:0.8rem 1rem; color:var(--muted); font-size:0.85rem;">OturumTemizleyici İş 2 — 7 günden eski pasif oturumlar hard-delete</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:0.8rem 1rem; font-size:0.9rem;">HostedService: Sahipsiz sepetleri temizle</td>
+                            <td style="text-align:center;"><span style="color:var(--done); font-size:1.2rem;">✅</span></td>
+                            <td style="padding:0.8rem 1rem; color:var(--muted); font-size:0.85rem;">OturumTemizleyici İş 3 — Bağlı oturumu olmayan sepetler ve detayları silinir</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- OVERVIEW STATS -->
+        <div class="status-grid">
+            <div class="stat-card green">
+                <div class="stat-number">7</div>
+                <div class="stat-label">Tamamlanan Özellik</div>
+            </div>
+            <div class="stat-card blue">
+                <div class="stat-number">4</div>
+                <div class="stat-label">Yeni Sayfalar</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="stat-number">16</div>
+                <div class="stat-label">Düzeltilen Hata</div>
+            </div>
+            <div class="stat-card amber">
+                <div class="stat-number">4</div>
+                <div class="stat-label">Arka Plan Görevi</div>
+            </div>
+        </div>
+
+        <!-- ÖNCEDEN YAPILMIŞ & TEMEL YAPILAR -->
+        <div class="section">
+            <div class="section-title">
+                <div class="icon icon-green">✅</div>
+                Sistem Mimarisi & Temel Bileşenler
+            </div>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">🚀</div>
+                        <div>
+                            <div class="feature-title">EF Core Performan Optimizasyonu <span
+                                    class="feature-badge badge-improved">İYİLEŞTİRME</span></div>
+                            <div class="feature-subtitle">MultipleCollectionInclude uyarısı çözüldü</div>
+                        </div>
+                    </div>
+                    <ul class="feature-list">
+                        <li><span class="check">✓</span> <strong>AsSplitQuery:</strong> Sipariş ve Sepet gibi karmaşık
+                            tabloların sorgulandığı tüm alanlara <code>.AsSplitQuery()</code> eklendi.</li>
+                        <li><span class="check">✓</span> <strong>INNER JOIN Engeli:</strong> Veritabanının tek bir
+                            devasa sorgu yerine, verileri ayrı kanallardan çekerek işlemciyi yorması engellendi.</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">🛍️</div>
+                        <div>
+                            <div class="feature-title">Ürün & Kategori Yönetimi <span
+                                    class="feature-badge badge-existing">Mevcut</span></div>
+                            <div class="feature-subtitle">AdminController | CRUD Tamamlandı</div>
+                        </div>
+                    </div>
+                    <ul class="feature-list">
+                        <li><span class="check">✓</span> Ekleme, düzenleme, aktif/pasif toggle ve görsel yükleme/güncelleme (2MB
+                            limit) tamamlandı.</li>
+                        <li><span class="check">✓</span> Ürün görseli hem ilk oluşturma anında hem de düzenleme ekranından güvenli şekilde güncellenebilir hale getirildi.</li>
+                        <li><span class="check">✓</span> <strong>Çoklu Dil:</strong> Ürün tablosuna <code>AdEN</code>
+                            kolonu eklenerek İngilizce isim desteği başlatıldı.</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">📡</div>
+                        <div>
+                            <div class="feature-title">Gerçek Zamanlı Senkronizasyon <span
+                                    class="feature-badge badge-improved">İYİLEŞTİRME</span></div>
+                            <div class="feature-subtitle">SignalR Hub Entegrasyonu</div>
+                        </div>
+                    </div>
+                    <ul class="feature-list">
+                        <li><span class="check">✓</span> <strong>Canlı Menü:</strong> Happy Hour başladığında tüm
+                            müşterilerin menüsü sayfa yenilemeden "İndirimli" hale gelir.</li>
+                        <li><span class="check">✓</span> <strong>Kasa/Garson:</strong> Yeni sipariş düştüğünde veya masa
+                            durumu değiştiğinde anlık sesli/görsel uyarı gider.</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">🔐</div>
+                        <div>
+                            <div class="feature-title">Rol Bazlı Yetkilendirme <span
+                                    class="feature-badge badge-existing">Mevcut</span></div>
+                            <div class="feature-subtitle">[Authorize(Roles="...")] koruması</div>
+                        </div>
+                    </div>
+                    <ul class="feature-list">
+                        <li><span class="check">✓</span> Admin, Garson, Barista, Kasa ve Mutfak panelleri birbirinden
+                            tamamen izoledir.</li>
+                        <li><span class="check">✓</span> Cookie tabanlı güvenli oturum yönetimi aktiftir.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- BU HAFTA YAPILDI -->
+        <div class="section">
+            <div class="section-title">
+                <div class="icon icon-blue">🚀</div>
+                Bu Hafta Tamamlanan — Yeni Özellikler
+            </div>
+
+            <!-- HAPPY HOUR -->
+            <div class="feature-card" style="margin-bottom:1.2rem">
+                <div class="feature-header">
+                    <div class="feature-icon">🎉</div>
+                    <div>
+                        <div class="feature-title">Happy Hour Sistemi <span class="feature-badge badge-new">YENİ</span>
+                        </div>
+                        <div class="feature-subtitle">Saat aralığı bazlı otomatik indirim — sipariş oluşturulurken
+                            kontrol edilir</div>
+                    </div>
+                </div>
+                <ul class="feature-list">
+                    <li><span class="check">✓</span> <code>HappyHour</code> entity: BaslangicSaati, BitisSaati,
+                        IndirimOrani, AktifMi</li>
+                    <li><span class="check">✓</span> EF Core migration: HappyHour tablosu oluşturuldu</li>
+                    <li><span class="check">✓</span> Admin sayfası: saat seçici, % indirim slider, canlı durum
+                        göstergesi</li>
+                    <li><span class="check">✓</span> Çoklu ürün desteği: "+ Ürün Ekle" ile istenen sayıda ürün seçilip indirim kapsamına alınabilir.</li>
+                    <li><span class="check">✓</span> Ürün satırında "Sil" butonuna basıldığında ayarlar anında kaydedilir ve indirim menüden anlık güncellenir.</li>
+                    <li><span class="check">✓</span> Saat girişinde <code>00.00</code> / <code>00.50</code> formatları normalize edilerek doğru saat kaydı sağlandı.</li>
+                    <li><span class="check">✓</span> SiparisService entegrasyonu: hem müşteri sepeti hem garson manuel
+                        sipariş için çalışır</li>
+                    <li><span class="check">✓</span> Türkiye saatiyle karşılaştırma (TimeZoneInfo)</li>
+                    <li><span class="check">✓</span> Gece yarısını geçen aralıklar desteklenir (örn. 22:00 - 02:00)</li>
+                    <li><span class="check">✓</span> İndirim bilgisi sipariş notuna otomatik yazılır (🎉 Happy Hour -%X
+                        uygulandı)</li>
+                </ul>
+                <div class="code-block">
+                    <span class="cm">// SiparisService.cs — sipariş oluşturulurken çağrılır</span>
+                    <span class="kw">var</span> happyHourIndirim = <span class="kw">await</span> <span
+                        class="fn">HappyHourIndirimOraniniGetirAsync</span>();
+                    <span class="kw">if</span> (happyHourIndirim &gt; <span class="num">0</span>)
+                    tumTutar = Math.<span class="fn">Round</span>(tumTutar * (<span class="num">1</span> -
+                    happyHourIndirim / <span class="num">100</span>m), <span class="num">2</span>);
+                </div>
+            </div>
+
+            <!-- HOSTED SERVICE -->
+            <div class="feature-card" style="margin-bottom:1.2rem">
+                <div class="feature-header">
+                    <div class="feature-icon">⚙️</div>
+                    <div>
+                        <div class="feature-title">HostedService Genişletme <span
+                                class="feature-badge badge-improved">İYİLEŞTİRME</span></div>
+                        <div class="feature-subtitle">OturumTemizleyici: 1 günden 30 dakikaya indirildi, 3 iş görevi
+                            eklendi</div>
+                    </div>
+                </div>
+                <ul class="feature-list">
+                    <li><span class="check">✓</span> <strong>İş 1:</strong> 2 saatten fazla işlemsiz oturumları pasife
+                        al (soft delete)</li>
+                    <li><span class="check">✓</span> <strong>İş 2:</strong> 7+ gün eski pasif token'ları sil (hard
+                        delete)</li>
+                    <li><span class="check">✓</span> <strong>İş 3:</strong> Oturumu olmayan sahipsiz sepetleri (sepet
+                        detaylarıyla birlikte) temizle</li>
+                    <li><span class="check">✓</span> Her 30 dakikada bir çalışır (eskiden 1 saatte birdi)</li>
+                    <li><span class="check">✓</span> Her iş ayrı log kaydı bırakır</li>
+                </ul>
+            </div>
+
+            <!-- KULLANICI YÖNETİMİ -->
+            <div class="feature-card" style="margin-bottom:1.2rem">
+                <div class="feature-header">
+                    <div class="feature-icon">👥</div>
+                    <div>
+                        <div class="feature-title">Kullanıcı Yönetimi Admin Sayfası <span
+                                class="feature-badge badge-new">YENİ</span></div>
+                        <div class="feature-subtitle">Personel CRUD, rol yönetimi, şifre değiştirme</div>
+                    </div>
+                </div>
+                <ul class="feature-list">
+                    <li><span class="check">✓</span> Kullanıcı listeleme (rol + durum filtresi, arama)</li>
+                    <li><span class="check">✓</span> Kullanıcı ekleme (BCrypt hash şifre)</li>
+                    <li><span class="check">✓</span> Kullanıcı güncelleme (Ad Soyad, Rol, Aktif toggle)</li>
+                    <li><span class="check">✓</span> Şifre değiştirme (ayrı modal — min 6 karakter)</li>
+                    <li><span class="check">✓</span> Soft delete (güvenli — kendini silme ve son admin koruması)</li>
+                    <li><span class="check">✓</span> Admin sidebar'a Personel linki eklendi</li>
+                    <li><span class="check">✓</span> Public <code>/Auth/Register</code> sayfası kısa süreli denemeden sonra kaldırıldı; kullanıcı oluşturma akışı tamamen admin paneline taşındı</li>
+                </ul>
+            </div>
+
+            <!-- BCRYPT — GEÇİŞ DÖNEMİ -->
+            <div class="feature-card" style="margin-bottom:1.2rem">
+                <div class="feature-header">
+                    <div class="feature-icon">🔒</div>
+                    <div>
+                        <div class="feature-title">BCrypt Şifre Güvenliği <span
+                                class="feature-badge badge-improved">→ Identity'ye Taşındı</span></div>
+                        <div class="feature-subtitle">Düz metin şifrelerden ASP.NET Identity PasswordHasher'a geçiş</div>
+                    </div>
+                </div>
+                <ul class="feature-list">
+                    <li><span class="check">✓</span> BCrypt.Net-Next ile başlayan güvenli hash (geçiş dönemi)</li>
+                    <li><span class="check">✓</span> Geriye dönük uyumluluk: eski düz metin şifreler ilk girişte otomatik migrate edildi</li>
+                    <li><span class="check">🔄</span> <strong>6. Hafta sonunda:</strong> BCrypt tamamen kaldırıldı, ASP.NET Identity'nin dahili <code>PasswordHasher</code>'ına geçildi</li>
+                </ul>
+            </div>
+
+            <!-- ASP.NET IDENTITY GEÇİŞİ & STABİLİZASYON -->
+            <div class="feature-card" style="margin-bottom:1.2rem">
+                <div class="feature-header">
+                    <div class="feature-icon">🛡️</div>
+                    <div>
+                        <div class="feature-title">ASP.NET Identity Geçişi & Stabilizasyon <span class="feature-badge badge-new">KRİTİK</span></div>
+                        <div class="feature-subtitle">Özel auth sisteminden endüstri standardı Identity'ye tam geçiş ve üretim hatalarının giderilmesi</div>
+                    </div>
+                </div>
+                <ul class="feature-list">
+                    <li><span class="check">✓</span> <strong>Kullanici entity</strong> artık <code>IdentityUser</code>'dan kalıtıyor. <code>Id</code> (string/GUID) yapısına geçildi.</li>
+                    <li><span class="check">✓</span> <strong>PostgreSQL Uyumluluğu:</strong> PostgreSQL'in otomatik artan sütun kısıtlamaları nedeniyle migration "Drop/Create" mantığıyla optimize edildi.</li>
+                    <li><span class="check">✓</span> <strong>Startup Koruması:</strong> Migration ve Seed işlemleri <code>try-catch</code> bloğuna alınarak veritabanı hatalarında uygulamanın 502 çökmesi engellendi.</li>
+                    <li><span class="check">✓</span> <strong>Admin Dokunulmazlığı:</strong> Admin rolündeki bir kullanıcının (kendi kendini veya başkasını) alt rollere düşürmesi tamamen yasaklandı.</li>
+                </ul>
+            </div>
+
+            <!-- KAYIT (REGISTER) EKRANI -->
+            <div class="feature-card">
+                <div class="feature-header">
+                    <div class="feature-icon">📝</div>
+                    <div>
+                        <div class="feature-title">Register Akisi Kaldirildi <span class="feature-badge badge-improved">GUNCELLEME</span></div>
+                        <div class="feature-subtitle">Is akisindaki karmasa nedeniyle public kayit kaldirildi, admin odakli yapiya gecildi</div>
+                    </div>
+                </div>
+                <ul class="feature-list">
+                    <li><span class="check">✓</span> <strong>Karar:</strong> Public <code>/Auth/Register</code> endpoint ve ekrani tamamen kaldirildi.</li>
+                    <li><span class="check">✓</span> <strong>Yeni Akis:</strong> Kullanici ekleme sadece <code>Admin Panel &gt; Personel</code> uzerinden yapilir.</li>
+                    <li><span class="check">✓</span> <strong>Gerekce:</strong> Public kayit, rol yonetimi ve operasyon akisini dagittigi icin sistem sade ve guvenli hale getirildi.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- HAPPY HOUR DÜZELTMELERİ -->
+        <div class="section">
+            <div class="section-title">
+                <div class="icon icon-amber">🛠️</div>
+                Happy Hour Sistem İyileştirmeleri & Düzeltmeler
+            </div>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">🛒</div>
+                        <div>
+                            <div class="feature-title">Sepet & Fiyat Senkronizasyonu <span
+                                    class="feature-badge badge-improved">FIX</span></div>
+                            <div class="feature-subtitle">Fiyat tutarsızlıkları giderildi</div>
+                        </div>
+                    </div>
+                    <ul class="feature-list">
+                        <li><span class="check">✓</span> <strong>Sepet Gösterimi:</strong> Ürün detay ve sepet
+                            sayfalarında indirimli fiyatın yanında orijinal fiyatın üstü çizili gösterilmesi sağlandı.
+                        </li>
+                        <li><span class="check">✓</span> <strong>Opsiyon Mantığı:</strong> İndirimin sadece <u>ana ürün
+                                fiyatına</u> uygulanması, eklenen ekstraların (sos, buz vb.) tam fiyat üzerinden
+                            eklenmesi kuralı getirildi.</li>
+                        <li><span class="check">✓</span> <strong>Modal Desteği:</strong> Ürün seçenekleri açıldığında
+                            (Options Modal), indirimli ana fiyat baz alınarak hesaplama yapılması sağlandı.</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon">⚖️</div>
+                        <div>
+                            <div class="feature-title">Çifte İndirim Koruması <span
+                                    class="feature-badge badge-improved">FIX</span></div>
+                            <div class="feature-subtitle">Sipariş oluşturma mantığı sağlamlaştırıldı</div>
+                        </div>
+                    </div>
+                    <ul class="feature-list">
+                        <li><span class="check">✓</span> <strong>Sorun:</strong> Sepette indirimli fiyattan eklenen
+                            ürünün, sipariş onayında bir kez daha indirime girmesi hatası (59 TL -> 55 TL düşüşü) tespit
+                            edildi.</li>
+                        <li><span class="check">✓</span> <strong>Çözüm:</strong> Sipariş onayında Sepet'ten gelen birim
+                            fiyata tam güven (Trust) sistemi getirildi, tekrar hesaplama devre dışı bırakıldı.</li>
+                        <li><span class="check">✓</span> <strong>Not Entegrasyonu:</strong> Fiș üstünde "Happy Hour
+                            Uygulandı" yazısı için dinamik oran tespiti eklendi.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- HATALAR VE ÇÖZÜMLER -->
+        <div class="section">
+            <div class="section-title">
+                <div class="icon icon-red">🐛</div>
+                Karşılaşılan Hatalar & Çözümleri
+            </div>
+
+            <table class="issues-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Hata Türü</th>
+                        <th>Sorun</th>
+                        <th>Çözüm</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>1</strong></td>
+                        <td><span class="issue-type type-scope">Scope</span></td>
+                        <td class="error-text">
+                            <code>'happyHourIndirimManuel' adı geçerli bağlamda yok</code><br>
+                            Değişken foreach içinde tanımlandı, dışında kullanıldı
+                        </td>
+                        <td class="fix-text">
+                            ✅ <code>foreach</code> döngüsünden önce tanımlandı. HappyHour oranı sadece bir kez DB'den
+                            alınmak üzere döngü dışına taşındı (performans da arttı).
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>2</strong></td>
+                        <td><span class="issue-type type-razor">Razor</span></td>
+                        <td class="error-text">
+                            <code>@keyframes</code> — Razor bu ifadeyi C# kodu olarak parse etti
+                        </td>
+                        <td class="fix-text">
+                            ✅ <code>@@keyframes</code> ile escape edildi. HappyHour.cshtml ve Kullanicilar.cshtml'de
+                            uygulandı.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>3</strong></td>
+                        <td><span class="issue-type type-razor">Razor</span></td>
+                        <td class="error-text">
+                            <code>@${k.kullaniciAdi}</code> — JS template literal içindeki <code>@$</code> Razor
+                            tarafından yanlış parse edildi
+                        </td>
+                        <td class="fix-text">
+                            ✅ Template literal yerine string concatenation kullanıldı:
+                            <code>'...' + k.kullaniciAdi + '...'</code>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>4</strong></td>
+                        <td><span class="issue-type type-syntax">Syntax</span></td>
+                        <td class="error-text">
+                            AdminController'a eklenen ViewModeller <code>HappyHourFormViewModel</code> bulunamadı —
+                            ViewModel dosyası eksikti
+                        </td>
+                        <td class="fix-text">
+                            ✅ <code>UrunYonetimViewModel.cs</code> dosyasına <code>HappyHourFormViewModel</code>,
+                            <code>KullaniciFormViewModel</code>, <code>KullaniciGuncelleViewModel</code>,
+                            <code>SifreDegistirViewModel</code> eklendi.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>5</strong></td>
+                        <td><span class="issue-type type-scope">Target</span></td>
+                        <td class="error-text">
+                            <code>multi_replace_file_content</code> — AdminController'a action eklenmeye çalışılırken
+                            hedef metin bulunamadı (dosyanın ortasındaki <code>}</code> benzersiz değildi)
+                        </td>
+                        <td class="fix-text">
+                            ✅ Daha geniş bir satır aralığı seçilerek benzersiz hedef metin (dosya sonu bloğu)
+                            kullanıldı.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>6</strong></td>
+                        <td><span class="issue-type type-security">Güvenlik</span></td>
+                        <td class="error-text">
+                            Şifreler düz metin (plaintext) olarak veritabanında saklanıyordu — kod yorumunda bile
+                            belirtilmişti
+                        </td>
+                        <td class="fix-text">
+                            ✅ BCrypt.Net-Next paketi ile güvenli hash. Geriye dönük uyumluluk: eski kullanıcı ilk
+                            girişte otomatik BCrypt'e migrate edilir (<code>$2</code> prefix kontrolü ile).
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>7</strong></td>
+                        <td><span class="issue-type type-scope">Scope</span></td>
+                        <td class="error-text">
+                            <code>OturumTemizleyici</code> sadece 1 günü bekleyip tüm oturumları siliyordu; token silme
+                            ve sahipsiz sepet temizliği yoktu
+                        </td>
+                        <td class="fix-text">
+                            ✅ HostedService 3 görev içerecek şekilde yeniden yazıldı. Interval 1h → 30dk, MaxAge 1g → 2h
+                            oldu; eski token'lar 7 günde hard-deleted.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>8</strong></td>
+                        <td><span class="issue-type type-scope">EF Core</span></td>
+                        <td class="error-text">
+                            <code>MultipleCollectionIncludeWarning</code><br>
+                            Ağır sorgularda performans kaybı ve log şişmesi
+                        </td>
+                        <td class="fix-text">
+                            ✅ Tüm kritik servis sorgularına (Sepet, Sipariş, Menü) <code>.AsSplitQuery()</code> eklendi.
+                            Veritabanı yanıt süresi stabilize edildi.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>9</strong></td>
+                        <td><span class="issue-type type-scope">Logic</span></td>
+                        <td class="error-text">
+                            <code>Çifte İndirim Sorunu</code><br>
+                            Sepette zaten indirimli olan fiyatın sipariş onayında bir kez daha indirime girmesi
+                            (Masa-Kasa farkı)
+                        </td>
+                        <td class="fix-text">
+                            ✅ <code>SiparisService</code> içerisinde sepet birim fiyatına tam güven "Trust" sistemi
+                            uygulandı, mükerrer indirim süreci kaldırıldı.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>10</strong></td>
+                        <td><span class="issue-type type-razor">UI</span></td>
+                        <td class="error-text">
+                            Müşteri tarafında "+10 TL" gibi eklenen ekstraların da indirime girerek işletme zararına yol
+                            açması
+                        </td>
+                        <td class="fix-text">
+                            ✅ İndirim kuralı "Ana Ürün" ile sınırlandırıldı. Seçenekler (Opsiyonlar) artık her zaman ham
+                            fiyatıyla toplama dahil ediliyor.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>11</strong></td>
+                        <td><span class="issue-type type-security">Personel</span></td>
+                        <td class="error-text">
+                            Kullanıcı silmede Personelin pasife alınması yerine tamamen silinmesi isteği ve hızlı durum
+                            değişikliği ihtiyacı
+                        </td>
+                        <td class="fix-text">
+                            ✅ <code>KullaniciSil</code> metodu Hard Delete yapacak şekilde güncellendi. Arayüze
+                            "Aktif/Pasif Toggle" ve "Kendi Hesabını Silememe" korumaları eklendi.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>12</strong></td>
+                        <td><span class="issue-type type-razor">Database</span></td>
+                        <td class="error-text">
+                            <code>PostgreSQL 22023: identity column</code><br>
+                            Identity sütununu string (GUID) olarak değiştirmeye çalışırken alınan DB kısıtlaması
+                        </td>
+                        <td class="fix-text">
+                            ✅ Migration dosyası eski tabloyu "Drop" edip Identity uyumlu olarak temiz "Create" yapacak şekilde manuel yamalandı.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>13</strong></td>
+                        <td><span class="issue-type type-scope">Startup</span></td>
+                        <td class="error-text">
+                            <code>502 Bad Gateway / Port In Use</code><br>
+                            Migration hatası sonrası uygulamanın portu askıda bırakarak çökmesi
+                        </td>
+                        <td class="fix-text">
+                            ✅ <code>Program.cs</code> içindeki DB işlemleri <code>try-catch</code> bloğuna alındı. Veritabanı hatası olsa dahi uygulamanın ayağa kalkması sağlandı.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>14</strong></td>
+                        <td><span class="issue-type type-razor">JS Bug</span></td>
+                        <td class="error-text">
+                            Personel sayfasındaki "Sil" ve "Durdur" butonlarının çalışmaması
+                        </td>
+                        <td class="fix-text">
+                            ✅ ID'ler GUID (string) olduğu için JS <code>onclick</code> metoduna tırnak içinde gönderilmeleri sağlandı.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>15</strong></td>
+                        <td><span class="issue-type type-security">Logic</span></td>
+                        <td class="error-text">
+                            Adminin yanlışlıkla kendi yetkisini "Kasa" yaparak paneli kilitleme riski
+                        </td>
+                        <td class="fix-text">
+                            ✅ <code>AdminController</code> içerisinde rol düşürme (downgrade) senaryoları tamamen engellendi.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>16</strong></td>
+                        <td><span class="issue-type type-scope">Ürün Yönetimi</span></td>
+                        <td class="error-text">
+                            Sadece tamamlanmış siparişler olmasına rağmen ürün silmede "aktif sipariş var" uyarısı çıkması;<br>
+                            pasife alınan ürünün müşteri menüsünde görünmeye devam etmesi
+                        </td>
+                        <td class="fix-text">
+                            ✅ Aktif sipariş kontrolü <code>TamOdendi</code> hariç olacak şekilde düzeltildi. Müşteri menüsü
+                            endpointleri sadece <code>GetAktifAsync()</code> ile aktif ürünlerden beslenir hale getirildi.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>17</strong></td>
+                        <td><span class="issue-type type-razor">Saat Girişi</span></td>
+                        <td class="error-text">
+                            İndirim saatlerinde <code>00.00</code> girildiğinde eski değer fallback'i nedeniyle loglarda
+                            <code>14:00</code> görünmesi
+                        </td>
+                        <td class="fix-text">
+                            ✅ Admin saat inputu metin tabanlı yapıya alındı; gönderim öncesi ve backend'de
+                            <code>.</code> → <code>:</code> normalize edilerek doğru saat parse edilmesi sağlandı.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- MİMARİ DEĞİŞİKLİKLER -->
+        <div class="section">
+            <div class="section-title">
+                <div class="icon icon-purple">🏗️</div>
+                Mimari Değişiklikler & Dosya Özeti
+            </div>
+
+            <div class="timeline">
+                <div class="timeline-item">
+                    <h4>📄 HappyHour.cs — YENİ Entity</h4>
+                    <p>QRMenu.Core/Entities altında oluşturuldu. <code>BaslangicSaati</code>, <code>BitisSaati</code>
+                        (TimeSpan), <code>IndirimOrani</code> (decimal), <code>AktifMi</code> ve
+                        <code>GuncellemeTarihi</code> alanları içerir.
+                    </p>
+                </div>
+                <div class="timeline-item">
+                    <h4>📄 QRMenuDbContext.cs — GÜNCELLENDİ</h4>
+                    <p><code>DbSet&lt;HappyHour&gt; HappyHourlar</code> eklendi. Entity konfigürasyonu: IndirimOrani
+                        <code>HasPrecision(5,2)</code> ile tanımlandı.
+                    </p>
+                </div>
+                <div class="timeline-item">
+                    <h4>📄 Migration: HappyHourTablosu — YENİ</h4>
+                    <p><code>dotnet ef migrations add HappyHourTablosu</code> komutuyla oluşturuldu. Migration uygulama
+                        başlangıcında auto-migrate ile devreye girer.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>📄 SiparisService.cs — GÜNCELLENDİ</h4>
+                    <p><code>HappyHourIndirimOraniniGetirAsync()</code> private metodu eklendi. Hem
+                        <code>ExecuteSiparisOlusturAsync</code> hem de <code>ExecuteManuelSiparisOlusturAsync</code>
+                        metodlarında indirim kontrolü yapılıyor.
+                    </p>
+                </div>
+                <div class="timeline-item">
+                    <h4>📄 OturumTemizleyici.cs — YAZILDI</h4>
+                    <p>3 ayrı temizlik işi: inaktif oturum pasifleştirme (2h), eski token silme (7g+), sahipsiz sepet
+                        temizleme. Interval 30 dakika.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>📄 AuthController.cs — GÜNCELLENDİ</h4>
+                    <p>BCrypt.Verify() ile şifre doğrulama. <code>$2</code> prefix ile BCrypt tespiti; eski plaintext
+                        şifre ise ilk girişte otomatik hash'leme.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>📄 AdminController.cs — GENİŞLETİLDİ</h4>
+                    <p>Happy Hour GET/POST actions (bilgi, kaydet) + Kullanıcı CRUD actions (listesi, ekle, güncelle,
+                        şifre, sil) eklendi. Son güncellemeyle ürün silme aktif sipariş kontrolü (TamOdendi hariç) ve
+                        çoklu ürünlü indirim saatleri kaydetme akışı da iyileştirildi. Toplam satır: ~683 → ~900+.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>📄 UrunYonetimViewModel.cs — GÜNCELLENDİ</h4>
+                    <p><code>HappyHourFormViewModel</code>, <code>KullaniciFormViewModel</code>,
+                        <code>KullaniciGuncelleViewModel</code>, <code>SifreDegistirViewModel</code> eklendi.
+                    </p>
+                </div>
+                <div class="timeline-item">
+                    <h4>📄 Views/Admin/HappyHour.cshtml — YENİ</h4>
+                    <p>Canlı durum kartı (pulse dot), saat seçici, indirim slider (1-99%), örnek hesaplama kutusu ve
+                        kaydet formu içerir. Son güncellemede çoklu ürün seçimi (+ butonu), satır silince anında
+                        kaydetme ve <code>00.00</code> formatı saat normalizasyonu eklendi.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>📄 MenuController.cs — GÜNCELLENDİ</h4>
+                    <p>Müşteri menüsü sadece aktif ürünleri gösterecek şekilde güncellendi (<code>GetAktifAsync()</code>).
+                        Pasife alınan ürünlerin menüden anında kalkması sağlandı.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>📄 Views/Admin/Kullanicilar.cshtml — GÜNCELLENDİ</h4>
+                    <p>GUID (string) ID uyumluluğu eklendi. JS onclick metodları tırnak revizyonu ile kilitlenmeler giderildi.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>📄 Views/Auth/Register.cshtml — KALDIRILDI</h4>
+                    <p>Public kayit akisindaki is akisi karmasasi nedeniyle dosya ve endpoint kaldirildi. Kullanici olusturma yalnizca admin paneline tasindi.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>📄 Views/Shared/_AdminLayout.cshtml — GÜNCELLENDİ</h4>
+                    <p>Sidebar'a "Personel" (✓ aktif link) ve "Happy Hour" (⭐ Ayarlar altında) nav linkleri eklendi.
+                        "Yakında" disabled linkler kaldırıldı.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- DÖKÜMAN: HAPPY HOUR AKIŞ -->
+        <div class="section">
+            <div class="section-title">
+                <div class="icon icon-amber">📋</div>
+                Happy Hour Sipariş Akışı
+            </div>
+            <div class="accordion">
+                <div class="accordion-item">
+                    <button class="accordion-btn" onclick="toggle(this)">
+                        🎉 Müşteri sepetinden sipariş oluşturulurken
+                        <span class="arrow">▼</span>
+                    </button>
+                    <div class="accordion-body">
+                        <ol style="padding-left:1.5rem; line-height:2">
+                            <li>Müşteri "Sipariş Oluştur" butonuna basar → <code>SiparisOlusturAsync(sepetId)</code>
+                                çağrılır</li>
+                            <li><code>HappyHourIndirimOraniniGetirAsync()</code> DB'den aktif Happy Hour kaydını getirir
+                            </li>
+                            <li>Türkiye saatiyle şu an kontrol edilir. Aralık içindeyse indirim oranı döner</li>
+                            <li>Toplam tutar <code>tutar × (1 - oran/100)</code> formülüyle hesaplanır</li>
+                            <li>Sipariş notuna 🎉 emojili açıklama eklenir</li>
+                            <li>Sipariş veritabanına kaydedilir</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <button class="accordion-btn" onclick="toggle(this)">
+                        👨‍🍳 Garson manuel sipariş eklerken
+                        <span class="arrow">▼</span>
+                    </button>
+                    <div class="accordion-body">
+                        <p>Garson panelinden masaya ürün eklendiğinde aynı
+                            <code>HappyHourIndirimOraniniGetirAsync()</code> metodu çağrılır. Ürün başına birim fiyat
+                            indirimli hesaplanır, toplam tutar güncellenir.
+                        </p>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <button class="accordion-btn" onclick="toggle(this)">
+                        🕐 Saat aralığı hesabı (gece yarısı senaryosu)
+                        <span class="arrow">▼</span>
+                    </button>
+                    <div class="accordion-body">
+                        <p>Eğer <code>BaslangicSaati &lt;= BitisSaati</code> ise aynı gün içi kontrol yapılır (örn.
+                            14:00-17:00).</p>
+                        <p>Aksi hâlde (örn. 22:00-02:00) gece yarısını geçen senaryo:
+                            <code>şimdikiSaat &gt;= baslangic || şimdikiSaat &lt;= bitis</code> kontrolü yapılır.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <p>QR Menü Dijital Garson Sistemi — Güvenli QR Menü & Dijital İlave Otomasyonu</p>
+            <p style="margin-top:0.5rem"><strong>6. Hafta Raporu</strong> — Nisan 2026 | Build: ✅ 0 Hata</p>
+        </div>
+
+        <script>
+            function toggle(btn) {
+                const body = btn.nextElementSibling;
+                const arrow = btn.querySelector('.arrow');
+                body.classList.toggle('open');
+                arrow.classList.toggle('open');
+            }
+        </script>
+
+</body>
+
+</html>

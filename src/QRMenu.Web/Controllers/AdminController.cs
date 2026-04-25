@@ -51,7 +51,6 @@ namespace QRMenu.Web.Controllers
         [HttpGet("/admin")]
         public IActionResult Index() => RedirectToAction("Masalar");
 
-        // Masa yönetimi sayfası
         [HttpGet("/admin/masalar")]
         public async Task<IActionResult> Masalar()
         {
@@ -67,15 +66,28 @@ namespace QRMenu.Web.Controllers
             ViewBag.Bolgeler = bolgeler;
 
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
-            var liste = masalar.Select(m => new QrKodViewModel
+            
+            using var gen = new QRCodeGenerator();
+            var liste = masalar.Select(m => 
             {
-                Id = m.Id,
-                MasaNo = m.MasaNo,
-                QrUrl = m.QrKodUrl ?? "",
-                QrBase64 = "",
-                DoluMu = m.Siparisler.Any(),
-                BolgeId = m.BolgeId,
-                BolgeAd = m.Bolge?.Ad
+                string base64 = "";
+                if (!string.IsNullOrEmpty(m.QrKodUrl))
+                {
+                    var data = gen.CreateQrCode(m.QrKodUrl, QRCodeGenerator.ECCLevel.H);
+                    using var qr = new PngByteQRCode(data);
+                    base64 = Convert.ToBase64String(qr.GetGraphic(10));
+                }
+                
+                return new QrKodViewModel
+                {
+                    Id = m.Id,
+                    MasaNo = m.MasaNo,
+                    QrUrl = m.QrKodUrl ?? "",
+                    QrBase64 = base64,
+                    DoluMu = m.Siparisler.Any(),
+                    BolgeId = m.BolgeId,
+                    BolgeAd = m.Bolge?.Ad
+                };
             }).ToList();
 
             ViewBag.BaseUrl = baseUrl;
@@ -111,7 +123,18 @@ namespace QRMenu.Web.Controllers
         public async Task<IActionResult> MasaEkle([FromBody] QRMenu.Web.ViewModels.MasaFormViewModel model)
         {
             var mevcut = await _context.Masalar.FirstOrDefaultAsync(m => m.MasaNo == model.MasaNo);
-            if (mevcut != null) return Json(new { success = false, message = $"Masa {model.MasaNo} zaten var" });
+            if (mevcut != null)
+            {
+                if (!mevcut.AktifMi)
+                {
+                    mevcut.AktifMi = true;
+                    mevcut.BolgeId = model.BolgeId;
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Pasif masa aktif edildi. MasaNo={MasaNo} BolgeId={BolgeId}", model.MasaNo, model.BolgeId);
+                    return Json(new { success = true });
+                }
+                return Json(new { success = false, message = $"Masa {model.MasaNo} zaten var" });
+            }
 
             var yeniMasa = new Masa { MasaNo = model.MasaNo, BolgeId = model.BolgeId, AktifMi = true };
             _context.Masalar.Add(yeniMasa);
@@ -171,42 +194,57 @@ namespace QRMenu.Web.Controllers
             return Json(new { success = true });
         }
 
-        // AJAX: Masa sil
         [HttpGet("/admin/masa-sil/{masaNo:int}")]
-        public async Task<IActionResult> MasaSil(int masaNo)
+        public async Task<IActionResult> MasaSil(int masaNo, [FromQuery] bool force = false)
         {
             var masa = await _context.Masalar.FirstOrDefaultAsync(m => m.MasaNo == masaNo);
             if (masa == null)
                 return Json(new { success = false, message = "Masa bulunamadı" });
 
-            // Bağlı oturum/sipariş varsa silme
             var oturumVar = await _context.Oturumlar.AnyAsync(o => o.MasaId == masa.Id);
             var siparisVar = await _context.Siparisler.AnyAsync(s => s.MasaId == masa.Id);
-            if (oturumVar || siparisVar)
+            
+            if ((oturumVar || siparisVar) && !force)
             {
-                // Tamamen silmek yerine pasife çek
+                // Soft delete and warn the user
                 masa.AktifMi = false;
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Masa pasife alındı (bağlı kayıt var). MasaNo={MasaNo}", masaNo);
-                return Json(new { success = true, message = "Masa pasife alındı (bağlı kayıtlar var)" });
+                return Json(new { success = true, hasRecords = true, masaId = masa.Id });
+            }
+
+            if (force)
+            {
+                var siparisler = await _context.Siparisler.Where(s => s.MasaId == masa.Id).ToListAsync();
+                if (siparisler.Any())
+                {
+                    var sipIds = siparisler.Select(s => s.Id).ToList();
+                    var detaylar = await _context.SiparisDetaylar.Where(sd => sipIds.Contains(sd.SiparisId)).ToListAsync();
+                    if (detaylar.Any()) _context.SiparisDetaylar.RemoveRange(detaylar);
+                    _context.Siparisler.RemoveRange(siparisler);
+                }
+                var oturumlar = await _context.Oturumlar.Where(o => o.MasaId == masa.Id).ToListAsync();
+                if (oturumlar.Any()) _context.Oturumlar.RemoveRange(oturumlar);
             }
 
             _context.Masalar.Remove(masa);
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("Masa silindi. MasaNo={MasaNo}", masaNo);
-            return Json(new { success = true });
+            return Json(new { success = true, hasRecords = false });
         }
 
+        public class QrOlusturRequest { public string BaseUrl { get; set; } = ""; }
+
         // AJAX: QR oluştur ve DB'ye kaydet
-        [HttpGet("/admin/qr-olustur/{masaNo:int}")]
-        public async Task<IActionResult> QrOlustur(int masaNo)
+        [HttpPost("/admin/qr-olustur/{masaNo:int}")]
+        public async Task<IActionResult> QrOlustur(int masaNo, [FromBody] QrOlusturRequest req)
         {
             var masa = await _context.Masalar.FirstOrDefaultAsync(m => m.MasaNo == masaNo);
             if (masa == null)
                 return Json(new { success = false, message = "Masa bulunamadı" });
 
-            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            var baseUrl = string.IsNullOrWhiteSpace(req?.BaseUrl) ? $"{Request.Scheme}://{Request.Host}" : req.BaseUrl.TrimEnd('/');
             var qrUrl = $"{baseUrl}/qr/{masaNo}";
 
             using var gen = new QRCodeGenerator();
@@ -217,7 +255,7 @@ namespace QRMenu.Web.Controllers
             masa.QrKodUrl = qrUrl;
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("QR oluşturuldu. Masa={MasaNo}", masaNo);
+            _logger.LogInformation("QR oluşturuldu. Masa={MasaNo} Url={Url}", masaNo, qrUrl);
             return Json(new { success = true, qrBase64 = Convert.ToBase64String(bytes), qrUrl });
         }
 
@@ -240,8 +278,9 @@ namespace QRMenu.Web.Controllers
         // SİPARİŞ YÖNETİMİ
         // ============================================================
 
+        // Sipariş Arşivi
         [HttpGet("/admin/siparisler")]
-        public async Task<IActionResult> Siparisler([FromQuery] int page = 1, [FromQuery] int pageSize = 100)
+        public async Task<IActionResult> Siparisler([FromQuery] int page = 1, [FromQuery] int pageSize = 100, [FromQuery] int? masaId = null)
         {
             ViewData["ActivePage"] = "Siparisler";
             ViewData["PageTitle"] = "Sipariş Geçmişi & Raporlama";
@@ -267,16 +306,25 @@ namespace QRMenu.Web.Controllers
 
             var iptalIadeStats = await siparisBaseQuery
                 .Where(s => s.Durum == SiparisDurum.Iptal || s.Durum == SiparisDurum.Iade)
-                .GroupBy(_ => 1)
-                .Select(g => new { Count = g.Count(), Sum = g.Sum(x => x.ToplamTutar) })
+                .GroupBy(s => 1)
+                .Select(g => new { Count = g.Count(), Total = g.Sum(x => (decimal?)x.ToplamTutar) ?? 0m })
                 .FirstOrDefaultAsync();
 
-            var totalCount = await siparisBaseQuery.CountAsync();
+            var iptalIadeSayi = iptalIadeStats?.Count ?? 0;
+            var iptalIadeCiro = iptalIadeStats?.Total ?? 0m;
+
+            var query = siparisBaseQuery;
+            if (masaId.HasValue)
+            {
+                query = query.Where(s => s.MasaId == masaId.Value);
+                ViewBag.FiltreliMasaId = masaId.Value;
+            }
+
+            var totalCount = await query.CountAsync();
             var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
             if (page > totalPages) page = totalPages;
 
-            var siparisler = await _context.Siparisler
-                .AsNoTracking()
+            var siparisler = await query
                 .Include(s => s.Masa)
                 .ThenInclude(m => m.Bolge)
                 .Include(s => s.SiparisDetaylar)
@@ -289,8 +337,8 @@ namespace QRMenu.Web.Controllers
 
             ViewBag.BugunToplamSayi = bugunToplamSayi;
             ViewBag.BugunCiro = bugunCiro;
-            ViewBag.IptalIadeSayi = iptalIadeStats?.Count ?? 0;
-            ViewBag.IptalIadeCiro = iptalIadeStats?.Sum ?? 0m;
+            ViewBag.IptalIadeSayi = iptalIadeSayi;
+            ViewBag.IptalIadeCiro = iptalIadeCiro;
             ViewBag.CurrentPage = page;
             ViewBag.PageSize = pageSize;
             ViewBag.TotalPages = totalPages;
@@ -794,6 +842,17 @@ namespace QRMenu.Web.Controllers
             return Json(new { success = true });
         }
 
+        [HttpGet("/admin/opsiyon-gruplari")]
+        public async Task<IActionResult> OpsiyonGruplari()
+        {
+            var gruplar = await _context.Opsiyonlar
+                .Select(o => new { o.Grup, o.GrupEN })
+                .Distinct()
+                .OrderBy(o => o.Grup)
+                .ToListAsync();
+            return Json(gruplar);
+        }
+
         // ============================================================
         // YARDIMCI METODLAR - Fotoğraf Upload (Dosya Sistemi)
         // ============================================================
@@ -1043,10 +1102,9 @@ namespace QRMenu.Web.Controllers
             if (!Enum.TryParse<KullaniciRol>(model.Rol, out var rol))
                 return Json(new { success = false, message = "Geçersiz rol." });
 
-            // Admin rolden düşürme kontrolü (Koşulsuz yasak)
-            if (kullanici.Rol == KullaniciRol.Admin && rol != KullaniciRol.Admin)
+            if (kullanici.Rol == KullaniciRol.Admin)
             {
-                return Json(new { success = false, message = "Yönetici (Admin) rolü alt rollere düşürülemez!" });
+                return Json(new { success = false, message = "Güvenlik: Admin hesapları bu ekrandan güncellenemez." });
             }
 
             // Rol değişmişse Identity rol tablosunu da güncelle
@@ -1069,6 +1127,9 @@ namespace QRMenu.Web.Controllers
                 return Json(new { success = false, message = hatalar });
             }
 
+            // Rol değiştirildiğinde veya kullanıcı pasife alındığında, kullanıcının mevcut oturumunu anında sonlandırıyoruz (damga yenileyerek)
+            await _userManager.UpdateSecurityStampAsync(kullanici);
+
             _logger.LogInformation("Kullanıcı güncellendi. Id={Id}, Rol={Rol}, Aktif={Aktif}", id, rol, model.AktifMi);
             return Json(new { success = true });
         }
@@ -1082,6 +1143,9 @@ namespace QRMenu.Web.Controllers
             var kullanici = await _userManager.FindByIdAsync(id);
             if (kullanici == null)
                 return Json(new { success = false, message = "Kullanıcı bulunamadı." });
+
+            if (kullanici.Rol == KullaniciRol.Admin)
+                return Json(new { success = false, message = "Güvenlik: Admin şifreleri bu ekrandan değiştirilemez." });
 
             // Identity ile şifre sıfırla (hash'leme otomatik)
             var token = await _userManager.GeneratePasswordResetTokenAsync(kullanici);
@@ -1109,13 +1173,10 @@ namespace QRMenu.Web.Controllers
             if (mevcutKullaniciId == id)
                 return Json(new { success = false, message = "Kendinizi silemezsiniz." });
 
-            // Son admin kontrolü
+            // Admin kontrolü
             if (kullanici.Rol == KullaniciRol.Admin)
             {
-                var adminSayisi = await _userManager.Users
-                    .CountAsync(k => k.Rol == KullaniciRol.Admin && k.AktifMi);
-                if (adminSayisi <= 1)
-                    return Json(new { success = false, message = "Son admin silinemez." });
+                return Json(new { success = false, message = "Güvenlik: Admin hesapları silinemez." });
             }
 
             // Hard delete (Identity)
@@ -1134,17 +1195,17 @@ namespace QRMenu.Web.Controllers
             if (kullanici == null)
                 return Json(new { success = false, message = "Kullanıcı bulunamadı." });
 
-            // Son admin pasife alınamaz
-            if (kullanici.Rol == KullaniciRol.Admin && kullanici.AktifMi)
+            // Admin pasife alınamaz (tamamen yasaklandı)
+            if (kullanici.Rol == KullaniciRol.Admin)
             {
-                var adminSayisi = await _userManager.Users
-                    .CountAsync(k => k.Rol == KullaniciRol.Admin && k.AktifMi);
-                if (adminSayisi <= 1)
-                    return Json(new { success = false, message = "Üzgünüz, sistemde sadece bir aktif Admin var ve bu kullanıcı pasife alınamaz." });
+                return Json(new { success = false, message = "Güvenlik: Admin hesaplarının durumu değiştirilemez." });
             }
 
             kullanici.AktifMi = !kullanici.AktifMi;
             await _userManager.UpdateAsync(kullanici);
+
+            // Damgayı yenile, böylece hesap pasife alındığında kullanıcı anında sistemden çıkarılsın
+            await _userManager.UpdateSecurityStampAsync(kullanici);
 
             _logger.LogInformation("Kullanıcı durumu değiştirildi. Id={Id}, AktifMi={AktifMi}", id, kullanici.AktifMi);
             return Json(new { success = true, aktifMi = kullanici.AktifMi });
