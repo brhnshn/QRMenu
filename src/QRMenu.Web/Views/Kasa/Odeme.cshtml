@@ -458,6 +458,7 @@
 }
 
 <section class="odeme-root">
+    @Html.AntiForgeryToken()
     <div class="odeme-shell">
         <header class="odeme-toolbar">
             <div class="flex items-center gap-2 flex-wrap">
@@ -767,12 +768,21 @@
                 odemeTipi: seciliOdemeTipi
             };
 
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
             try {
                 const response = await fetch('/Kasa/TahsilatYap', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token 
+                    },
                     body: JSON.stringify(payload)
                 });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP Hata ${response.status}`);
+                }
 
                 const result = await response.json();
                 if (result.success) {
@@ -780,10 +790,19 @@
                     return;
                 }
 
-                alert('Tahsilat hatası: ' + (result.message || 'Bilinmeyen hata'));
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Tahsilat Hatası',
+                    text: result.message || 'Bilinmeyen bir hata oluştu.'
+                });
                 hesapla();
             } catch (err) {
-                alert('Tahsilat sırasında bağlantı hatası oluştu.');
+                console.error(err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Bağlantı Hatası',
+                    text: 'Tahsilat işlemi sırasında sunucuyla iletişim kurulamadı veya CSRF doğrulaması başarısız oldu.'
+                });
                 hesapla();
             }
         }

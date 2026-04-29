@@ -887,7 +887,7 @@
             }, Math.max(0, waitMs));
         }
 
-        const connection = new signalR.HubConnectionBuilder().withUrl('/hubs/order').withAutomaticReconnect().build();
+        const connection = new signalR.HubConnectionBuilder().withUrl('/hubs/order').withAutomaticReconnect().configureLogging(signalR.LogLevel.Error).build();
         connection.on('SiparisGuncellendi', () => scheduleSoftRefresh(500));
         connection.on('SiparisHazir', (masaNo) => {
             if (garsonSettingEnabled('garsonNoticeOverlay', true)) {

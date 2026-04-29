@@ -37,6 +37,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>QR Menü</title>
+    <script>
+        // Tailwind CDN'in canlı ortam uyarısını gizle
+        (function() {
+            const orgWarn = console.warn;
+            console.warn = function(...args) {
+                if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) return;
+                orgWarn.apply(console, args);
+            };
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet" />
@@ -641,7 +651,7 @@
         }
 
         // ===== SIGNALR =====
-        const menuConnection = new signalR.HubConnectionBuilder().withUrl('/hubs/order').withAutomaticReconnect([0,2000,5000,10000,30000]).build();
+        const menuConnection = new signalR.HubConnectionBuilder().withUrl('/hubs/order').withAutomaticReconnect([0,2000,5000,10000,30000]).configureLogging(signalR.LogLevel.Error).build();
 
         menuConnection.on('HappyHourGuncellendi', async function() {
             try { const res = await fetch('/menu/json'); triggerYenidenCiz(await res.json()); showToast(txtHappyHourUpdated); } catch(e) { console.error(e); }

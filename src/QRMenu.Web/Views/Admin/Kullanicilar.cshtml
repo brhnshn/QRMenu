@@ -133,15 +133,15 @@
         <form class="p-8 space-y-4" onsubmit="kullaniciEkle(event)">
             <div class="space-y-1">
                 <label class="text-sm font-bold text-outline uppercase tracking-wider">Kullanıcı Adı</label>
-                <input id="yeni_kullaniciAdi" required class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="text" />
+                <input id="yeni_kullaniciAdi" required autocomplete="username" class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="text" />
             </div>
             <div class="space-y-1">
                 <label class="text-sm font-bold text-outline uppercase tracking-wider">Ad Soyad</label>
-                <input id="yeni_adSoyad" required class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="text" />
+                <input id="yeni_adSoyad" required autocomplete="name" class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="text" />
             </div>
             <div class="space-y-1">
                 <label class="text-sm font-bold text-outline uppercase tracking-wider">Şifre</label>
-                <input id="yeni_sifre" required minlength="6" class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="password" />
+                <input id="yeni_sifre" required minlength="6" autocomplete="new-password" class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="password" />
             </div>
             <div class="space-y-1">
                 <label class="text-sm font-bold text-outline uppercase tracking-wider">Rol</label>
@@ -170,11 +170,11 @@
             <input type="hidden" id="duz_id" />
             <div class="space-y-1">
                 <label class="text-sm font-bold text-outline uppercase tracking-wider">Kullanıcı Adı</label>
-                <input id="duz_kullaniciAdi" required class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="text" />
+                <input id="duz_kullaniciAdi" required autocomplete="username" class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="text" />
             </div>
             <div class="space-y-1">
                 <label class="text-sm font-bold text-outline uppercase tracking-wider">Ad Soyad</label>
-                <input id="duz_adSoyad" required class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="text" />
+                <input id="duz_adSoyad" required autocomplete="name" class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" type="text" />
             </div>
             <div class="space-y-1">
                 <label class="text-sm font-bold text-outline uppercase tracking-wider">Rol</label>
@@ -196,7 +196,7 @@
                 </label>
             </div>
             <div class="pt-4 flex flex-col gap-3">
-                <button type="button" onclick="sifreModalAc(document.getElementById('duz_id').value)" class="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-orange-50 text-orange-700 font-headline font-bold border border-orange-100">Şifre Sıfırla</button>
+                <button type="button" onclick="sifreModalAc(document.getElementById('duz_id').value, document.getElementById('duz_kullaniciAdi').value)" class="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-orange-50 text-orange-700 font-headline font-bold border border-orange-100">Şifre Sıfırla</button>
                 <div class="flex gap-3">
                     <button type="button" onclick="modalKapat('duzenle')" class="flex-1 px-6 py-3 rounded-xl border border-stone-200 font-headline font-bold">İptal</button>
                     <button type="submit" class="flex-1 bg-primary text-on-primary px-6 py-3 rounded-xl font-headline font-bold">Güncelle</button>
@@ -214,7 +214,9 @@
         </div>
         <form class="p-8 space-y-4" onsubmit="sifreDegistir(event)">
             <input type="hidden" id="sifre_id" />
-            <input id="yeni_sifre2" required minlength="6" class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3" type="password" />
+            <!-- Tarayıcı uyarısını önlemek için gizli kullanıcı adı alanı -->
+            <input type="text" id="sifre_kullaniciAdi" autocomplete="username" style="display:none" />
+            <input id="yeni_sifre2" required minlength="6" autocomplete="new-password" class="w-full bg-stone-50 border-stone-200 rounded-xl px-4 py-3" type="password" />
             <button type="submit" class="w-full bg-primary text-on-primary py-3 rounded-xl font-headline font-bold">Şifreyi Değiştir</button>
         </form>
     </div>
@@ -255,9 +257,19 @@
         } catch(e) { console.error("Veri yüklenemedi", e); }
     }
 
+    function tabloGuncelle() {
+        const val = document.getElementById('searchInput').value.toLowerCase();
+        const filteredData = tumKullanicilar.filter(k => {
+            const matchesSearch = k.kullaniciAdi.toLowerCase().includes(val) || (k.adSoyad && k.adSoyad.toLowerCase().includes(val));
+            const matchesRol = aktifRolFilter === 'all' || k.rol === aktifRolFilter;
+            return matchesSearch && matchesRol;
+        });
+
         const tbody = document.getElementById('kullaniciBody');
         const mobileContainer = document.getElementById('kullaniciMobileCards');
-        document.getElementById('totalCountText').innerText = `Toplam ${filteredData.length} kullanıcı`;
+        if (document.getElementById('totalCountText')) {
+            document.getElementById('totalCountText').innerText = `Toplam ${filteredData.length} kullanıcı`;
+        }
 
         const btn2 = document.getElementById('btnPage2');
         if(filteredData.length > 10) { btn2.classList.remove('hidden'); } else { btn2.classList.add('hidden'); }
@@ -385,8 +397,9 @@
         if(el) { el.classList.add('hidden'); el.classList.remove('flex'); }
     }
 
-    function sifreModalAc(id) { 
+    function sifreModalAc(id, username) { 
         document.getElementById('sifre_id').value = id; 
+        if(document.getElementById('sifre_kullaniciAdi')) document.getElementById('sifre_kullaniciAdi').value = username;
         modalKapat('duzenle'); 
         modalAc('sifre'); 
     }

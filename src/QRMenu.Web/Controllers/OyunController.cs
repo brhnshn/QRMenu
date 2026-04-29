@@ -6,7 +6,7 @@ using QRMenu.Data.Data;
 
 namespace QRMenu.Web.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "RequireAdmin")]
     public class OyunController : Controller
     {
         private readonly QRMenuDbContext _context;

@@ -165,6 +165,7 @@ namespace QRMenu.Web.Controllers
         /// <summary>
         /// Sepetten sipariş oluştur: POST /siparis/olustur (AJAX)
         /// </summary>
+        [EnableRateLimiting("SiparisLimiti")]
         [HttpPost("/siparis/olustur")]
         public async Task<IActionResult> Olustur([FromBody] SiparisOlusturRequest? request)
         {

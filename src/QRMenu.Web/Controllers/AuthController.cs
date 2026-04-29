@@ -35,6 +35,7 @@ namespace QRMenu.Web.Controllers
         }
 
         [HttpPost("/Auth/Login")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(string username, string password)
         {
             // UserName ile kullanıcıyı bul
@@ -86,6 +87,7 @@ namespace QRMenu.Web.Controllers
         }
 
         [HttpPost("/Auth/AdminLogin")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> AdminLogin(string username, string password)
         {
             var user = await _userManager.FindByNameAsync(username);
@@ -151,6 +153,7 @@ namespace QRMenu.Web.Controllers
 
         [HttpPost("/Auth/Recovery")]
         [EnableRateLimiting("RecoveryLimitPolicy")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Recovery(string secretCode, string username, string password, [FromServices] IConfiguration config)
         {
             var expectedCode = config["Security:RecoveryCode"];

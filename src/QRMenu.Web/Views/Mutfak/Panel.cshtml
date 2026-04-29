@@ -1,4 +1,4 @@
-@using System.Text.Json
+﻿@using System.Text.Json
 @using QRMenu.Core.Enums
 @model List<QRMenu.Core.Entities.Siparis>
 @{
@@ -640,7 +640,7 @@
             try {
                 localStorage.setItem('kdsPreparedDetails', JSON.stringify(Array.from(ids)));
             } catch (e) {
-                // Ä°ÅŸaretleme sadece mutfak ekranÄ±na yardÄ±mcÄ± yerel bilgi; kaydedilemezse ekran yine Ã§alÄ±ÅŸÄ±r.
+                // İşaretleme sadece mutfak ekranına yardımcı yerel bilgi; kaydedilemezse ekran yine çalışır.
             }
         }
 
@@ -948,6 +948,7 @@
         const connection = new signalR.HubConnectionBuilder()
             .withUrl('/hubs/order')
             .withAutomaticReconnect()
+            .configureLogging(signalR.LogLevel.Error)
             .build();
 
         function playBell() {

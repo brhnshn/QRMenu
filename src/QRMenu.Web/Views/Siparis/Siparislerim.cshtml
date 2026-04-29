@@ -346,7 +346,7 @@
         document.addEventListener('DOMContentLoaded', fetchOrders);
 
         // SignalR
-        const connection = new signalR.HubConnectionBuilder().withUrl('/hubs/order').withAutomaticReconnect([0,2000,5000,10000,30000]).build();
+        const connection = new signalR.HubConnectionBuilder().withUrl('/hubs/order').withAutomaticReconnect([0,2000,5000,10000,30000]).configureLogging(signalR.LogLevel.Error).build();
         connection.on('SiparisGuncellendi', fetchOrders);
         connection.start()
             .then(async () => {

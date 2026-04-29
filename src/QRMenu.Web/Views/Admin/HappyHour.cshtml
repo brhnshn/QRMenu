@@ -1,3 +1,4 @@
+@using System.Globalization
 @model QRMenu.Core.Entities.HappyHour
 @{
     ViewData["Title"] = "İndirim Saatleri";
@@ -7,10 +8,14 @@
 
     // Null-safe model değerleri
     var aktifMi = Model?.AktifMi ?? false;
-    var indirimOrani = Model?.IndirimOrani ?? 10;
+    var indirimOrani = Model?.IndirimOrani ?? 10m;
     var baslangicSaati = Model?.BaslangicSaati.ToString(@"hh\:mm") ?? "14:00";
     var bitisSaati = Model?.BitisSaati.ToString(@"hh\:mm") ?? "17:00";
+    
+    // HTML5 inputları için nokta (.) ayracı zorunludur
+    var indirimOraniRaw = indirimOrani.ToString(CultureInfo.InvariantCulture);
 }
+<meta charset="utf-8" />
 
 @section Styles {
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600&display=swap" rel="stylesheet"/>
@@ -66,8 +71,9 @@
 }
 
 <form id="happyHourForm">
+    @Html.AntiForgeryToken()
     <!-- Top Bar -->
-    <div class="flex justify-between items-center mb-8">
+    <div class="flex justify-between items-center mb-8 px-4 md:px-8">
         <div>
             <h2 class="text-3xl font-black text-stone-900 font-headline tracking-tight">İndirim Saatleri</h2>
             <p class="text-stone-500 font-medium">Stratejik kampanya yönetimi ve zamanlanmış indirimler.</p>
@@ -130,14 +136,14 @@
                 <h4 class="font-bold text-stone-900 mb-6 flex items-center gap-2 font-headline">
                     <span class="material-symbols-outlined text-primary">schedule</span> Zaman Aralığı Seçimi
                 </h4>
-                <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-1">
-                        <label class="hh-label">Başlangıç Saati</label>
-                        <input type="time" id="baslangicSaati" class="hh-input" value="@baslangicSaati" />
+                        <label class="hh-label text-[10px]">BAŞLANGIÇ SAATİ</label>
+                        <input type="time" id="baslangicSaati" class="hh-input text-center text-lg" value="@baslangicSaati" />
                     </div>
                     <div class="space-y-1">
-                        <label class="hh-label">Bitiş Saati</label>
-                        <input type="time" id="bitisSaati" class="hh-input" value="@bitisSaati" />
+                        <label class="hh-label text-[10px]">BİTİŞ SAATİ</label>
+                        <input type="time" id="bitisSaati" class="hh-input text-center text-lg" value="@bitisSaati" />
                     </div>
                 </div>
             </section>
@@ -149,9 +155,9 @@
                 </h4>
                 <div class="bg-white/10 rounded-xl p-4 mb-4 backdrop-blur-sm">
                     <div class="flex justify-between text-sm mb-1 opacity-80 text-white font-medium"><span>Normal Fiyat</span><span>₺100.00</span></div>
-                    <div class="flex justify-between text-sm mb-2 font-bold text-orange-200"><span>İndirim (<span id="previewOran">%@indirimOrani</span>)</span><span id="previewMiktar">-₺@indirimOrani.ToString("F2")</span></div>
+                    <div class="flex justify-between text-sm mb-2 font-bold text-orange-200"><span>İndirim (<span id="previewOran">%@indirimOraniRaw</span>)</span><span id="previewMiktar">-₺@indirimOrani.ToString("F2", CultureInfo.InvariantCulture)</span></div>
                     <div class="h-px bg-white/20 mb-2"></div>
-                    <div class="flex justify-between text-xl font-black font-headline text-white"><span>Net Fiyat</span><span id="previewSonuc">₺@((100 - indirimOrani).ToString("F2"))</span></div>
+                    <div class="flex justify-between text-xl font-black font-headline text-white"><span>Net Fiyat</span><span id="previewSonuc">₺@((100 - indirimOrani).ToString("F2", CultureInfo.InvariantCulture))</span></div>
                 </div>
                 <p class="text-[10px] uppercase tracking-widest font-black opacity-60 text-center text-white">Örnek 100₺'lik ürün baz alınmıştır.</p>
             </section>
@@ -168,10 +174,10 @@
                     </div>
                     <div class="bg-stone-100 px-6 py-3 rounded-2xl flex items-center gap-2 border border-stone-200">
                         <span class="text-2xl font-black text-primary font-headline">%</span>
-                        <input type="number" id="indirimOrani" class="bg-transparent border-none p-0 w-12 text-2xl font-black text-stone-900 focus:ring-0 font-headline" value="@indirimOrani" />
+                        <input type="number" id="indirimOrani" class="bg-transparent border-none p-0 w-12 text-2xl font-black text-stone-900 focus:ring-0 font-headline" value="@indirimOraniRaw" />
                     </div>
                 </div>
-                <input type="range" id="indirimSlider" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-primary" min="1" max="99" value="@indirimOrani" />
+                <input type="range" id="indirimSlider" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-primary" min="1" max="99" value="@indirimOraniRaw" />
                 <div class="flex justify-between mt-3 text-[10px] font-black text-stone-400 font-headline uppercase tracking-widest">
                     <span>%0</span><span>%25</span><span>%50</span><span>%75</span><span>%100</span>
                 </div>
@@ -414,10 +420,15 @@
                 urunIds: seciliUrunler
             };
 
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
             try {
                 const r = await fetch('/admin/happy-hour-kaydet', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token 
+                    },
                     body: JSON.stringify(payload)
                 });
                 const d = await r.json();

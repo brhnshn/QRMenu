@@ -4,13 +4,14 @@
 
 Restoran ve kafeler için QR kod tabanlı dijital menü ve sipariş yönetim sistemi. Bu proje, modern web teknolojileri ve gerçek zamanlı iletişim altyapısı kullanılarak geliştirilmiştir.
 
-## 🚀 Proje Durumu: Hafta 8 Tamamlandı
-Proje, 10 haftalık yol haritasında personel operasyon akışlarını kapsayan kritik fazları tamamlamış; **Garson, Mutfak ve Kasa** panellerinde gerçek zamanlı ve rol bazlı yönetim yapısını oturtmuştur.
+## 🚀 Proje Durumu: Hafta 9 Tamamlandı
+Proje, 9. hafta itibarıyla **Güvenlik Sertleştirme, Gelişmiş Loglama ve İzleme** altyapısını tamamlamıştır. Personel panellerindeki tüm operasyonel eksikler giderilmiş ve sistem uçtan uca güvenli hale getirilmiştir.
 
 ## 🛠️ Teknik Özellikler
 - **Backend:** .NET 8, EF Core, PostgreSQL (Supabase)
 - **Real-time:** ASP.NET Core SignalR (Anlık Mutfak & Garson Bildirimleri)
-- **Güvenlik:** Cookie Authentication & Role-Based Authorization (Admin, Garson, Kasa, Mutfak)
+- **Güvenlik:** Role-Based Auth, CSRF (Anti-Forgery) Protection, Rate Limiting, Account Lockout
+- **İzleme:** SecurityLog Middleware (401, 403, 429 Hatalarının Takibi) & Serilog (Günlük Dosya Loglama)
 - **Takip:** AuditLog Interceptor (Her veritabanı değişikliğinin JSON olarak izlenmesi)
 - **Test:** 67+ Unit Test (XUnit & Moq)
 
@@ -32,9 +33,10 @@ Haftalık ilerleme raporları ve teknik detaylara aşağıdaki tablodan ulaşabi
 | **Hafta 6** | **İndirim Saatleri ve diğer işler** | [PDF](https://github.com/brhnshn/QRMenu/blob/main/docs/Pdfler/Hafta%206%20%C4%B0ndirim%20Saatleri%20ve%20di%C4%9Fer%20i%C5%9Fler.pdf) |
 | **Hafta 7** | **Performans, Canlı Ekran Soft Refresh, Oyunlaştırma ve TR-EN İyileştirmeleri** | [PDF](https://github.com/brhnshn/QRMenu/blob/main/docs/Pdfler/Hafta%207%20-%20%20Gelistirme%20Raporu.pdf) |
 | **Hafta 8** | **Garson, Mutfak ve Kasa Panellerinde Soft Refresh, SignalR Uyum Checklisti ve Operasyonel UI Tamamlamaları** | [PDF](docs/Pdfler/8.%20Hafta%20Geli%C5%9Ftirme%20Raporu.pdf) |
+| **Hafta 9** | **Güvenlik Sertleştirme, Gelişmiş Loglama, CSRF Koruması ve Personel Paneli Final Stabilizasyonu** | [PDF](docs/Pdfler/Hafta%209.Geli%C5%9Ftirme%20Raporu%20-%20QR%20Men%C3%BC%20Sistemi.pdf) |
 | **Dosya Yapısı** | QR Menü Otomasyonu Genel Dosya Mimarisi | [PDF](docs/Pdfler/Proje%20Dosya%20Yapısı%20—%20QR%20Menü%20Otomasyonu.pdf) |
 
 ---
     
 ## 👨‍💻 Geliştirme Notları
-Hafta 8 kapsamında; Garson, Mutfak ve Kasa ekranlarında soft refresh davranışları pekiştirildi, SignalR olay/kanal uyumu netleştirildi ve operasyonel arayüz iyileştirmeleri raporlandı.
+Hafta 9 kapsamında; OWASP Top 10 standartlarına uyum için CSRF, Rate Limiting ve Account Lockout yapıları kuruldu. Güvenlik olaylarını anlık izlemek için özel bir Log Middleware ve Admin Log ekranı geliştirildi. Personel panellerindeki SignalR ve UI akışları stabilize edildi.

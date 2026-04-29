@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace QRMenu.Web.Controllers
 {
-    [Authorize(Roles = "Admin,Garson")]
+    [Authorize(Policy = "RequireWaiter")]
     public class GarsonController : Controller
     {
         private static readonly TimeZoneInfo _turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(

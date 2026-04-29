@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace QRMenu.Web.Controllers
 {
-    [Authorize(Roles = "Admin, Mutfak, Barista")]
+    [Authorize(Policy = "RequireKitchen")]
     public class MutfakController : Controller
     {
         private readonly QRMenuDbContext _context;

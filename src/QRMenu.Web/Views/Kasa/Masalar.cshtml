@@ -718,6 +718,7 @@
         const connection = new signalR.HubConnectionBuilder()
             .withUrl('/hubs/order')
             .withAutomaticReconnect()
+            .configureLogging(signalR.LogLevel.Error)
             .build();
 
         connection.on('SiparisGeldi', function () {

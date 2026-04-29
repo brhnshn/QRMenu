@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
     
+    <script>
+        // Tailwind CDN'in canlı ortam uyarısını gizle
+        (function() {
+            const orgWarn = console.warn;
+            console.warn = function(...args) {
+                if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) return;
+                orgWarn.apply(console, args);
+            };
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -110,6 +120,12 @@
             <div>
                 <h3 class="px-4 mb-2 text-[9px] font-bold tracking-[0.2em] text-outline uppercase font-label">AYARLAR</h3>
                 <ul class="space-y-0.5">
+                    <li>
+                        <a class="flex items-center gap-2.5 py-1.5 px-4 transition-transform duration-300 rounded-r-full @(ViewData["ActivePage"]?.ToString() == "Loglar" ? "bg-surface-container-lowest text-primary font-bold shadow-sm" : "text-on-surface-variant hover:text-on-surface hover:translate-x-1")" href="/admin/loglar">
+                            <span class="material-symbols-outlined text-[20px]">security</span>
+                            <span class="font-label text-[11px] uppercase tracking-widest">GÜVENLİK LOGLARI</span>
+                        </a>
+                    </li>
                     <li>
                         <a class="flex items-center gap-2.5 text-error py-1.5 px-4 hover:bg-error/10 hover:translate-x-1 transition-all rounded-r-full" href="/Auth/Logout" onclick="cikisYap(event, '/Auth/Logout')">
                             <span class="material-symbols-outlined text-[20px]">logout</span>

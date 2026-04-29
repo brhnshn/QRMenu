@@ -127,11 +127,12 @@
                 }
 
                 <form class="space-y-6" action="/Auth/AdminLogin" method="post">
+                    @Html.AntiForgeryToken()
                     <div class="space-y-2">
                         <label class="block text-xs font-bold uppercase tracking-widest text-outline ml-1">Kullanıcı Adı</label>
                         <div class="relative group">
                             <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors" data-icon="badge">badge</span>
-                            <input name="username" class="w-full pl-12 pr-4 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface font-headline font-medium transition-all" placeholder="admin" type="text" autofocus required />
+                            <input name="username" class="w-full pl-12 pr-4 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface font-headline font-medium transition-all" placeholder="admin" type="text" autocomplete="username" autofocus required />
                         </div>
                     </div>
 
@@ -139,7 +140,7 @@
                         <label class="block text-xs font-bold uppercase tracking-widest text-outline ml-1">Şifre</label>
                         <div class="relative group">
                             <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors" data-icon="lock">lock</span>
-                            <input name="password" class="w-full pl-12 pr-4 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface tracking-[0.5em] font-headline transition-all" placeholder="••••" type="password" required />
+                            <input name="password" class="w-full pl-12 pr-4 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface tracking-[0.5em] font-headline transition-all" placeholder="••••" type="password" autocomplete="current-password" required />
                         </div>
                     </div>
 

@@ -83,7 +83,7 @@ builder.Services.AddScoped<IOdemeService, OdemeService>();
 
 // MVC
 builder.Services.AddControllersWithViews()
-    .AddRazorRuntimeCompilation();
+.AddRazorRuntimeCompilation();
 
 // ASP.NET Identity
 builder.Services.AddIdentity<Kullanici, IdentityRole>(options =>
@@ -97,7 +97,7 @@ builder.Services.AddIdentity<Kullanici, IdentityRole>(options =>
 
     // Hesap kilitleme
     options.Lockout.MaxFailedAccessAttempts = 5;
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
 
     // Kullanıcı adı uniq, email isteğe bağlı
     options.User.RequireUniqueEmail = false;
@@ -112,6 +112,9 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LogoutPath = "/Auth/Logout";
     options.AccessDeniedPath = "/Auth/Login";
     options.Cookie.Name = "QRMenuAuth";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
 });
@@ -121,6 +124,16 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 {
     options.ValidationInterval = TimeSpan.Zero;
+});
+
+// Authorization Policies (RBAC)
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireAdmin", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("RequireKitchen", policy => policy.RequireRole("Admin", "Mutfak", "Barista"));
+    options.AddPolicy("RequireCashier", policy => policy.RequireRole("Admin", "Kasa"));
+    options.AddPolicy("RequireWaiter", policy => policy.RequireRole("Admin", "Garson"));
+    options.AddPolicy("RequireStaff", policy => policy.RequireRole("Admin", "Garson", "Kasa", "Mutfak", "Barista"));
 });
 
 // SignalR — Gerçek zamanlı menü güncellemeleri
@@ -161,6 +174,18 @@ builder.Services.AddRateLimiter(options =>
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
             });
     });
+    // Siparis Limiti
+    options.AddPolicy("SiparisLimiti", context =>
+    {
+        var token = context.Request.Cookies["qrmenu_token"] ?? "anonymous";
+        return RateLimitPartition.GetFixedWindowLimiter($"siparis_{token}", _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 3,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
+    });
 
     // Gizli Kurtarma (Sistem Yöneticisi Oluşturma) ekranı için brute-force (kaba kuvvet) engelleme
     // 15 dakikada en fazla 5 deneme yapılabilir (IP bazlı)
@@ -183,8 +208,32 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
+    app.UseStatusCodePagesWithReExecute("/Error/{0}");
     app.UseHsts();
 }
+else
+{
+    app.UseExceptionHandler("/Error");
+    app.UseStatusCodePagesWithReExecute("/Error/{0}");
+}
+
+// Güvenlik Başlıkları (Security Headers)
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    
+    var csp = "default-src 'self'; " +
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; " +
+              "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; " +
+              "img-src 'self' data: https: blob:; " +
+              "media-src 'self' https: blob:; " +
+              "connect-src 'self' wss: https:;";
+    
+    context.Response.Headers.Append("Content-Security-Policy", csp);
+    await next();
+});
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
@@ -193,6 +242,10 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// Güvenlik Olayları Loglayıcı
+app.UseMiddleware<SecurityLogMiddleware>();
+
 app.UseRouting();
 
 // Rate Limiting

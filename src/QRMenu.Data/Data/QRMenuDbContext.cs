@@ -25,6 +25,7 @@ namespace QRMenu.Data.Data
         public DbSet<OyunOdul> OyunOduller => Set<OyunOdul>();
         public DbSet<KazanilanIndirim> KazanilanIndirimler => Set<KazanilanIndirim>();        // Kullanicilar artık Identity üzerinden yönetilmektedir (AspNetUsers tablosu)
         public DbSet<AuditLog> AuditLoglar => Set<AuditLog>();
+        public DbSet<SecurityLog> SecurityLogs => Set<SecurityLog>();
         public DbSet<HappyHour> HappyHourlar => Set<HappyHour>();
         public DbSet<HappyHourUrun> HappyHourUrunler => Set<HappyHourUrun>();
         public DbSet<GunSonuRapor> GunSonuRaporlari => Set<GunSonuRapor>();
