@@ -50,7 +50,8 @@ builder.Services.AddDbContext<QRMenuDbContext>((sp, options) =>
             ?? (rawConnectionString.Contains("pooler.supabase.com", StringComparison.OrdinalIgnoreCase) ? 10 : 100),
         MinPoolSize = 0,
         ConnectionIdleLifetime = 60,
-        ConnectionPruningInterval = 10
+        ConnectionPruningInterval = 10,
+        SslMode = SslMode.Require
     };
 
     options.UseNpgsql(csb.ConnectionString, npgsqlOptions =>

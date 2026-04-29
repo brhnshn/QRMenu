@@ -4,6 +4,12 @@
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
     var seciliUrunIds = ViewBag.SeciliUrunIds as List<int> ?? new();
     var kategoriler = ViewBag.Kategoriler as List<QRMenu.Core.Entities.Kategori> ?? new();
+
+    // Null-safe model değerleri
+    var aktifMi = Model?.AktifMi ?? false;
+    var indirimOrani = Model?.IndirimOrani ?? 10;
+    var baslangicSaati = Model?.BaslangicSaati.ToString(@"hh\:mm") ?? "14:00";
+    var bitisSaati = Model?.BitisSaati.ToString(@"hh\:mm") ?? "17:00";
 }
 
 @section Styles {
@@ -30,8 +36,32 @@
         
         /* Custom Tailwind-like utilities for existing layout compatibility */
         .hh-card { background: white; border-radius: 1rem; border: 1px solid rgba(174, 173, 172, 0.2); padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .hh-input { width: 100%; background: #f2f0f0; border: none; border-radius: 0.5rem; padding: 0.75rem 1rem; font-weight: 500; }
+        .hh-input { width: 100%; background: #f2f0f0; border: none; border-radius: 0.5rem; padding: 0.75rem 1rem; font-weight: 500; font-size: 1rem; }
         .hh-label { font-size: 0.7rem; font-weight: 800; color: #5c5b5b; text-transform: uppercase; margin-left: 0.25rem; letter-spacing: 0.05em; display: block; margin-bottom: 0.25rem; }
+
+        /* Ürün Listesi Kaydırma Alanı */
+        .hh-product-list {
+            max-height: calc(100vh - 300px);
+            min-height: 400px;
+            overflow-y: auto;
+            padding-right: 0.75rem;
+            margin-right: -0.75rem;
+        }
+        .hh-product-list::-webkit-scrollbar { width: 5px; }
+        .hh-product-list::-webkit-scrollbar-track { background: transparent; }
+        .hh-product-list::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+        .hh-product-list::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+
+        /* Sol kolon sabitleme */
+        .sticky-column {
+            position: sticky;
+            top: 2rem;
+            align-self: start;
+        }
+
+        /* Disabled overlay */
+        .hh-disabled { opacity: 0.45; pointer-events: none; filter: grayscale(0.5); transition: opacity 0.3s, filter 0.3s; }
+        .hh-enabled  { opacity: 1; pointer-events: auto; filter: none; transition: opacity 0.3s, filter 0.3s; }
     </style>
 }
 
@@ -73,14 +103,14 @@
             </div>
             <div class="text-right">
                 <p class="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1">Uygulanan İndirim</p>
-                <p class="text-2xl font-black text-stone-900 font-headline" id="liveDiscountText">%@Model.IndirimOrani</p>
+                <p class="text-2xl font-black text-stone-900 font-headline" id="liveDiscountText">%@indirimOrani</p>
             </div>
         </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <!-- Left: Settings -->
-        <div class="lg:col-span-4 space-y-8">
+        <div class="lg:col-span-4 space-y-8 sticky-column">
             <!-- Master Toggle -->
             <section class="bg-stone-100 rounded-2xl p-6 border border-stone-200">
                 <div class="flex items-center justify-between">
@@ -89,46 +119,46 @@
                         <p class="text-xs text-stone-500 font-medium">Tüm indirimleri anında kapat</p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="aktifMi" class="sr-only peer" @(Model.AktifMi ? "checked" : "")>
+                        <input type="checkbox" id="aktifMi" class="sr-only peer" @(aktifMi ? "checked" : "") onchange="toggleSistemDurumu()">
                         <div class="w-14 h-7 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
                     </label>
                 </div>
             </section>
 
             <!-- Time Range -->
-            <section class="bg-white hh-card shadow-sm">
+            <section class="bg-white hh-card shadow-sm" id="timeSection">
                 <h4 class="font-bold text-stone-900 mb-6 flex items-center gap-2 font-headline">
                     <span class="material-symbols-outlined text-primary">schedule</span> Zaman Aralığı Seçimi
                 </h4>
                 <div class="space-y-4">
                     <div class="space-y-1">
                         <label class="hh-label">Başlangıç Saati</label>
-                        <input type="time" id="baslangicSaati" class="hh-input" value="@Model.BaslangicSaati" />
+                        <input type="time" id="baslangicSaati" class="hh-input" value="@baslangicSaati" />
                     </div>
                     <div class="space-y-1">
                         <label class="hh-label">Bitiş Saati</label>
-                        <input type="time" id="bitisSaati" class="hh-input" value="@Model.BitisSaati" />
+                        <input type="time" id="bitisSaati" class="hh-input" value="@bitisSaati" />
                     </div>
                 </div>
             </section>
 
             <!-- Preview Card -->
-            <section class="bg-primary text-on-primary rounded-2xl p-6 shadow-xl shadow-primary/10">
+            <section class="bg-primary text-on-primary rounded-2xl p-6 shadow-xl shadow-primary/10" id="previewSection">
                 <h4 class="font-bold mb-4 flex items-center gap-2 font-headline text-white">
                     <span class="material-symbols-outlined text-white">calculate</span> Canlı Önizleme
                 </h4>
                 <div class="bg-white/10 rounded-xl p-4 mb-4 backdrop-blur-sm">
                     <div class="flex justify-between text-sm mb-1 opacity-80 text-white font-medium"><span>Normal Fiyat</span><span>₺100.00</span></div>
-                    <div class="flex justify-between text-sm mb-2 font-bold text-orange-200"><span>İndirim (<span id="previewOran">%@Model.IndirimOrani</span>)</span><span id="previewMiktar">-₺@Model.IndirimOrani.ToString("F2")</span></div>
+                    <div class="flex justify-between text-sm mb-2 font-bold text-orange-200"><span>İndirim (<span id="previewOran">%@indirimOrani</span>)</span><span id="previewMiktar">-₺@indirimOrani.ToString("F2")</span></div>
                     <div class="h-px bg-white/20 mb-2"></div>
-                    <div class="flex justify-between text-xl font-black font-headline text-white"><span>Net Fiyat</span><span id="previewSonuc">₺@((100 - Model.IndirimOrani).ToString("F2"))</span></div>
+                    <div class="flex justify-between text-xl font-black font-headline text-white"><span>Net Fiyat</span><span id="previewSonuc">₺@((100 - indirimOrani).ToString("F2"))</span></div>
                 </div>
                 <p class="text-[10px] uppercase tracking-widest font-black opacity-60 text-center text-white">Örnek 100₺'lik ürün baz alınmıştır.</p>
             </section>
         </div>
 
         <!-- Right: Products -->
-        <div class="lg:col-span-8 space-y-8">
+        <div class="lg:col-span-8 space-y-8" id="rightSection">
             <!-- Discount Slider -->
             <section class="bg-white hh-card shadow-sm">
                 <div class="flex flex-wrap items-center justify-between mb-8 gap-4">
@@ -138,10 +168,10 @@
                     </div>
                     <div class="bg-stone-100 px-6 py-3 rounded-2xl flex items-center gap-2 border border-stone-200">
                         <span class="text-2xl font-black text-primary font-headline">%</span>
-                        <input type="number" id="indirimOrani" class="bg-transparent border-none p-0 w-12 text-2xl font-black text-stone-900 focus:ring-0 font-headline" value="@Model.IndirimOrani" />
+                        <input type="number" id="indirimOrani" class="bg-transparent border-none p-0 w-12 text-2xl font-black text-stone-900 focus:ring-0 font-headline" value="@indirimOrani" />
                     </div>
                 </div>
-                <input type="range" id="indirimSlider" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-primary" min="1" max="99" value="@Model.IndirimOrani" />
+                <input type="range" id="indirimSlider" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-primary" min="1" max="99" value="@indirimOrani" />
                 <div class="flex justify-between mt-3 text-[10px] font-black text-stone-400 font-headline uppercase tracking-widest">
                     <span>%0</span><span>%25</span><span>%50</span><span>%75</span><span>%100</span>
                 </div>
@@ -157,7 +187,7 @@
                     </div>
                 </div>
                 
-                <div class="space-y-8">
+                <div class="space-y-8 hh-product-list">
                     @foreach (var kat in kategoriler)
                     {
                         <div>
@@ -192,7 +222,71 @@
 </form>
 
 @section Scripts {
+    <!-- Toast Notification Container -->
+    <div id="hhToast" style="
+        position:fixed; bottom:2rem; right:2rem; z-index:9999;
+        display:flex; flex-direction:column; gap:0.5rem; pointer-events:none;
+    "></div>
+
     <script>
+        // ══════════════════════════════════════════════════════════════
+        // TOAST SİSTEMİ
+        // ══════════════════════════════════════════════════════════════
+        function showToast(message, type) {
+            const colors = {
+                success: { bg: '#166534', icon: 'check_circle' },
+                error:   { bg: '#991b1b', icon: 'error'        },
+                warning: { bg: '#92400e', icon: 'warning'      },
+                info:    { bg: '#1e40af', icon: 'info'         },
+            };
+            const cfg = colors[type] || colors.info;
+
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                background:${cfg.bg}; color:#fff;
+                padding:0.85rem 1.25rem; border-radius:0.75rem;
+                display:flex; align-items:center; gap:0.6rem;
+                font-family:'Be Vietnam Pro',sans-serif; font-size:0.875rem; font-weight:600;
+                box-shadow:0 4px 20px rgba(0,0,0,0.18);
+                pointer-events:auto;
+                opacity:0; transform:translateY(12px);
+                transition:opacity 0.25s,transform 0.25s;
+                max-width:380px; word-break:break-word;
+            `;
+            toast.innerHTML = `<span class="material-symbols-outlined" style="font-size:1.1rem;">${cfg.icon}</span><span>${message}</span>`;
+            document.getElementById('hhToast').appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateY(0)';
+            });
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(12px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // SİSTEM DURUMU TOGGLE
+        // ══════════════════════════════════════════════════════════════
+        function toggleSistemDurumu() {
+            const aktif = document.getElementById('aktifMi').checked;
+            const sections = ['timeSection', 'previewSection', 'rightSection'];
+            sections.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.toggle('hh-disabled', !aktif);
+                    el.classList.toggle('hh-enabled', aktif);
+                }
+            });
+            durumGoster();
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // CANLI DURUM GÖSTERGESİ
+        // ══════════════════════════════════════════════════════════════
         function durumGoster() {
             const bas = document.getElementById('baslangicSaati').value;
             const bit = document.getElementById('bitisSaati').value;
@@ -210,6 +304,14 @@
                 return;
             }
 
+            if (!bas || !bit) {
+                statusText.innerText = 'Yapılandırılmadı';
+                statusText.className = 'text-orange-500';
+                statusDetails.innerText = 'Lütfen saat aralığı belirleyin.';
+                dot.className = 'absolute -top-1 -right-1 w-4 h-4 bg-orange-400 rounded-full border-2 border-white';
+                return;
+            }
+
             const now = new Date();
             const time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
 
@@ -221,15 +323,19 @@
             } else {
                 statusText.innerText = 'Beklemede';
                 statusText.className = 'text-orange-500';
-                statusDetails.innerText = `Sıradaki indirim dilimi: ${bas}`;
+                statusDetails.innerText = `Sıradaki indirim dilimi: ${bas} - ${bit}`;
                 dot.className = 'absolute -top-1 -right-1 w-4 h-4 bg-orange-400 rounded-full border-2 border-white';
             }
         }
 
+        // İlk yükleme
+        toggleSistemDurumu();
         durumGoster();
         setInterval(durumGoster, 30000);
 
-        // Preview Sync
+        // ══════════════════════════════════════════════════════════════
+        // ÖNİZLEME SENKRONLAMA
+        // ══════════════════════════════════════════════════════════════
         const oranInp = document.getElementById('indirimOrani');
         const sliderInp = document.getElementById('indirimSlider');
         const previewOran = document.getElementById('previewOran');
@@ -250,6 +356,9 @@
         oranInp.addEventListener('input', () => updatePreview(oranInp.value));
         sliderInp.addEventListener('input', () => updatePreview(sliderInp.value));
 
+        // ══════════════════════════════════════════════════════════════
+        // ÜRÜN SEÇİM YARDIMCILARI
+        // ══════════════════════════════════════════════════════════════
         function toggleUrunRow(cb, id) {
             const label = document.getElementById('label-' + id);
             if (cb.checked) {
@@ -267,22 +376,41 @@
             });
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // FORM GÖNDERİMİ
+        // ══════════════════════════════════════════════════════════════
         document.getElementById('happyHourForm').addEventListener('submit', async function (e) {
             e.preventDefault();
             const btn = document.getElementById('saveBtn');
             const orgText = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> Kaydediliyor...';
+            const aktifMi = document.getElementById('aktifMi').checked;
 
             const baslangic = document.getElementById('baslangicSaati').value;
             const bitis = document.getElementById('bitisSaati').value;
+            const oran = parseFloat(oranInp.value) || 0;
             const seciliUrunler = Array.from(document.querySelectorAll('input[name="urunSecim"]:checked')).map(cb => parseInt(cb.value));
 
+            // ── Client-side validasyon (sadece aktifse sıkı kontrol) ──
+            if (aktifMi) {
+                if (!baslangic || !bitis) {
+                    showToast('Başlangıç ve bitiş saatlerini belirleyin.', 'error');
+                    return;
+                }
+                if (oran < 1 || oran > 99) {
+                    showToast('İndirim oranı 1-99 arasında olmalıdır.', 'error');
+                    return;
+                }
+            }
+
+            // ── Kaydet ──
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> Kaydediliyor...';
+
             const payload = {
-                baslangicSaati: baslangic,
-                bitisSaati: bitis,
-                indirimOrani: parseFloat(oranInp.value),
-                aktifMi: document.getElementById('aktifMi').checked,
+                baslangicSaati: baslangic || null,
+                bitisSaati: bitis || null,
+                indirimOrani: oran,
+                aktifMi: aktifMi,
                 urunIds: seciliUrunler
             };
 
@@ -296,6 +424,7 @@
                 if (d.success) {
                     btn.innerHTML = '<span class="material-symbols-outlined">check_circle</span> Kaydedildi!';
                     btn.classList.replace('bg-primary', 'bg-emerald-600');
+                    showToast(d.message || 'Başarıyla kaydedildi.', 'success');
                     setTimeout(() => {
                         btn.disabled = false;
                         btn.innerHTML = orgText;
@@ -303,12 +432,12 @@
                         durumGoster();
                     }, 2000);
                 } else {
-                    alert('Hata: ' + d.message);
+                    showToast(d.message || 'Bir hata oluştu.', 'error');
                     btn.disabled = false;
                     btn.innerHTML = orgText;
                 }
             } catch (err) {
-                alert('Bağlantı hatası oluştu.');
+                showToast('Bağlantı hatası oluştu. Lütfen tekrar deneyin.', 'error');
                 btn.disabled = false;
                 btn.innerHTML = orgText;
             }

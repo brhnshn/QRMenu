@@ -22,6 +22,10 @@
             --tw-ring-color: #a2371833 !important;
             border-color: #a23718 !important;
         }
+
+        @@media (max-width: 768px) {
+            .table-responsive-none { display: none; }
+        }
     </style>
 }
 
@@ -29,10 +33,10 @@
     <!-- Page Header -->
     <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
-            <h2 class="font-headline text-4xl font-extrabold tracking-tight text-on-surface mb-2">Kullanıcı Yönetimi</h2>
-            <p class="text-outline text-lg">Personel hesaplarını ve rollerini yönetin</p>
+            <h2 class="font-headline text-3xl md:text-4xl font-extrabold tracking-tight text-on-surface mb-2">Kullanıcı Yönetimi</h2>
+            <p class="text-outline text-base md:text-lg">Personel hesaplarını ve rollerini yönetin</p>
         </div>
-        <button onclick="modalAc('ekle')" class="bg-primary text-on-primary flex items-center gap-2 px-6 py-3 rounded-xl font-headline font-bold hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-primary/20">
+        <button onclick="modalAc('ekle')" class="bg-primary text-on-primary flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-headline font-bold hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-primary/20 border-0 w-full md:w-auto">
             <span class="material-symbols-outlined">add</span>
             Yeni Kullanıcı
         </button>
@@ -42,22 +46,22 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
         <div class="lg:col-span-4 bg-white p-1 rounded-2xl flex items-center px-4 shadow-sm border border-stone-200">
             <span class="material-symbols-outlined text-outline">search</span>
-            <input id="searchInput" oninput="filtrele(this.value)" class="w-full bg-transparent border-none focus:ring-0 py-4 px-3 text-on-surface placeholder:text-outline" placeholder="Kullanıcı ara..." type="text" />
+            <input id="searchInput" oninput="filtrele(this.value)" class="w-full bg-transparent border-none focus:ring-0 py-3.5 px-3 text-on-surface placeholder:text-outline text-sm md:text-base" placeholder="Kullanıcı ara..." type="text" />
         </div>
 
-        <div class="lg:col-span-8 flex flex-wrap items-center gap-3" id="rolFilter">
-            <button data-rol="all" class="pill-btn active px-6 py-3 rounded-full bg-secondary-container text-on-secondary-container font-headline font-semibold text-sm transition-colors">Tümü</button>
-            <button data-rol="Admin" class="pill-btn px-6 py-3 rounded-full bg-stone-100 text-outline font-headline font-medium text-sm hover:bg-stone-200 transition-colors">Admin</button>
-            <button data-rol="Garson" class="pill-btn px-6 py-3 rounded-full bg-stone-100 text-outline font-headline font-medium text-sm hover:bg-stone-200 transition-colors">Garson</button>
-            <button data-rol="Kasa" class="pill-btn px-6 py-3 rounded-full bg-stone-100 text-outline font-headline font-medium text-sm hover:bg-stone-200 transition-colors">Kasa</button>
-            <button data-rol="Mutfak" class="pill-btn px-6 py-3 rounded-full bg-stone-100 text-outline font-headline font-medium text-sm hover:bg-stone-200 transition-colors">Mutfak</button>
+        <div class="lg:col-span-8 flex overflow-x-auto md:flex-wrap items-center gap-3 pb-2 md:pb-0 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0" id="rolFilter">
+            <button data-rol="all" class="pill-btn active px-6 py-2.5 rounded-full bg-secondary-container text-on-secondary-container font-headline font-semibold text-sm transition-colors whitespace-nowrap border-0">Tümü</button>
+            <button data-rol="Admin" class="pill-btn px-6 py-2.5 rounded-full bg-stone-100 text-outline font-headline font-medium text-sm hover:bg-stone-200 transition-colors whitespace-nowrap border-0">Admin</button>
+            <button data-rol="Garson" class="pill-btn px-6 py-2.5 rounded-full bg-stone-100 text-outline font-headline font-medium text-sm hover:bg-stone-200 transition-colors whitespace-nowrap border-0">Garson</button>
+            <button data-rol="Kasa" class="pill-btn px-6 py-2.5 rounded-full bg-stone-100 text-outline font-headline font-medium text-sm hover:bg-stone-200 transition-colors whitespace-nowrap border-0">Kasa</button>
+            <button data-rol="Mutfak" class="pill-btn px-6 py-2.5 rounded-full bg-stone-100 text-outline font-headline font-medium text-sm hover:bg-stone-200 transition-colors whitespace-nowrap border-0">Mutfak</button>
         </div>
     </div>
 
     <!-- Data Table Container -->
     <div class="bg-white rounded-[2rem] overflow-hidden shadow-sm border border-stone-200">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+        <div class="w-full">
+            <table class="w-full text-left border-collapse table-responsive-none">
                 <thead>
                     <tr class="bg-stone-50">
                         <th class="px-8 py-5 text-xs font-bold text-outline tracking-widest uppercase font-headline">Kullanıcı Adı</th>
@@ -71,6 +75,11 @@
                     <!-- JS ile dolacak -->
                 </tbody>
             </table>
+
+            <!-- Mobile User Cards -->
+            <div id="kullaniciMobileCards" class="md:hidden divide-y divide-stone-100">
+                <!-- JS ile dolacak -->
+            </div>
         </div>
         <!-- Pagination UI -->
         <div class="px-8 py-6 flex items-center justify-between border-t border-stone-100 bg-stone-50/50" id="pagination">
@@ -246,25 +255,21 @@
         } catch(e) { console.error("Veri yüklenemedi", e); }
     }
 
-    function tabloGuncelle() {
-        const arama = document.getElementById('searchInput').value.toLowerCase();
-        const filteredData = tumKullanicilar.filter(k => {
-            const rolOk = aktifRolFilter === 'all' || k.rol === aktifRolFilter;
-            const aramaOk = !arama || k.kullaniciAdi.toLowerCase().includes(arama) || (k.adSoyad && k.adSoyad.toLowerCase().includes(arama));
-            return rolOk && aramaOk;
-        });
-
         const tbody = document.getElementById('kullaniciBody');
-        document.getElementById('totalCountText').innerText = `Toplam ${filteredData.length} kullanıcı gösteriliyor`;
+        const mobileContainer = document.getElementById('kullaniciMobileCards');
+        document.getElementById('totalCountText').innerText = `Toplam ${filteredData.length} kullanıcı`;
 
         const btn2 = document.getElementById('btnPage2');
         if(filteredData.length > 10) { btn2.classList.remove('hidden'); } else { btn2.classList.add('hidden'); }
 
         if (filteredData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="px-8 py-12 text-center text-outline font-medium">📭 Kullanıcı bulunamadı.</td></tr>';
+            const emptyHtml = '<tr><td colspan="5" class="px-8 py-12 text-center text-outline font-medium">📭 Kullanıcı bulunamadı.</td></tr>';
+            tbody.innerHTML = emptyHtml;
+            if (mobileContainer) mobileContainer.innerHTML = '<div class="p-12 text-center text-outline font-medium">📭 Kullanıcı bulunamadı.</div>';
             return;
         }
 
+        // Table Rendering
         tbody.innerHTML = filteredData.map(function(k) {
             const init = k.adSoyad ? k.adSoyad.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase() : '??';
             const rolStili = rolRenkler[k.rol] || 'bg-stone-100 text-stone-600';
@@ -298,6 +303,40 @@
                     </td>
                 </tr>`;
         }).join('');
+
+        // Mobile Card Rendering
+        if (mobileContainer) {
+            mobileContainer.innerHTML = filteredData.map(function(k) {
+                const init = k.adSoyad ? k.adSoyad.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase() : '??';
+                const rolStili = rolRenkler[k.rol] || 'bg-stone-100 text-stone-600';
+                return `
+                    <div class="p-5 flex flex-col gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">${init}</div>
+                            <div class="flex-1">
+                                <div class="flex justify-between items-start">
+                                    <span class="font-headline font-bold text-on-surface">${k.adSoyad || ''}</span>
+                                    <span class="px-2 py-1 rounded-lg ${rolStili} text-[10px] font-bold uppercase tracking-wider">${k.rol}</span>
+                                </div>
+                                <span class="text-xs text-outline font-medium">@@${k.kullaniciAdi}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between border-t border-stone-50 pt-4">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full ${k.aktifMi ? 'bg-emerald-500' : 'bg-stone-300'}"></span>
+                                <span class="text-xs font-semibold ${k.aktifMi ? 'text-emerald-700' : 'text-stone-400'}">${k.aktifMi ? 'Aktif' : 'Pasif'}</span>
+                            </div>
+                            <div class="flex gap-1">
+                                ${k.rol === 'Admin' ? '' : `
+                                    <button onclick='duzenleAc(${JSON.stringify(k)})' class="p-2 text-outline hover:text-primary border-0 bg-transparent"><span class="material-symbols-outlined text-xl">edit</span></button>
+                                    <button onclick="kullaniciToggle('${k.id}')" class="p-2 text-outline hover:text-secondary border-0 bg-transparent"><span class="material-symbols-outlined text-xl">${k.aktifMi ? 'pause_circle' : 'play_circle'}</span></button>
+                                    <button onclick="kullaniciSil('${k.id}', '${k.kullaniciAdi}')" class="p-2 text-outline hover:text-error border-0 bg-transparent"><span class="material-symbols-outlined text-xl">delete</span></button>
+                                `}
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
     }
 
     function statlariYukle() {

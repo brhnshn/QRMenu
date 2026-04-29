@@ -27,6 +27,7 @@ namespace QRMenu.Data.Data
         public DbSet<AuditLog> AuditLoglar => Set<AuditLog>();
         public DbSet<HappyHour> HappyHourlar => Set<HappyHour>();
         public DbSet<HappyHourUrun> HappyHourUrunler => Set<HappyHourUrun>();
+        public DbSet<GunSonuRapor> GunSonuRaporlari => Set<GunSonuRapor>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -276,6 +277,18 @@ namespace QRMenu.Data.Data
                     .WithMany()
                     .HasForeignKey(e => e.UrunId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ===== GUN SONU RAPOR =====
+            modelBuilder.Entity<GunSonuRapor>(entity =>
+            {
+                entity.ToTable("GunSonuRaporlari");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Tarih).IsRequired();
+                entity.Property(e => e.ToplamCiro).HasPrecision(18, 2);
+                entity.Property(e => e.OdemeTipleriJson).HasColumnType("text");
+                entity.Property(e => e.KapatanKullaniciId).HasMaxLength(450);
+                entity.HasIndex(e => e.Tarih).IsUnique();
             });
 
             // ===== SEED DATA =====

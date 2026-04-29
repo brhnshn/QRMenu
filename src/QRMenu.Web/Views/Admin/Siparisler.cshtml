@@ -2,6 +2,8 @@
 @{
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
     ViewData["Title"] = "Sipariş Arşivi ve Raporlama";
+    ViewData["ActivePage"] = "Siparisler";
+    ViewData["PageTitle"] = "Sipariş Arşivi";
     
     var turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(
         OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
@@ -35,151 +37,197 @@
 }
 
 <style>
-    /* Raporlama Kartları */
-    .report-card { background: white; border-radius: 1rem; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s; height: 100%; display: flex; align-items: center; padding: 1.5rem; }
-    .report-card:hover { transform: translateY(-3px); }
-    .report-icon { width: 3.5rem; height: 3.5rem; border-radius: 1rem; display: flex; justify-content: center; align-items: center; font-size: 1.5rem; margin-right: 1.25rem; }
-    .report-info h6 { font-size: 0.85rem; color: #6c757d; font-weight: 600; text-transform: uppercase; margin-bottom: 0.3rem; letter-spacing: 0.5px; }
-    .report-info h3 { font-size: 1.5rem; font-weight: 800; color: #212529; margin: 0; }
+    .editorial-shadow { box-shadow: 0 12px 32px rgba(46, 47, 47, 0.04); }
+    .scale-98-active-transition:active { transform: scale(0.98); }
 
-    /* İkon Renkleri */
-    .icon-primary { background: #e7f1ff; color: #0d6efd; }
-    .icon-success { background: #e0f8e9; color: #198754; }
-    .icon-danger { background: #fee2e2; color: #dc3545; }
-
-    /* Filtre Barı Modern */
-    .filter-section { background: white; border-radius: 1rem; padding: 1.25rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 1.5rem; }
-    .filter-input { border: 1px solid #e9ecef; border-radius: 0.5rem; padding: 0.5rem 1rem; font-size: 0.9rem; color: #495057; outline: none; background: #fafafa; }
-    .filter-input:focus { border-color: #0d6efd; background: white; }
-    
-    /* Modern Tablo */
-    .table-card { background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
-    .modern-table { width: 100%; border-collapse: separate; border-spacing: 0 0.5rem; }
-    .modern-table th { font-size: 0.85rem; color: #6c757d; text-transform: uppercase; font-weight: 600; padding: 0.75rem 1rem; border-bottom: 2px solid #f8f9fa; }
-    .modern-table td { padding: 1rem; background: #fff; vertical-align: middle; border-top: 1px solid rgba(0,0,0,0.02); border-bottom: 1px solid rgba(0,0,0,0.02); font-size: 0.95rem; }
-    .modern-table tr { box-shadow: 0 2px 5px rgba(0,0,0,0.01); transition: all 0.2s; }
-    .modern-table tr:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.04); background-color: #fafbfc; position: relative; z-index: 10; }
-    .modern-table td:first-child { border-left: 1px solid rgba(0,0,0,0.02); border-top-left-radius: 0.5rem; border-bottom-left-radius: 0.5rem; }
-    .modern-table td:last-child { border-right: 1px solid rgba(0,0,0,0.02); border-top-right-radius: 0.5rem; border-bottom-right-radius: 0.5rem; }
-
-    /* Durum Badge'leri */
-    .badge-durum { padding: 0.4rem 0.8rem; border-radius: 50rem; font-weight: 600; font-size: 0.75rem; letter-spacing: 0.3px; display: inline-block; text-align: center; min-width: 90px; }
-    .bg-soft-primary { background-color: #e7f1ff; color: #0d6efd; border: 1px solid #cce5ff; }
-    .bg-soft-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-    .bg-soft-info { background-color: #cff4fc; color: #055160; border: 1px solid #b6effb; }
-    .bg-soft-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
-    .bg-soft-danger { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
-    .bg-soft-secondary { background-color: #e2e3e5; color: #41464b; border: 1px solid #d3d6d8; }
-
-    .btn-detay { background: transparent; color: #0d6efd; border: 1px solid #0d6efd; border-radius: 50rem; padding: 0.3rem 1rem; font-size: 0.8rem; font-weight: 600; transition: 0.2s; cursor: pointer; }
-    .btn-detay:hover { background: #0d6efd; color: white; }
+    @@media print {
+        aside, header, nav, .flex-wrap, button, .material-symbols-outlined, .pagination, #filterArama, .bg-surface-container-low, .grid {
+            display: none !important;
+        }
+        body, html, main, .flex-1 {
+            height: auto !important;
+            overflow: visible !important;
+            display: block !important;
+            background: white !important;
+        }
+        .p-4.md:p-8 {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        .hidden.md:block {
+            display: block !important;
+        }
+        .bg-surface-container-lowest {
+            background: white !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        table {
+            width: 100% !important;
+            border: 1px solid #eee !important;
+        }
+        th, td {
+            border-bottom: 1px solid #eee !important;
+        }
+        .siparis-row {
+            display: table-row !important;
+        }
+        /* İstatistikleri gizlemek istemiyorsanız .grid'i yukarıdan kaldırabilirsiniz, 
+           ancak çıktı genellikle sadece liste için istenir. */
+    }
 </style>
 
-<!-- İSTATİSTİK KARTLARI -->
-<div class="row g-4 mb-4">
-    <div class="col-md-4">
-        <div class="report-card">
-            <div class="report-icon icon-primary"><i class="bi bi-basket"></i></div>
-            <div class="report-info">
-                <h6>BUGÜN GELEN SİPARİŞ</h6>
-                <h3>@bugunToplamSayi <span style="font-size:1rem;color:#adb5bd;font-weight:500;">Adet</span></h3>
-            </div>
+<div class="p-4 md:p-8 space-y-8">
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+            <h2 class="text-3xl font-extrabold font-headline text-on-surface tracking-tight">Sipariş Arşivi</h2>
+            <p class="text-on-surface-variant mt-1">Geçmiş siparişleri inceleyin ve raporları görüntüleyin.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="window.print()" class="flex items-center space-x-2 bg-surface-container-lowest text-on-surface px-4 py-2.5 rounded-xl border border-outline-variant/20 font-semibold text-sm editorial-shadow hover:bg-surface-container transition-colors">
+                <span class="material-symbols-outlined text-lg">download</span>
+                <span>Dışa Aktar</span>
+            </button>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="report-card">
-            <div class="report-icon icon-success"><i class="bi bi-wallet2"></i></div>
-            <div class="report-info">
-                <h6>GÜNLÜK NET CİRO (ÖDENMİŞ)</h6>
-                <h3>@bugunCiro.ToString("N2") ₺</h3>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="report-card">
-            <div class="report-icon icon-danger"><i class="bi bi-x-octagon"></i></div>
-            <div class="report-info">
-                <h6>TÜM ZAMANLAR İPTAL/İADE</h6>
-                <h3>@iptalIadeSayi <span style="font-size:1rem;color:#adb5bd;font-weight:500;">İşlem (@iptalIadeCiro.ToString("N0") ₺)</span></h3>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- FİLTRE BARI -->
-<div class="filter-section d-flex flex-wrap gap-3 align-items-center justify-content-between">
-    <div class="d-flex flex-wrap gap-3 align-items-center">
-        <div>
-            <label class="form-label small fw-bold text-muted mb-1 d-block"><i class="bi bi-calendar"></i> Tarih Filtresi</label>
-            <select class="filter-input" id="filterTarih" onchange="filtreleTablo()">
-                <option value="all">Tüm Zamanlar</option>
-                <option value="today" selected>Sadece Bugün</option>
-                <option value="yesterday">Dün</option>
-            </select>
+    <!-- Stats Bento Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Bugünün Siparişleri -->
+        <div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow relative overflow-hidden group border border-surface-container">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Bugünün Siparişleri</p>
+                    <h3 class="text-4xl font-extrabold text-on-surface mt-2 font-headline">@bugunToplamSayi <span class="text-lg font-semibold text-on-surface-variant">Adet</span></h3>
+                </div>
+                <div class="p-3 bg-primary/10 rounded-xl text-primary">
+                    <span class="material-symbols-outlined text-2xl">receipt_long</span>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center text-xs text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined text-sm mr-1">history</span>
+                <span>Sadece bugünkü veriler</span>
+            </div>
+            <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-primary/5 rounded-full opacity-50 group-hover:scale-110 transition-transform"></div>
         </div>
-        <div>
-            <label class="form-label small fw-bold text-muted mb-1 d-block"><i class="bi bi-tag"></i> Durum Filtresi</label>
-            <select class="filter-input" id="filterDurum" onchange="filtreleTablo()">
-                <option value="all">Tüm Durumlar</option>
-                <option value="bekleyen">Aktif / Tamamlanmamış</option>
-                <option value="TamOdendi">Tam Ödenenler</option>
-                <option value="Iptal">İptal Edilenler</option>
-            </select>
-        </div>
-        <div>
-            <label class="form-label small fw-bold text-muted mb-1 d-block"><i class="bi bi-grid"></i> Masa Filtresi</label>
-            <select class="filter-input" id="filterMasa" onchange="filtreleTablo()">
-                <option value="all">Tüm Masalar</option>
-                @foreach (var m in masalar)
-                {
-                    <option value="@m.Id">Masa @m.MasaNo</option>
-                }
-            </select>
-        </div>
-    </div>
-    <div class="ms-auto mt-3 mt-md-0">
-        <button class="btn btn-outline-secondary me-2" onclick="window.location.reload()"><i class="bi bi-arrow-clockwise"></i> Yenile</button>
-        <div class="input-group d-inline-flex" style="width: 250px;">
-            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
-            <input type="text" id="filterArama" onkeyup="filtreleTablo()" class="form-control border-start-0 ps-0" placeholder="Sipariş No (Örn: 123)" style="background:#fafafa;">
-        </div>
-    </div>
-</div>
 
-<!-- VERİ TABLOSU -->
-<div class="table-card">
-    <h5 class="fw-bold mb-3"><i class="bi bi-list-columns-reverse text-primary me-2"></i> Sipariş Arşivi</h5>
-    <div class="table-responsive" style="min-height: 300px;">
-        <table class="modern-table">
+        <!-- Günlük Net Gelir -->
+        <div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow relative overflow-hidden group border border-surface-container">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Günlük Net Gelir</p>
+                    <h3 class="text-4xl font-extrabold text-on-surface mt-2 font-headline">₺@bugunCiro.ToString("N0")<span class="text-lg font-semibold text-on-surface-variant">,@((bugunCiro % 1).ToString("00"))</span></h3>
+                </div>
+                <div class="p-3 bg-secondary/10 rounded-xl text-secondary">
+                    <span class="material-symbols-outlined text-2xl">payments</span>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center text-xs text-green-600 font-bold">
+                <span class="material-symbols-outlined text-sm mr-1">trending_up</span>
+                <span>Tamamlanmış ödemeler</span>
+            </div>
+            <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-secondary/5 rounded-full opacity-50 group-hover:scale-110 transition-transform"></div>
+        </div>
+
+        <!-- Tüm Zamanlar İptal/İade -->
+        <div class="bg-surface-container-lowest p-6 rounded-xl editorial-shadow relative overflow-hidden group border border-surface-container">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Tüm Zamanlar İptal/İade</p>
+                    <div class="mt-2">
+                        <h3 class="text-2xl font-extrabold text-on-surface font-headline">@iptalIadeSayi <span class="text-base font-semibold text-on-surface-variant">İşlem</span></h3>
+                        <p class="text-xl font-bold text-error mt-1">₺@iptalIadeCiro.ToString("N0")</p>
+                    </div>
+                </div>
+                <div class="p-3 bg-error/10 rounded-xl text-error">
+                    <span class="material-symbols-outlined text-2xl">cancel</span>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center text-xs text-on-surface-variant font-medium">
+                <span class="material-symbols-outlined text-sm mr-1">history</span>
+                <span>Tüm zamanların verisi</span>
+            </div>
+            <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-error/5 rounded-full opacity-50 group-hover:scale-110 transition-transform"></div>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="bg-surface-container-low p-4 rounded-2xl flex flex-wrap items-center gap-4 border border-surface-container">
+        <div class="flex-1 min-w-[200px]">
+            <div class="relative">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-lg">search</span>
+                <input id="filterArama" onkeyup="filtreleTablo()" class="w-full pl-10 pr-4 py-2.5 bg-surface-container-lowest border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-sm font-medium" placeholder="Sipariş No Ara..." type="text"/>
+            </div>
+        </div>
+        <div class="flex items-center flex-wrap gap-3">
+            <!-- Tarih Filtresi -->
+            <div class="flex items-center space-x-2 bg-surface-container-lowest px-3 py-1.5 rounded-xl border border-surface-container-high">
+                <span class="material-symbols-outlined text-on-surface-variant/50 text-lg">calendar_today</span>
+                <select id="filterTarih" onchange="filtreleTablo()" class="bg-transparent border-none focus:ring-0 text-xs font-bold text-on-surface cursor-pointer py-1 pl-0 pr-8 uppercase tracking-wider">
+                    <option value="all" selected>Tüm Zamanlar</option>
+                    <option value="today">Bugün</option>
+                    <option value="yesterday">Dün</option>
+                </select>
+            </div>
+            <!-- Durum Filtresi -->
+            <div class="flex items-center space-x-2 bg-surface-container-lowest px-3 py-1.5 rounded-xl border border-surface-container-high">
+                <span class="material-symbols-outlined text-on-surface-variant/50 text-lg">filter_alt</span>
+                <select id="filterDurum" onchange="filtreleTablo()" class="bg-transparent border-none focus:ring-0 text-xs font-bold text-on-surface cursor-pointer py-1 pl-0 pr-8 uppercase tracking-wider">
+                    <option value="all">Tüm Durumlar</option>
+                    <option value="bekleyen">Aktif / Bekleyen</option>
+                    <option value="TamOdendi">Tamamlananlar</option>
+                    <option value="Iptal">İptal Edilenler</option>
+                </select>
+            </div>
+            <!-- Masa Filtresi -->
+            <div class="flex items-center space-x-2 bg-surface-container-lowest px-3 py-1.5 rounded-xl border border-surface-container-high">
+                <span class="material-symbols-outlined text-on-surface-variant/50 text-lg">table_restaurant</span>
+                <select id="filterMasa" onchange="filtreleTablo()" class="bg-transparent border-none focus:ring-0 text-xs font-bold text-on-surface cursor-pointer py-1 pl-0 pr-8 uppercase tracking-wider">
+                    <option value="all">Tüm Masalar</option>
+                    @foreach (var m in masalar)
+                    {
+                        <option value="@m.Id">Masa @m.MasaNo</option>
+                    }
+                </select>
+            </div>
+            <button onclick="window.location.reload()" class="p-2.5 bg-surface-container-lowest text-on-surface-variant rounded-xl border border-surface-container-high hover:text-primary transition-colors editorial-shadow">
+                <span class="material-symbols-outlined text-lg">restart_alt</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Order Table (Desktop) -->
+    <div class="hidden md:block bg-surface-container-lowest rounded-2xl overflow-hidden editorial-shadow border border-surface-container">
+        <table class="w-full text-left border-collapse">
             <thead>
-                <tr>
-                    <th>Sipariş No</th>
-                    <th>Tarih & Saat</th>
-                    <th>Masa Bilgisi</th>
-                    <th>Tutar</th>
-                    <th>Ödeme</th>
-                    <th>Durum</th>
-                    <th class="text-end">İşlem</th>
+                <tr class="bg-surface-container-low/50 border-b border-surface-container">
+                    <th class="px-6 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Sipariş No</th>
+                    <th class="px-6 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Tarih & Saat</th>
+                    <th class="px-6 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Masa Bilgisi</th>
+                    <th class="px-6 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Tutar</th>
+                    <th class="px-6 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Ödeme</th>
+                    <th class="px-6 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Durum</th>
+                    <th class="px-6 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] text-right">İşlem</th>
                 </tr>
             </thead>
-            <tbody id="siparisTbody">
+            <tbody class="divide-y divide-surface-container" id="siparisTbody">
                 @foreach (var siparis in Model)
                 {
-                    string durumClass = "bg-soft-secondary";
+                    string durumClass = "bg-stone-100 text-stone-600";
                     string durumText = siparis.Durum.ToString();
                     bool isBekleyen = false;
 
                     switch (siparis.Durum)
                     {
-                        case QRMenu.Core.Enums.SiparisDurum.Onaylandi: durumClass = "bg-soft-primary"; durumText = "Yeni Alındı"; isBekleyen = true; break;
-                        case QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor: durumClass = "bg-soft-warning"; durumText = "Hazırlanıyor"; isBekleyen = true; break;
-                        case QRMenu.Core.Enums.SiparisDurum.Hazir: durumClass = "bg-soft-info"; durumText = "Servise Hazır"; isBekleyen = true; break;
-                        case QRMenu.Core.Enums.SiparisDurum.TeslimEdildi: durumClass = "bg-soft-success"; durumText = "Masaya Bırakıldı"; isBekleyen = true; break;
-                        case QRMenu.Core.Enums.SiparisDurum.KismiOdendi: durumClass = "bg-soft-warning"; durumText = "Kısmi Ödendi"; isBekleyen = true; break;
-                        case QRMenu.Core.Enums.SiparisDurum.TamOdendi: durumClass = "bg-soft-success"; durumText = "Tamamlandı"; break;
-                        case QRMenu.Core.Enums.SiparisDurum.Iptal: durumClass = "bg-soft-danger"; durumText = "İptal Edildi"; break;
-                        case QRMenu.Core.Enums.SiparisDurum.Iade: durumClass = "bg-soft-secondary"; durumText = "İade Edildi"; break;
-                        case QRMenu.Core.Enums.SiparisDurum.Sepette: durumClass = "bg-soft-secondary"; durumText = "Sepette"; break;
+                        case QRMenu.Core.Enums.SiparisDurum.Onaylandi: durumClass = "bg-primary/10 text-primary"; durumText = "Yeni Alındı"; isBekleyen = true; break;
+                        case QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor: durumClass = "bg-secondary/10 text-secondary"; durumText = "Hazırlanıyor"; isBekleyen = true; break;
+                        case QRMenu.Core.Enums.SiparisDurum.Hazir: durumClass = "bg-blue-100 text-blue-900"; durumText = "Servise Hazır"; isBekleyen = true; break;
+                        case QRMenu.Core.Enums.SiparisDurum.TeslimEdildi: durumClass = "bg-green-100 text-green-900"; durumText = "Bırakıldı"; isBekleyen = true; break;
+                        case QRMenu.Core.Enums.SiparisDurum.KismiOdendi: durumClass = "bg-secondary/10 text-secondary"; durumText = "Kısmi"; isBekleyen = true; break;
+                        case QRMenu.Core.Enums.SiparisDurum.TamOdendi: durumClass = "bg-green-100 text-green-900"; durumText = "Tamamlandı"; break;
+                        case QRMenu.Core.Enums.SiparisDurum.Iptal: durumClass = "bg-red-100 text-red-900"; durumText = "İptal"; break;
+                        case QRMenu.Core.Enums.SiparisDurum.Iade: durumClass = "bg-stone-100 text-stone-600"; durumText = "İade"; break;
                     }
 
                     var siparisTarihLocal = TimeZoneInfo.ConvertTimeFromUtc(siparis.OlusturmaTarihi, turkeyTz);
@@ -191,124 +239,179 @@
                     var masaId = siparis.MasaId.ToString();
                     var masaNo = siparis.Masa?.MasaNo ?? 0;
 
-                    <tr class="siparis-row" data-date="@dateCat" data-durum="@durumCat" data-isbekleyen="@(isBekleyen?"true":"false")" data-masa="@masaId" data-search="@searchData">
-                        <td><strong class="text-dark">#@siparis.Id</strong></td>
-                        <td>
-                            <div class="fw-bold text-dark">@toTR(siparis.OlusturmaTarihi)</div>
-                            <small class="text-muted">@(isToday ? "Bugün" : (isYesterday ? "Dün" : "Geçmiş"))</small>
+                    <tr class="siparis-row hover:bg-surface transition-colors" data-date="@dateCat" data-durum="@durumCat" data-isbekleyen="@(isBekleyen?"true":"false")" data-masa="@masaId" data-search="@searchData">
+                        <td class="px-6 py-4 font-bold text-primary">#@siparis.Id</td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-semibold text-on-surface">@siparisTarihLocal.ToString("dd MMM yyyy")</div>
+                            <div class="text-[11px] font-bold text-on-surface-variant opacity-60">@siparisTarihLocal.ToString("HH:mm")</div>
                         </td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2" style="width:32px; height:32px;">
-                                    <i class="bi bi-geo-alt-fill text-muted" style="font-size:0.85rem;"></i>
-                                </div>
-                                <div>
-                                    <strong class="d-block text-dark">Masa @masaNo</strong>
-                                    <small class="text-muted">@(siparis.Masa?.Bolge?.Ad ?? "Standart Alan")</small>
-                                </div>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-2 h-2 rounded-full bg-secondary"></span>
+                                <span class="text-sm font-bold text-on-surface">Masa @masaNo</span>
+                                <span class="text-[10px] text-on-surface-variant font-medium">(@(siparis.Masa?.Bolge?.Ad ?? "Standart"))</span>
                             </div>
                         </td>
-                        <td><strong class="text-dark" style="font-size:1.05rem;">@siparis.ToplamTutar.ToString("N2") ₺</strong></td>
-                        <td>
+                        <td class="px-6 py-4 text-sm font-black text-on-surface">₺@siparis.ToplamTutar.ToString("N2")</td>
+                        <td class="px-6 py-4">
                             @if(siparis.Durum == QRMenu.Core.Enums.SiparisDurum.TamOdendi) {
-                                <span class="text-success small fw-bold"><i class="bi bi-check-circle-fill"></i> Ödendi</span>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-700 uppercase tracking-wider">Ödendi</span>
                             } else if (siparis.Durum == QRMenu.Core.Enums.SiparisDurum.Iptal) {
-                                <span class="text-danger small fw-bold"><i class="bi bi-x-circle-fill"></i> Ödenmedi</span>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-stone-100 text-stone-600 uppercase tracking-wider">-</span>
                             } else {
-                                <span class="text-warning small fw-bold"><i class="bi bi-clock-history"></i> Açık</span>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-secondary/10 text-secondary uppercase tracking-wider">Açık</span>
                             }
                         </td>
-                        <td><span class="badge-durum @durumClass">@durumText</span></td>
-                        <td class="text-end">
-                            <button class="btn-detay" onclick="detayGoster(@siparis.Id)"><i class="bi bi-eye"></i> Detay Gör</button>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest @durumClass">
+                                @durumText
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="detayGoster(@siparis.Id)" class="text-primary hover:text-primary-dim font-bold text-xs uppercase tracking-widest scale-98-active-transition transition-all">Detay Gör</button>
                         </td>
                     </tr>
                 }
                 <tr id="emptyRow" style="display:none;">
-                    <td colspan="7" class="text-center py-5">
-                        <div class="text-muted">
-                            <i class="bi bi-search fs-1 d-block mb-3 text-secondary"></i> 
-                            <h5>Sonuç Bulunamadı</h5>
-                            <p class="mb-0 small">Filtre kriterlerinize uygun sipariş kaydı yok.</p>
+                    <td colspan="7" class="text-center py-12">
+                        <div class="flex flex-col items-center">
+                            <span class="material-symbols-outlined text-5xl text-on-surface-variant/20 mb-2">search_off</span>
+                            <h5 class="text-on-surface font-bold">Sonuç Bulunamadı</h5>
+                            <p class="text-on-surface-variant text-sm">Filtre kriterlerinize uygun sipariş kaydı yok.</p>
                         </div>
                     </td>
                 </tr>
-                @if (!Model.Any())
-                {
-                    <script>
-                        document.addEventListener("DOMContentLoaded", function() {
-                            document.getElementById('emptyRow').style.display = '';
-                            document.getElementById('emptyRow').querySelector('h5').innerText = "Kayıt Yok";
-                            document.getElementById('emptyRow').querySelector('p').innerText = "Sisteme henüz hiç sipariş düşmedi.";
-                        });
-                    </script>
-                }
             </tbody>
         </table>
     </div>
+
+    <!-- Order Cards (Mobile) -->
+    <div class="md:hidden space-y-4" id="siparisMobileCards">
+        @foreach (var siparis in Model)
+        {
+            string durumClass = "bg-stone-100 text-stone-600";
+            string durumText = siparis.Durum.ToString();
+            bool isBekleyen = false;
+
+            switch (siparis.Durum)
+            {
+                case QRMenu.Core.Enums.SiparisDurum.Onaylandi: durumClass = "bg-primary/10 text-primary"; durumText = "Yeni Alındı"; isBekleyen = true; break;
+                case QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor: durumClass = "bg-secondary/10 text-secondary"; durumText = "Hazırlanıyor"; isBekleyen = true; break;
+                case QRMenu.Core.Enums.SiparisDurum.Hazir: durumClass = "bg-blue-100 text-blue-900"; durumText = "Servise Hazır"; isBekleyen = true; break;
+                case QRMenu.Core.Enums.SiparisDurum.TeslimEdildi: durumClass = "bg-green-100 text-green-900"; durumText = "Bırakıldı"; isBekleyen = true; break;
+                case QRMenu.Core.Enums.SiparisDurum.KismiOdendi: durumClass = "bg-secondary/10 text-secondary"; durumText = "Kısmi"; isBekleyen = true; break;
+                case QRMenu.Core.Enums.SiparisDurum.TamOdendi: durumClass = "bg-green-100 text-green-900"; durumText = "Tamamlandı"; break;
+                case QRMenu.Core.Enums.SiparisDurum.Iptal: durumClass = "bg-red-100 text-red-900"; durumText = "İptal"; break;
+            }
+
+            var siparisTarihLocal = TimeZoneInfo.ConvertTimeFromUtc(siparis.OlusturmaTarihi, turkeyTz);
+            var isToday = siparisTarihLocal.Date == bugun;
+            var isYesterday = siparisTarihLocal.Date == bugun.AddDays(-1);
+            var dateCat = isToday ? "today" : (isYesterday ? "yesterday" : "old");
+            var durumCat = siparis.Durum.ToString();
+            var searchData = siparis.Id.ToString();
+            var masaId = siparis.MasaId.ToString();
+            var masaNo = siparis.Masa?.MasaNo ?? 0;
+
+            <div class="bg-surface-container-lowest p-4 rounded-2xl border border-surface-container editorial-shadow siparis-row-mobile" data-date="@dateCat" data-durum="@durumCat" data-isbekleyen="@(isBekleyen?"true":"false")" data-masa="@masaId" data-search="@searchData">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <span class="text-xs font-black text-primary uppercase tracking-widest">#@siparis.Id</span>
+                        <div class="text-[11px] font-bold text-on-surface-variant opacity-60">@siparisTarihLocal.ToString("dd.MM.yyyy HH:mm")</div>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest @durumClass">@durumText</span>
+                </div>
+                <div class="flex justify-between items-center bg-surface-container-low/50 p-3 rounded-xl mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm text-secondary">table_restaurant</span>
+                        <span class="text-xs font-bold text-on-surface">Masa @masaNo</span>
+                    </div>
+                    <span class="text-sm font-black text-on-surface">₺@siparis.ToplamTutar.ToString("N2")</span>
+                </div>
+                <button onclick="detayGoster(@siparis.Id)" class="w-full bg-surface-container-low text-on-surface py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-surface-container transition-colors">Detayları Gör</button>
+            </div>
+        }
+    </div>
+
+    <!-- Pagination -->
+    @if (totalPages > 1)
+    {
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 pb-12">
+            <p class="text-xs font-bold text-on-surface-variant uppercase tracking-widest opacity-60">Toplam @totalCount kayıttan @Model.Count tanesi gösteriliyor</p>
+            <div class="flex items-center space-x-2">
+                <a href="/admin/siparisler?page=@(currentPage - 1)&pageSize=@pageSize" class="flex items-center space-x-2 px-4 py-2 rounded-xl bg-surface-container-low text-on-surface font-bold text-xs uppercase tracking-widest hover:bg-surface-container transition-colors @(currentPage <= 1 ? "pointer-events-none opacity-40" : "")">
+                    <span class="material-symbols-outlined text-lg">chevron_left</span>
+                    <span>Önceki</span>
+                </a>
+                <div class="flex space-x-1">
+                    @for (int i = 1; i <= totalPages; i++)
+                    {
+                        if (i == 1 || i == totalPages || (i >= currentPage - 1 && i <= currentPage + 1))
+                        {
+                            <a href="/admin/siparisler?page=@i&pageSize=@pageSize" class="w-9 h-9 flex items-center justify-center rounded-lg font-bold text-xs @(i == currentPage ? "bg-primary text-on-primary" : "bg-surface-container-lowest text-on-surface hover:bg-surface-container transition-colors border border-surface-container")">@i</a>
+                        }
+                        else if (i == 2 || i == totalPages - 1)
+                        {
+                            <span class="px-1 self-center text-on-surface-variant">...</span>
+                        }
+                    }
+                </div>
+                <a href="/admin/siparisler?page=@(currentPage + 1)&pageSize=@pageSize" class="flex items-center space-x-2 px-4 py-2 rounded-xl bg-surface-container-low text-on-surface font-bold text-xs uppercase tracking-widest hover:bg-surface-container transition-colors @(currentPage >= totalPages ? "pointer-events-none opacity-40" : "")">
+                    <span>Sonraki</span>
+                    <span class="material-symbols-outlined text-lg">chevron_right</span>
+                </a>
+            </div>
+        </div>
+    }
 </div>
 
-@if (totalPages > 1)
-{
-    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mt-3 px-1">
-        <small class="text-muted">Toplam @totalCount kayıt, Sayfa @currentPage / @totalPages</small>
-        <div class="btn-group" role="group" aria-label="Sayfalama">
-            <a class="btn btn-sm btn-outline-secondary @(currentPage <= 1 ? "disabled" : "")"
-               href="/admin/siparisler?page=@(currentPage - 1)&pageSize=@pageSize">Önceki</a>
-            <a class="btn btn-sm btn-outline-secondary @(currentPage >= totalPages ? "disabled" : "")"
-               href="/admin/siparisler?page=@(currentPage + 1)&pageSize=@pageSize">Sonraki</a>
-        </div>
-    </div>
-}
-
-<!-- SİPARİŞ DETAY MODALI (YENİ TASARIM) -->
+<!-- SİPARİŞ DETAY MODALI -->
 <div class="modal fade" id="siparisDetayModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
-            <div class="modal-header border-0 bg-light pb-2 pt-4 px-4 rounded-top" style="border-radius: 1.25rem;">
-                <h5 class="modal-title fw-bold flex-grow-1 text-dark">
-                    <i class="bi bi-receipt-cutoff me-2 text-primary"></i> <span id="mdlTitle">Sipariş Fişi</span>
-                </h5>
-                <button type="button" class="btn-close bg-white rounded-circle shadow-sm" data-bs-dismiss="modal" style="width: 2.5rem; height: 2.5rem;"></button>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-2xl rounded-[2rem] overflow-hidden">
+            <div class="modal-header border-0 bg-surface-container-low px-8 py-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                        <span class="material-symbols-outlined">receipt_long</span>
+                    </div>
+                    <div>
+                        <h5 class="modal-title font-black font-headline text-on-surface uppercase tracking-tight" id="mdlTitle">Sipariş Fişi</h5>
+                        <p class="text-[10px] font-bold text-on-surface-variant opacity-60 uppercase tracking-widest" id="mdlSiparisId"></p>
+                    </div>
+                </div>
+                <button type="button" class="p-2 hover:bg-surface-container rounded-full transition-colors" data-bs-dismiss="modal">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
             </div>
-            <div class="modal-body px-0 py-0 pb-3" style="background-color: #f8f9fa;">
-                <div id="modalLoading" class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status"></div>
-                    <div class="mt-2 text-muted fw-bold">Veriler Getiriliyor...</div>
+            <div class="modal-body p-8 bg-surface">
+                <div id="modalLoading" class="hidden flex-col items-center py-8">
+                    <div class="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4"></div>
+                    <p class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Veriler Yükleniyor...</p>
                 </div>
                 
-                <div id="modalIcerik" style="display:none;">
-                    <div class="bg-white p-4 mx-3 mt-3 shadow-sm" style="border-radius: 1rem; border: 1px solid #eee; position: relative;">
-                        <!-- Cırt Cırt Efekti Top -->
-                        <div style="position:absolute; top:-6px; left:0; right:0; height:12px; background: radial-gradient(circle, transparent 4px, #fff 5px, #fff 6px, transparent 6px); background-size: 16px 12px; z-index:1;"></div>
-                        
-                        <div class="row mb-3 pb-3 border-bottom border-dashed border-2 px-1">
-                            <div class="col-6">
-                                <div class="small text-muted text-uppercase fw-bold letter-spacing-1">Sipariş Numarası</div>
-                                <h4 class="fw-bold mb-0 text-dark" id="mdlSiparisId"></h4>
-                            </div>
-                            <div class="col-6 text-end">
-                                <div class="small text-muted text-uppercase fw-bold letter-spacing-1">Masa / Konum</div>
-                                <h4 class="fw-bold mb-0 text-dark" id="mdlMasaNo"></h4>
-                            </div>
+                <div id="modalIcerik" class="hidden space-y-6">
+                    <div class="flex justify-between items-center pb-4 border-b border-surface-container-high">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-secondary text-sm">table_restaurant</span>
+                            <span class="text-xs font-black text-on-surface uppercase tracking-widest" id="mdlMasaNo"></span>
                         </div>
-                        
-                        <!-- Sipariş Kalemleri -->
-                        <div class="small text-muted fw-bold text-uppercase mb-3 ps-1"><i class="bi bi-list-ul"></i> Sipariş İçeriği</div>
-                        <div id="mdlUrunList" class="mb-4">
-                            <!-- JS İle Dolacak -->
-                        </div>
-                        
-                        <!-- Toplam Tutar Alanı -->
-                        <div class="d-flex justify-content-between align-items-center bg-light p-3 mt-4" style="border-radius: 0.75rem; border: 2px dashed #dee2e6;">
-                            <span class="text-secondary fw-bold text-uppercase fs-5">GENEL TOPLAM</span>
-                            <h3 class="fw-bold text-dark mb-0" id="mdlToplamTutar"></h3>
+                        <span class="px-3 py-1 rounded-full bg-green-100 text-green-900 text-[9px] font-black uppercase tracking-widest">Aktif Sipariş</span>
+                    </div>
+
+                    <div id="mdlUrunList" class="space-y-3">
+                        <!-- JS İle Dolacak -->
+                    </div>
+                    
+                    <div class="bg-surface-container-low p-5 rounded-2xl border-2 border-dashed border-surface-container-high">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Genel Toplam</span>
+                            <span class="text-2xl font-black text-on-surface font-headline" id="mdlToplamTutar"></span>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 justify-content-center bg-light rounded-bottom py-3" style="border-radius: 1.25rem;">
-                <button type="button" class="btn btn-secondary px-4 fw-bold rounded-pill shadow-sm" data-bs-dismiss="modal">Kapat</button>
+            <div class="modal-footer border-0 p-6 bg-surface-container-low">
+                <button type="button" class="w-full bg-on-surface text-surface py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-opacity" data-bs-dismiss="modal">Kapat</button>
             </div>
         </div>
     </div>
@@ -321,7 +424,6 @@
             const masaId = urlParams.get('masaId');
             
             if (masaId) {
-                // Eger URL'den masaId geldiyse, tarihi "Tüm Zamanlar" yap, durumu "Tüm Durumlar" yap ve masayı seç
                 const filterTarih = document.getElementById('filterTarih');
                 if (filterTarih) filterTarih.value = 'all';
                 
@@ -331,12 +433,9 @@
                 const filterDurum = document.getElementById('filterDurum');
                 if (filterDurum) filterDurum.value = 'all';
             }
-            
-            // İlk girişte Filtre çalışsın
             filtreleTablo();
         });
 
-        // Tablo içi Filtreleme
         function filtreleTablo() {
             var tarih = document.getElementById('filterTarih').value;
             var durum = document.getElementById('filterDurum').value;
@@ -344,6 +443,7 @@
             var arama = document.getElementById('filterArama').value.trim();
 
             var rows = document.querySelectorAll('.siparis-row');
+            var mobileCards = document.querySelectorAll('.siparis-row-mobile');
             var emptyRow = document.getElementById('emptyRow');
             var gorunanRow = 0;
             
@@ -355,18 +455,9 @@
                 var rBekleyen = row.getAttribute('data-isbekleyen') === 'true';
                 
                 var matchTarih = (tarih === 'all' || rDate === tarih);
-                
-                var matchDurum = true;
-                if (durum === 'bekleyen') matchDurum = rBekleyen;
-                else if (durum !== 'all') matchDurum = (rDurum === durum);
-                
+                var matchDurum = (durum === 'all' || (durum === 'bekleyen' ? rBekleyen : rDurum === durum));
                 var matchMasa = (masa === 'all' || rMasa === masa);
-                
-                var matchArama = true;
-                if(arama !== '') {
-                    // Sadece tam eşleşme veya içeriyorsa
-                    matchArama = rSearch.includes(arama) || (rSearch === arama);
-                }
+                var matchArama = !arama || rSearch.includes(arama);
 
                 if (matchTarih && matchDurum && matchMasa && matchArama) {
                     row.style.display = '';
@@ -376,67 +467,84 @@
                 }
             });
 
-            if(emptyRow) {
-                if(gorunanRow === 0) {
-                    emptyRow.style.display = '';
+            mobileCards.forEach(card => {
+                var rDate = card.getAttribute('data-date');
+                var rDurum = card.getAttribute('data-durum');
+                var rMasa = card.getAttribute('data-masa');
+                var rSearch = card.getAttribute('data-search');
+                var rBekleyen = card.getAttribute('data-isbekleyen') === 'true';
+                
+                var matchTarih = (tarih === 'all' || rDate === tarih);
+                var matchDurum = (durum === 'all' || (durum === 'bekleyen' ? rBekleyen : rDurum === durum));
+                var matchMasa = (masa === 'all' || rMasa === masa);
+                var matchArama = !arama || rSearch.includes(arama);
+
+                if (matchTarih && matchDurum && matchMasa && matchArama) {
+                    card.style.display = 'block';
+                    if (window.innerWidth <= 768) gorunanRow++;
                 } else {
-                    emptyRow.style.display = 'none';
+                    card.style.display = 'none';
                 }
+            });
+
+            if(emptyRow) {
+                emptyRow.style.display = gorunanRow === 0 ? '' : 'none';
             }
         }
 
-        // Sipariş Detayını Admin/SiparislerDetay API'sinden Veya Var Olan Bir Yerden Çekmek
         async function detayGoster(id) {
             var m = new bootstrap.Modal(document.getElementById('siparisDetayModal'));
             m.show();
             
-            document.getElementById('modalLoading').style.display = 'block';
-            document.getElementById('modalIcerik').style.display = 'none';
+            const loadingEl = document.getElementById('modalLoading');
+            const contentEl = document.getElementById('modalIcerik');
+
+            loadingEl.classList.remove('hidden');
+            loadingEl.classList.add('flex');
+            contentEl.classList.add('hidden');
 
             try {
-                // Halihazırda var olan "/admin/siparis-detay/id" JSON dönen Controller kullanılıyor (Eski kodunuzdaki endpoint)
                 const res = await fetch(`/admin/siparis-detay/${id}`);
                 const data = await res.json();
                 
                 if(data.success || data.id) {
-                    // Mevcut data objesini parse edelim
-                    var sData = data.success ? data : data; // Fallback
+                    var sData = data.success ? data : data;
                     
                     document.getElementById('mdlSiparisId').innerText = "#" + id;
                     document.getElementById('mdlTitle').innerText = "Sipariş Fişi #" + id;
                     document.getElementById('mdlMasaNo').innerText = sData.masaNo ? "Masa " + sData.masaNo : "Belirtilmemiş";
-                    document.getElementById('mdlToplamTutar').innerText = parseFloat(sData.toplamTutar).toFixed(2) + " ₺";
+                    document.getElementById('mdlToplamTutar').innerText = "₺" + parseFloat(sData.toplamTutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 });
 
                     var htmlUrun = "";
                     if(sData.detaylar && sData.detaylar.length > 0) {
                         sData.detaylar.forEach(d => {
-                            // JSON içindeki opsiyonları vs parse edip güzelce yazdır
                             let opsText = "";
                             if(d.opsiyonlar) {
                                 try {
                                     var ops = JSON.parse(d.opsiyonlar);
                                     if(ops.length > 0) {
-                                        opsText = `<div class="small text-secondary mt-1"><i class="bi bi-tag-fill me-1"></i> ${ops.map(x => x.Ad).join(", ")}</div>`;
+                                        opsText = `<div class="text-[10px] font-bold text-on-surface-variant opacity-60 mt-1 uppercase tracking-widest"><span class="material-symbols-outlined text-[10px] mr-1">sell</span> ${ops.map(x => x.Ad).join(", ")}</div>`;
                                     }
                                 } catch(e) {}
                             }
 
                             htmlUrun += `
-                            <div class="d-flex justify-content-between align-items-center bg-light bg-opacity-50 p-3 mb-2 rounded" style="border: 1px solid #f1f2f4;">
+                            <div class="flex justify-between items-center p-4 bg-surface-container-low rounded-2xl border border-surface-container">
                                 <div>
-                                    <div class="fw-bold text-dark fs-6"><span class="badge bg-secondary me-2 rounded-pill">${d.adet}x</span> ${d.urunAd || 'Ürün'}</div>
+                                    <div class="text-xs font-black text-on-surface uppercase tracking-widest"><span class="text-primary mr-2">${d.adet}x</span> ${d.urunAd || 'Ürün'}</div>
                                     ${opsText}
                                 </div>
-                                <div class="fw-bold text-dark fs-6">${(d.adet * d.birimFiyat).toFixed(2)} ₺</div>
+                                <div class="text-xs font-black text-on-surface">₺${(d.adet * d.birimFiyat).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
                             </div>`;
                         });
                     } else {
-                        htmlUrun = `<div class="text-center text-muted p-3"><i class="bi bi-exclamation-circle me-1"></i> İçerik bulunamadı.</div>`;
+                        htmlUrun = `<div class="text-center text-on-surface-variant p-4 text-xs font-bold uppercase tracking-widest">İçerik bulunamadı.</div>`;
                     }
                     document.getElementById('mdlUrunList').innerHTML = htmlUrun;
 
-                    document.getElementById('modalLoading').style.display = 'none';
-                    document.getElementById('modalIcerik').style.display = 'block';
+                    loadingEl.classList.add('hidden');
+                    loadingEl.classList.remove('flex');
+                    contentEl.classList.remove('hidden');
                 } else {
                     alert("Detaylar alınamadı: " + (data.message || "Bilinmeyen hata"));
                     m.hide();
@@ -449,3 +557,4 @@
         }
     </script>
 }
+

@@ -11,6 +11,8 @@ namespace QRMenu.Data.Services
     {
         private readonly QRMenuDbContext _context;
         private readonly ILogger<OdemeService> _logger;
+        private static readonly TimeZoneInfo _turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
 
         public OdemeService(QRMenuDbContext context, ILogger<OdemeService> logger)
         {
@@ -52,6 +54,15 @@ namespace QRMenu.Data.Services
 
                 if (!detaylar.Any())
                     throw new InvalidOperationException("Ödenecek ürün bulunamadı.");
+
+                var kapaliGunVar = detaylar
+                    .Select(d => d.Siparis.OlusturmaTarihi)
+                    .Distinct()
+                    .Select(t => DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(t, DateTimeKind.Utc), _turkeyTz).Date, DateTimeKind.Utc))
+                    .Any(tarih => _context.GunSonuRaporlari.Any(r => r.Tarih == tarih));
+
+                if (kapaliGunVar)
+                    throw new InvalidOperationException("Gün sonu raporu kapatılmış siparişlerde ödeme işlemi yapılamaz.");
 
                 decimal odenenTutar = 0;
                 var siparisBazliTutarlar = new Dictionary<int, decimal>();

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 
 namespace QRMenu.Web.ViewModels
@@ -79,13 +79,11 @@ namespace QRMenu.Web.ViewModels
     // ===== HAPPY HOUR =====
     public class HappyHourFormViewModel
     {
-        [Required(ErrorMessage = "Baslangic saati zorunludur.")]
-        public string BaslangicSaati { get; set; } = "14:00"; // HH:mm
+        public string? BaslangicSaati { get; set; } // HH:mm
 
-        [Required(ErrorMessage = "Bitis saati zorunludur.")]
-        public string BitisSaati { get; set; } = "17:00"; // HH:mm
+        public string? BitisSaati { get; set; } // HH:mm
 
-        [Range(1, 99, ErrorMessage = "Indirim orani 1-99 arasinda olmalidir.")]
+        [Range(0, 99, ErrorMessage = "Indirim orani 0-99 arasinda olmalidir.")]
         public decimal IndirimOrani { get; set; }
 
         public bool AktifMi { get; set; }

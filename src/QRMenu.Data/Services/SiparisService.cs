@@ -11,6 +11,8 @@ namespace QRMenu.Data.Services
     {
         private readonly QRMenuDbContext _context;
         private readonly ILogger<SiparisService> _logger;
+        private static readonly TimeZoneInfo _turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
 
         // State Machine: Hangi durumdan hangi durumlara geçilebilir?
         private static readonly Dictionary<SiparisDurum, SiparisDurum[]> _gecisKurallari = new()
@@ -304,6 +306,9 @@ namespace QRMenu.Data.Services
             if (siparis == null)
                 throw new InvalidOperationException("Sipariş bulunamadı.");
 
+            if (await GunKapaliMiAsync(siparis.OlusturmaTarihi))
+                throw new InvalidOperationException("Bu siparişin gün sonu raporu kapatılmış; durum değiştirilemez.");
+
             var gecerliGecisler = GecerliGecisler(siparis.Durum);
             if (!gecerliGecisler.Contains(yeniDurum))
             {
@@ -394,6 +399,13 @@ namespace QRMenu.Data.Services
         public async Task<Siparis> IptalEtAsync(int siparisId)
         {
             return await DurumGuncelleAsync(siparisId, SiparisDurum.Iptal);
+        }
+
+        private async Task<bool> GunKapaliMiAsync(DateTime utcTarih)
+        {
+            var yerelGun = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utcTarih, DateTimeKind.Utc), _turkeyTz).Date;
+            var raporTarihi = DateTime.SpecifyKind(yerelGun, DateTimeKind.Utc);
+            return await _context.GunSonuRaporlari.AnyAsync(r => r.Tarih == raporTarihi);
         }
 
         /// <summary>

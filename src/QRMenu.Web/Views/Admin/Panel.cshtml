@@ -1,0 +1,738 @@
+﻿@{
+    ViewData["Title"] = "Panel";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+
+    var bugunCiro = ViewBag.BugunCiro ?? 0;
+    var ciroDegisim = ViewBag.CiroDegisim ?? 0;
+    var aktifMasalarCount = ViewBag.AktifMasalarCount ?? 0;
+    var toplamMasaCount = ViewBag.ToplamMasaCount ?? 0;
+    var dolulukOrani = ViewBag.DolulukOrani ?? 0;
+    var ortServisSuresi = ViewBag.OrtServisSuresi ?? 0;
+    var personelCount = ViewBag.PersonelCount ?? 0;
+    var enCokSatanlar = ViewBag.EnCokSatanlar as IEnumerable<QRMenu.Web.Controllers.AdminController.EnCokSatanViewModel>
+        ?? Enumerable.Empty<QRMenu.Web.Controllers.AdminController.EnCokSatanViewModel>();
+    var bugunEnCokSatanlarTum = ViewBag.BugunEnCokSatanlarTum as IEnumerable<QRMenu.Web.Controllers.AdminController.EnCokSatanViewModel>
+        ?? Enumerable.Empty<QRMenu.Web.Controllers.AdminController.EnCokSatanViewModel>();
+    var canliSiparisler = ViewBag.CanliSiparisler as IEnumerable<QRMenu.Core.Entities.Siparis> ?? Enumerable.Empty<QRMenu.Core.Entities.Siparis>();
+    var zToplamCiro = ViewBag.ZToplamCiro ?? 0;
+    var zSiparisSayisi = ViewBag.ZSiparisSayisi ?? 0;
+    var zOdemeTipleri = ViewBag.ZOdemeTipleri as IEnumerable<QRMenu.Web.Controllers.AdminController.ZOdemeTipiViewModel>
+        ?? Enumerable.Empty<QRMenu.Web.Controllers.AdminController.ZOdemeTipiViewModel>();
+    var gunKapaliMi = ViewBag.GunKapaliMi is bool kapali && kapali;
+    var zRaporTarihi = ViewBag.ZRaporTarihi as string ?? DateTime.Today.ToString("yyyy-MM-dd");
+    var zNextOpeningIso = ViewBag.ZNextOpeningIso as string ?? DateTime.Today.AddDays(1).ToString("yyyy-MM-ddTHH:mm:ss");
+    var gunKapanisMetni = ViewBag.GunKapanisMetni as string;
+    
+    // Basit bir mutfak doluluğu simülasyonu mantığı (Bekleyen/Hazırlanan sipariş sayısına göre)
+    var bekleyenSiparisSayisi = canliSiparisler.Count();
+    var mutfakYukOrani = bekleyenSiparisSayisi > 10 ? 95 : bekleyenSiparisSayisi * 10;
+    var mutfakDurumYazi = mutfakYukOrani > 80 ? "Yüksek Yük" : (mutfakYukOrani > 40 ? "Orta" : "İdeal");
+    var mutfakDurumRenk = mutfakYukOrani > 80 ? "text-error" : (mutfakYukOrani > 40 ? "text-secondary" : "text-green-600");
+    var mutfakBgRenk = mutfakYukOrani > 80 ? "bg-error" : (mutfakYukOrani > 40 ? "bg-secondary" : "bg-green-600");
+}
+
+        <!-- Page Content: Bento Grid Dashboard -->
+        <div id="adminPanelContent" class="p-8 space-y-8 overflow-y-auto">
+            <!-- Hero Stats Row -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-b-4 border-primary">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold text-outline uppercase tracking-widest font-label">Günlük Ciro</p>
+                            <h4 class="text-2xl font-black text-on-surface font-headline mt-1">₺@string.Format("{0:N2}", bugunCiro)</h4>
+                        </div>
+                        <div class="p-2 bg-primary/10 rounded-lg">
+                            <span class="material-symbols-outlined text-primary">payments</span>
+                        </div>
+                    </div>
+                    <p class="text-xs @(ciroDegisim >= 0 ? "text-secondary" : "text-error") font-semibold mt-4 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">@(ciroDegisim >= 0 ? "trending_up" : "trending_down")</span> 
+                        dünden bu yana @(ciroDegisim >= 0 ? "+" : "")@Math.Round(ciroDegisim, 1)%
+                    </p>
+                </div>
+                <div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-b-4 border-secondary">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold text-outline uppercase tracking-widest font-label">Aktif Masalar</p>
+                            <h4 class="text-2xl font-black text-on-surface font-headline mt-1">@aktifMasalarCount / @toplamMasaCount</h4>
+                        </div>
+                        <div class="p-2 bg-secondary/10 rounded-lg">
+                            <span class="material-symbols-outlined text-secondary">table_restaurant</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-on-surface-variant font-medium mt-4">@dolulukOrani% doluluk oranı</p>
+                </div>
+                <div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-b-4 border-outline">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold text-outline uppercase tracking-widest font-label">Ort. Servis Süresi</p>
+                            <h4 class="text-2xl font-black text-on-surface font-headline mt-1">@ortServisSuresi min</h4>
+                        </div>
+                        <div class="p-2 bg-surface-container rounded-lg">
+                            <span class="material-symbols-outlined text-on-surface-variant">timer</span>
+                        </div>
+                    </div>
+                    <p class="text-xs @(ortServisSuresi > 20 ? "text-error" : "text-secondary") font-semibold mt-4 flex items-center gap-1">
+                        @if(ortServisSuresi > 20) {
+                            <span class="material-symbols-outlined text-sm">trending_up</span> <span>hedeften @Math.Round(ortServisSuresi-20, 1)dk daha uzun</span>
+                        } else {
+                            <span class="material-symbols-outlined text-sm">check_circle</span> <span>hedef sürede</span>
+                        }
+                    </p>
+                </div>
+                <div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-b-4 border-primary-container">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold text-outline uppercase tracking-widest font-label">Görevli Personel</p>
+                            <h4 class="text-2xl font-black text-on-surface font-headline mt-1">@personelCount Personel</h4>
+                        </div>
+                        <div class="p-2 bg-primary-container/20 rounded-lg">
+                            <span class="material-symbols-outlined text-primary-dim">groups</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-on-surface-variant font-medium mt-4">Tam vardiya kapsamı</p>
+                </div>
+            </div>
+
+            <section class="hidden bg-surface-container-lowest p-4 rounded-2xl shadow-sm border border-surface-container">
+                <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">summarize</span>
+                            <h3 class="text-lg font-bold font-headline">Gün Sonu Export</h3>
+                            @if (gunKapaliMi)
+                            {
+                                <span class="px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-black uppercase tracking-widest">Kapalı</span>
+                            }
+                        </div>
+                        <p class="mt-2 text-sm text-on-surface-variant">@zRaporTarihi için Z raporu ve detaylı günlük satış dökümü</p>
+                        <p class="mt-1 text-xs text-on-surface-variant">Yeni gün açılışına kalan: <span id="gunSonuCountdownHidden" data-next-opening="@zNextOpeningIso">hesaplanıyor...</span></p>
+                        @if (!string.IsNullOrWhiteSpace(gunKapanisMetni))
+                        {
+                            <p class="mt-1 text-xs text-on-surface-variant">Son kapanış: @gunKapanisMetni</p>
+                        }
+                    </div>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 xl:min-w-[540px]">
+                        <a href="/admin/gun-sonu-pdf?tarih=@zRaporTarihi" class="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-surface-container text-on-surface text-sm font-bold hover:bg-surface-container-high transition-colors">
+                            <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+                            <span>PDF</span>
+                        </a>
+                        <a href="/admin/gun-sonu-excel?tarih=@zRaporTarihi" class="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-surface-container text-on-surface text-sm font-bold hover:bg-surface-container-high transition-colors">
+                            <span class="material-symbols-outlined text-[18px]">table_view</span>
+                            <span>Excel</span>
+                        </a>
+                        <button type="button"
+                                onclick="gunSonuKapat('@zRaporTarihi')"
+                                class="px-4 py-3 rounded-xl font-headline font-extrabold text-sm transition-colors @(gunKapaliMi ? "bg-surface-container text-outline cursor-not-allowed" : "bg-primary text-white hover:bg-primary-dim")"
+                                @(gunKapaliMi ? "disabled" : "")>
+                            Günü Kapat
+                        </button>
+                        <button type="button"
+                                onclick="gunSonuAc('@zRaporTarihi')"
+                                class="px-4 py-3 rounded-xl font-headline font-extrabold text-sm transition-colors @(!gunKapaliMi ? "bg-surface-container text-outline cursor-not-allowed" : "bg-secondary text-on-secondary-container hover:brightness-95")"
+                                @(!gunKapaliMi ? "disabled" : "")>
+                            Günü Aç
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="hidden bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-surface-container">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="material-symbols-outlined text-primary">summarize</span>
+                            <h3 class="text-xl font-bold font-headline">Gün Sonu (Z Raporu)</h3>
+                            @if (gunKapaliMi)
+                            {
+                                <span class="px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-black uppercase tracking-widest">Kapalı</span>
+                            }
+                        </div>
+                        <p class="text-sm text-on-surface-variant">@zRaporTarihi tarihli özet ve kilitleme işlemi</p>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
+                        <div class="bg-surface-container-low p-4 rounded-xl">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-outline">Toplam Ciro</div>
+                            <div class="text-xl font-black font-headline text-on-surface">₺@string.Format("{0:N2}", zToplamCiro)</div>
+                        </div>
+                        <div class="bg-surface-container-low p-4 rounded-xl">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-outline">Sipariş Sayısı</div>
+                            <div class="text-xl font-black font-headline text-on-surface">@zSiparisSayisi</div>
+                        </div>
+                        <div class="bg-surface-container-low p-4 rounded-xl">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-outline">Ödeme Tipleri</div>
+                            <div class="mt-1 space-y-1">
+                                @if (zOdemeTipleri.Any())
+                                {
+                                    foreach (var odeme in zOdemeTipleri)
+                                    {
+                                        <div class="flex items-center justify-between gap-3 text-xs font-bold">
+                                            <span>@odeme.Tip (@odeme.Adet)</span>
+                                            <span>₺@odeme.Tutar.ToString("N2")</span>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="text-xs font-bold text-outline">Ödeme yok</div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button"
+                            onclick="gunSonuKapat('@zRaporTarihi')"
+                            class="px-5 py-3 rounded-xl font-headline font-extrabold text-sm transition-colors @(gunKapaliMi ? "bg-surface-container text-outline cursor-not-allowed" : "bg-primary text-white hover:bg-primary-dim")"
+                            @(gunKapaliMi ? "disabled" : "")>
+                        @(gunKapaliMi ? "Gün Kapalı" : "Günü Kapat")
+                    </button>
+                </div>
+            </section>
+
+            <!-- Main Dashboard Bento Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Live Orders Monitor -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xl font-bold font-headline">Canlı Sipariş Kuyruğu</h3>
+                        <a href="/admin/siparisler" class="text-primary font-bold text-sm hover:underline">Tüm Siparişleri Gör</a>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        @foreach(var siparis in canliSiparisler) {
+                        <!-- Order Card -->
+                        <div class="bg-white p-5 rounded-xl border-l-4 @(siparis.Durum == QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor ? "border-secondary" : "border-primary") shadow-sm hover:translate-y-[-2px] transition-transform">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 @(siparis.Durum == QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor ? "bg-secondary/10 text-secondary" : "bg-primary/10 text-primary") rounded-full uppercase tracking-tighter">@siparis.Durum.ToString()</span>
+                                    <h5 class="text-lg font-bold font-headline mt-2">Masa #@(siparis.Masa?.MasaNo)</h5>
+                                </div>
+                                <span class="text-xs font-medium text-outline">@siparis.OlusturmaTarihi.AddHours(3).ToString("HH:mm")</span>
+                            </div>
+                            <div class="space-y-2 mb-6">
+                                @foreach(var detay in siparis.SiparisDetaylar.Take(2)) {
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-on-surface-variant">@(detay.Adet)x @detay.Urun.Ad</span>
+                                    <span class="font-bold">₺@detay.BirimFiyat</span>
+                                </div>
+                                }
+                                @if(siparis.SiparisDetaylar.Count > 2) {
+                                    <div class="text-xs text-outline mt-1">+ @(siparis.SiparisDetaylar.Count - 2) ürün daha</div>
+                                }
+                            </div>
+                            <div class="flex justify-between items-center pt-4 border-t border-surface-container">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary text-sm">payments</span>
+                                    <span class="text-xs font-bold">Toplam: ₺@siparis.ToplamTutar</span>
+                                </div>
+                                <button type="button" onclick="adminPanelSiparisDetay(@siparis.Id)" class="px-4 py-1.5 bg-surface-container text-on-surface text-xs font-bold rounded-lg hover:bg-surface-container-high transition-colors">Detaylar</button>
+                            </div>
+                        </div>
+                        }
+                        
+                        @if(!canliSiparisler.Any()) {
+                            <div class="col-span-2 text-center text-outline-variant py-8 border border-dashed border-surface-container-high rounded-xl">
+                                <span class="material-symbols-outlined text-3xl mb-2">receipt_long</span>
+                                <p class="text-sm font-bold">Şu anda bekleyen veya hazırlanan canlı sipariş yok.</p>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Visual Analytics Placeholder w/ Chart.js -->
+                    <div class="bg-surface-container rounded-2xl p-8 h-64 relative overflow-hidden group">
+                        <div class="relative z-10">
+                            <h4 class="text-lg font-bold font-headline mb-1">Saatlik Trafik Analizi</h4>
+                            <p class="text-sm text-on-surface-variant">24 saatlik periyotta siparişlerin dağılımı</p>
+                        </div>
+                        <div class="absolute bottom-0 left-0 right-0 h-40 px-4">
+                            <canvas id="trafficChartD"></canvas>
+                        </div>
+                    </div>
+                    <script type="application/json" id="adminSaatlikData">
+                        @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.SaatlikData))
+                    </script>
+                </div>
+
+                <!-- Side Dashboard Content -->
+                <div class="space-y-8">
+                    <!-- Top Selling Items -->
+                    <div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
+                        <h3 class="text-lg font-bold font-headline mb-6">Bugün En Çok Satanlar</h3>
+                        <div class="space-y-6">
+                            @foreach(var item in enCokSatanlar) {
+                            <div class="flex items-center gap-4">
+                                <img src="@(!string.IsNullOrEmpty(item.GorselUrl) ? item.GorselUrl : "https://placehold.co/100x100?text=No+Image")" alt="@item.Ad" class="w-14 h-14 rounded-xl object-cover"/>
+                                <div class="flex-1">
+                                    <h6 class="text-sm font-bold font-headline">@item.Ad</h6>
+                                    <p class="text-xs text-outline">bugün @item.Adet sipariş</p>
+                                </div>
+                                <span class="text-sm font-bold text-primary">₺@item.Fiyat</span>
+                            </div>
+                            }
+                            @if(!enCokSatanlar.Any()) {
+                                <p class="text-sm font-medium text-outline">Henüz sipariş verisi yok.</p>
+                            }
+                        </div>
+                        <button type="button" onclick="toggleBugunUrunler()" class="block text-center w-full mt-6 py-2 border border-surface-container-high rounded-lg text-sm font-bold text-on-surface-variant hover:bg-surface-container transition-colors">Tüm Ürünleri Gör</button>
+                        <div id="bugunTumUrunler" class="hidden mt-5 pt-5 border-t border-surface-container max-h-80 overflow-y-auto space-y-3">
+                            @foreach (var item in bugunEnCokSatanlarTum)
+                            {
+                                <div class="flex items-center gap-3">
+                                    <img src="@(!string.IsNullOrEmpty(item.GorselUrl) ? item.GorselUrl : "https://placehold.co/100x100?text=No+Image")" alt="@item.Ad" class="w-10 h-10 rounded-lg object-cover"/>
+                                    <div class="flex-1 min-w-0">
+                                        <h6 class="text-xs font-bold font-headline truncate">@item.Ad</h6>
+                                        <p class="text-[11px] text-outline">bugün @item.Adet satış</p>
+                                    </div>
+                                    <span class="text-xs font-bold text-primary">₺@item.Fiyat</span>
+                                </div>
+                            }
+                            @if (!bugunEnCokSatanlarTum.Any())
+                            {
+                                <p class="text-sm font-medium text-outline">Bugün satılan ürün yok.</p>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Staff Activity Mini List -->
+                    <div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
+                        <h3 class="text-lg font-bold font-headline mb-4">Mutfak Doluluğu</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-xs font-bold mb-1">
+                                    <span class="uppercase tracking-widest text-outline">Genel Mutfak Yükü</span>
+                                    <span class="@mutfakDurumRenk">@mutfakDurumYazi</span>
+                                </div>
+                                <div class="w-full bg-surface-container rounded-full h-2">
+                                    <div class="@mutfakBgRenk h-2 rounded-full transition-all duration-1000" style="width: @mutfakYukOrani%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<div id="adminPanelDetailModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/40 p-4">
+    <div class="w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden">
+        <div class="flex items-start justify-between gap-4 bg-surface-container-low p-5 border-b border-surface-container">
+            <div>
+                <div class="text-[10px] font-black uppercase tracking-widest text-outline" id="adminDetailMasa">Sipariş</div>
+                <h3 class="text-xl font-headline font-black text-on-surface" id="adminDetailTitle">Sipariş Detayı</h3>
+            </div>
+            <button type="button" onclick="adminPanelDetayKapat()" class="p-2 rounded-full hover:bg-surface-container transition-colors">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="p-5 max-h-[65dvh] overflow-y-auto">
+            <div id="adminDetailLoading" class="py-8 text-center text-sm font-bold text-outline">Yükleniyor...</div>
+            <div id="adminDetailContent" class="hidden space-y-4">
+                <div id="adminDetailItems" class="space-y-3"></div>
+                <div class="flex items-center justify-between rounded-xl bg-surface-container-low p-4">
+                    <span class="text-xs font-black uppercase tracking-widest text-outline">Toplam</span>
+                    <span class="text-xl font-black font-headline" id="adminDetailTotal"></span>
+                </div>
+            </div>
+        </div>
+        <div class="bg-surface-container-low p-4 border-t border-surface-container">
+            <button type="button" onclick="adminPanelDetayKapat()" class="w-full rounded-xl bg-on-surface text-surface py-3 text-sm font-bold">Kapat</button>
+        </div>
+    </div>
+</div>
+
+@section HeaderActions {
+    <div class="flex items-center gap-2">
+        <div class="hidden xl:block text-right mr-2">
+            <div class="text-[10px] font-black uppercase tracking-widest text-outline">Gün Sonu</div>
+            <div class="text-xs font-semibold text-on-surface-variant">
+                Kalan: <span id="gunSonuCountdown" data-next-opening="@zNextOpeningIso">hesaplanıyor...</span>
+            </div>
+        </div>
+        <a href="/admin/gun-sonu-pdf?tarih=@zRaporTarihi" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-surface-container text-on-surface text-xs font-bold hover:bg-surface-container-high transition-colors">
+            <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+            <span class="hidden sm:inline">PDF</span>
+        </a>
+        <a href="/admin/gun-sonu-excel?tarih=@zRaporTarihi" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-surface-container text-on-surface text-xs font-bold hover:bg-surface-container-high transition-colors">
+            <span class="material-symbols-outlined text-[18px]">table_view</span>
+            <span class="hidden sm:inline">Excel</span>
+        </a>
+        <button type="button"
+                onclick="gunSonuKapat('@zRaporTarihi')"
+                class="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-black transition-colors @(gunKapaliMi ? "bg-surface-container text-outline cursor-not-allowed" : "bg-primary text-white hover:bg-primary-dim")"
+                @(gunKapaliMi ? "disabled" : "")>
+            Kapat
+        </button>
+        <button type="button"
+                onclick="gunSonuAc('@zRaporTarihi')"
+                class="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-black transition-colors @(!gunKapaliMi ? "bg-surface-container text-outline cursor-not-allowed" : "bg-secondary text-on-secondary-container hover:brightness-95")"
+                @(!gunKapaliMi ? "disabled" : "")>
+            Aç
+        </button>
+    </div>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let trafficChart = null;
+
+        function readSaatlikData() {
+            const dataEl = document.getElementById('adminSaatlikData');
+            if (!dataEl) {
+                return [];
+            }
+
+            try {
+                return JSON.parse(dataEl.textContent || '[]');
+            } catch (err) {
+                console.warn('Saatlik data parse edilemedi.');
+                return [];
+            }
+        }
+
+        function initTrafficChart() {
+            const canvas = document.getElementById('trafficChartD');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const labels = [];
+            const data = [];
+
+            const saatlikDataArr = readSaatlikData();
+            const hoursData = {};
+
+            saatlikDataArr.forEach(item => {
+                hoursData[item.Saat] = item.Ciro;
+            });
+
+            for (let i = 0; i < 24; i++) {
+                labels.push(i.toString().padStart(2, '0') + ':00');
+                data.push(hoursData[i] || 0);
+            }
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(162, 55, 24, 0.3)');
+            gradient.addColorStop(1, 'rgba(162, 55, 24, 0)');
+
+            if (trafficChart) {
+                trafficChart.destroy();
+            }
+
+            trafficChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        borderColor: '#a23718',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#a23718',
+                        pointRadius: 0,
+                        tension: 0.4,
+                        fill: true,
+                        backgroundColor: gradient
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return '₺' + context.parsed.y.toLocaleString('tr-TR');
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { display: false, min: 0 },
+                        x: { display: false }
+                    },
+                    interaction: { mode: 'index', intersect: false }
+                }
+            });
+        }
+
+        function toggleBugunUrunler() {
+            const panel = document.getElementById('bugunTumUrunler');
+            if (panel) {
+                panel.classList.toggle('hidden');
+            }
+        }
+
+        const adminPanelToast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2600,
+            timerProgressBar: true,
+            customClass: {
+                popup: 'rounded-xl shadow-xl'
+            }
+        });
+
+        function showAdminPanelToast(icon, title) {
+            adminPanelToast.fire({ icon, title });
+        }
+
+        async function confirmAdminPanelAction(title, text, confirmButtonText) {
+            const result = await window.SavorAlert.fire({
+                title,
+                text,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText,
+                cancelButtonText: 'Vazgeç'
+            });
+
+            return result.isConfirmed;
+        }
+
+        async function gunSonuKapat(tarih) {
+            const confirmed = await confirmAdminPanelAction(
+                'Günü kapat',
+                'Bu güne ait sipariş ve ödeme verileri düzenlenemez hale gelecek.',
+                'Evet, kapat'
+            );
+
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/admin/gun-sonu-kapat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tarih })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showAdminPanelToast('success', 'Gün sonu kapatıldı');
+                    window.location.reload();
+                    return;
+                }
+                showAdminPanelToast('error', data.message || 'Gün sonu kapatılamadı.');
+            } catch (err) {
+                console.error(err);
+                showAdminPanelToast('error', 'Gün sonu kapatılırken beklenmeyen bir hata oluştu.');
+            }
+        }
+
+        async function gunSonuAc(tarih) {
+            const confirmed = await confirmAdminPanelAction(
+                'Günü tekrar aç',
+                'Bu gün için mutfak, garson ve kasa işlemleri yeniden aktif olacak.',
+                'Evet, aç'
+            );
+
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/admin/gun-sonu-ac', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tarih })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showAdminPanelToast('success', 'Gün tekrar açıldı');
+                    window.location.reload();
+                    return;
+                }
+                showAdminPanelToast('error', data.message || 'Gün tekrar açılamadı.');
+            } catch (err) {
+                console.error(err);
+                showAdminPanelToast('error', 'Gün açılırken beklenmeyen bir hata oluştu.');
+            }
+        }
+
+        let gunSonuCountdownTimer = null;
+
+        function initGunSonuCountdown() {
+            const el = document.getElementById('gunSonuCountdown');
+            if (!el) return;
+
+            const raw = el.dataset.nextOpening;
+            if (!raw) return;
+
+            if (gunSonuCountdownTimer) {
+                clearInterval(gunSonuCountdownTimer);
+            }
+
+            const target = new Date(raw);
+            const render = () => {
+                const diff = target.getTime() - Date.now();
+                if (diff <= 0) {
+                    el.textContent = 'Yeni gün açıldı';
+                    return;
+                }
+
+                const totalSeconds = Math.floor(diff / 1000);
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                el.textContent = `${hours}s ${minutes}dk ${seconds}sn`;
+            };
+
+            render();
+            gunSonuCountdownTimer = setInterval(render, 1000);
+        }
+
+        function adminPanelDetayKapat() {
+            const modal = document.getElementById('adminPanelDetailModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+            document.body.style.overflow = '';
+        }
+
+        async function adminPanelSiparisDetay(id) {
+            const modal = document.getElementById('adminPanelDetailModal');
+            const loading = document.getElementById('adminDetailLoading');
+            const content = document.getElementById('adminDetailContent');
+            const items = document.getElementById('adminDetailItems');
+
+            if (!modal || !loading || !content || !items) return;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            loading.classList.remove('hidden');
+            content.classList.add('hidden');
+            items.innerHTML = '';
+
+            try {
+                const res = await fetch(`/admin/siparis-detay/${id}`, { cache: 'no-store' });
+                const data = await res.json();
+                if (!data.success) {
+                    throw new Error(data.message || 'Sipariş detayı alınamadı.');
+                }
+
+                document.getElementById('adminDetailTitle').textContent = `Ticket #${data.id}`;
+                document.getElementById('adminDetailMasa').textContent = data.masaNo ? `Masa ${data.masaNo}` : 'Masa bilgisi yok';
+                document.getElementById('adminDetailTotal').textContent = `₺${Number(data.toplamTutar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
+
+                items.innerHTML = (data.detaylar || []).map(item => {
+                    let opsiyonlar = '';
+                    if (item.opsiyonlar) {
+                        try {
+                            const parsed = JSON.parse(item.opsiyonlar);
+                            if (Array.isArray(parsed) && parsed.length) {
+                                opsiyonlar = `<div class="mt-1 text-[11px] font-semibold text-on-surface-variant">${parsed.map(x => x.Ad).join(', ')}</div>`;
+                            }
+                        } catch (e) {}
+                    }
+
+                    const satirTutar = Number(item.adet || 0) * Number(item.birimFiyat || 0);
+                    return `
+                        <div class="flex items-start justify-between gap-3 rounded-xl bg-surface-container-low p-4">
+                            <div class="min-w-0">
+                                <div class="text-sm font-black text-on-surface"><span class="text-primary">${item.adet}x</span> ${item.urunAd || 'Ürün'}</div>
+                                ${opsiyonlar}
+                            </div>
+                            <div class="text-sm font-black text-on-surface">₺${satirTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                        </div>`;
+                }).join('') || '<div class="text-center text-sm font-bold text-outline py-6">Ürün bulunamadı.</div>';
+
+                loading.classList.add('hidden');
+                content.classList.remove('hidden');
+            } catch (err) {
+                console.error(err);
+                showAdminPanelToast('error', err.message || 'Sipariş detayı açılırken hata oluştu.');
+                adminPanelDetayKapat();
+            }
+        }
+
+        let refreshTimer = null;
+        let lastRefreshAt = 0;
+        let refreshInFlight = false;
+
+        async function softRefreshAdminPanel() {
+            if (refreshInFlight) return;
+            refreshInFlight = true;
+
+            try {
+                const res = await fetch(window.location.pathname + window.location.search, {
+                    cache: 'no-store',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                if (!res.ok) throw new Error('Admin panel verisi alınamadı.');
+
+                const html = await res.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const yeniIcerik = doc.getElementById('adminPanelContent');
+                const mevcutIcerik = document.getElementById('adminPanelContent');
+
+                if (yeniIcerik && mevcutIcerik) {
+                    mevcutIcerik.innerHTML = yeniIcerik.innerHTML;
+                    initTrafficChart();
+                    initGunSonuCountdown();
+                }
+            } catch (err) {
+                console.error(err);
+                console.warn('Admin paneli güncellenemedi, mevcut içerik korunuyor.');
+            } finally {
+                refreshInFlight = false;
+            }
+        }
+
+        function scheduleSoftRefresh(delayMs = 500) {
+            const minIntervalMs = 2500;
+            const elapsed = Date.now() - lastRefreshAt;
+            const waitMs = Math.max(delayMs, minIntervalMs - elapsed);
+
+            if (refreshTimer) return;
+
+            refreshTimer = setTimeout(async () => {
+                refreshTimer = null;
+                lastRefreshAt = Date.now();
+                await softRefreshAdminPanel();
+            }, Math.max(0, waitMs));
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initTrafficChart();
+            initGunSonuCountdown();
+
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl('/hubs/order')
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on('SiparisGeldi', function () {
+                scheduleSoftRefresh(900);
+            });
+
+            connection.on('SiparisEklendi', function () {
+                scheduleSoftRefresh(900);
+            });
+
+            connection.on('SiparisGuncellendi', function () {
+                scheduleSoftRefresh(500);
+            });
+
+            connection.on('SiparisHazir', function () {
+                scheduleSoftRefresh(400);
+            });
+
+            connection.on('SiparisIptal', function () {
+                scheduleSoftRefresh(400);
+            });
+
+            connection.on('OdemeYapildi', function () {
+                scheduleSoftRefresh(300);
+            });
+
+            connection.start()
+                .then(() => console.log('Admin panel SignalR bağlantısı başarılı.'))
+                .catch(err => console.error('SignalR hatası:', err));
+        });
+    </script>
+}
+
+
+

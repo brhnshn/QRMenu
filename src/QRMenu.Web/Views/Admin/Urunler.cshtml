@@ -17,38 +17,44 @@
         /* Hide scrollbar for category chips */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @@media (max-width: 768px) {
+            .table-responsive-none { display: none; }
+        }
     </style>
 }
 
 <div class="p-6 md:p-8 w-full space-y-8">
     <!-- Breadcrumbs & Header Actions -->
-    <div class="flex justify-between items-end mb-8">
+    <!-- Breadcrumbs & Header Actions -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
         <div>
             <div class="flex items-center gap-2 text-xs font-semibold text-stone-400 uppercase tracking-widest mb-1">
                 <span>Yönetim</span>
                 <span class="material-symbols-outlined text-[14px]">chevron_right</span>
                 <span class="text-primary">Ürünler & Kategoriler</span>
             </div>
-            <h2 class="text-3xl font-extrabold text-stone-900 font-headline">Kategori Yönetimi</h2>
+            <h2 class="text-2xl md:text-3xl font-extrabold text-stone-900 font-headline">Kategori Yönetimi</h2>
         </div>
-        <div class="flex gap-3">
-            <button class="bg-white border-2 border-surface-container-high text-on-surface px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-surface-container transition-colors shadow-sm" onclick="urunTasiModalAc()">
+        <div class="flex gap-2 w-full md:w-auto">
+            <button class="flex-1 md:flex-none bg-white border-2 border-surface-container-high text-on-surface px-4 md:px-6 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-surface-container transition-colors shadow-sm text-sm md:text-base" onclick="urunTasiModalAc()">
                 <span class="material-symbols-outlined">move_item</span> Ürün Taşı
             </button>
-            <button class="bg-primary text-on-primary px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-md" onclick="urunModal()">
-                <span class="material-symbols-outlined">add</span> Yeni Ürün Ekle
+            <button class="flex-1 md:flex-none bg-primary text-on-primary px-4 md:px-6 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-md text-sm md:text-base" onclick="urunModal()">
+                <span class="material-symbols-outlined">add</span> Yeni Ürün
             </button>
         </div>
     </div>
 
     <!-- Category Filter Chips -->
-    <div class="flex flex-wrap gap-3 mb-10 pb-2" id="kategoriList">
+    <!-- Category Filter Chips -->
+    <div class="flex overflow-x-auto scrollbar-hide gap-3 mb-10 pb-4 -mx-6 px-6 md:mx-0 md:px-0 md:flex-wrap items-center" id="kategoriList">
         <button class="bg-secondary-container text-on-secondary-container px-6 py-2.5 rounded-full font-bold text-sm flex items-center gap-2 shadow-sm whitespace-nowrap" onclick="document.getElementById('filterKategori').value=''; filterTable();">
             Tüm Kategoriler
         </button>
         @foreach (var kat in kategoriler)
         {
-            <div class="group relative flex items-center">
+            <div class="group relative flex items-center flex-shrink-0">
                 <button class="bg-white text-stone-600 border border-transparent hover:border-outline-variant px-6 py-2.5 rounded-full font-semibold text-sm whitespace-nowrap transition-all flex items-center gap-2" onclick="document.getElementById('filterKategori').value='@kat.Id'; filterTable();">
                     @kat.Ad
                     <span class="bg-surface-container text-xs rounded-full px-2 py-0.5 ml-1">@Model.Count(u => u.KategoriId == kat.Id)</span>
@@ -59,7 +65,7 @@
                 </div>
             </div>
         }
-        <button class="bg-surface-container-high text-stone-400 p-2.5 rounded-full hover:bg-stone-300 transition-colors" onclick="kategoriModal()">
+        <button class="bg-surface-container-high text-stone-400 p-2.5 rounded-full hover:bg-stone-300 transition-colors flex-shrink-0" onclick="kategoriModal()">
             <span class="material-symbols-outlined">add</span>
         </button>
     </div>
@@ -86,11 +92,11 @@
             </div>
         </div>
 
-        <!-- Product Table -->
-        <div class="overflow-x-auto">
+        <!-- Product Table / Mobile Cards -->
+        <div class="w-full">
             @if (Model.Any())
             {
-                <table class="w-full text-left border-collapse">
+                <table class="w-full text-left border-collapse table-responsive-none">
                     <thead>
                         <tr class="bg-white border-b border-stone-100">
                             <th class="px-8 py-5 text-[11px] font-extrabold text-stone-400 uppercase tracking-widest">Ürün Detayı</th>
@@ -162,6 +168,52 @@
                         }
                     </tbody>
                 </table>
+
+                <!-- Mobile Card View -->
+                <div class="md:hidden divide-y divide-stone-100" id="urunMobileCards">
+                    @foreach (var urun in Model)
+                    {
+                        <div class="p-5 flex flex-col gap-4 urun-row-mobile" data-id="@urun.Id" data-kategori="@urun.KategoriId" data-ad="@urun.Ad.ToLower()" data-durum="@(urun.AktifMi ? "aktif" : "pasif")">
+                            <div class="flex items-center gap-4">
+                                <div class="w-16 h-16 rounded-2xl overflow-hidden bg-stone-100 flex-shrink-0 flex items-center justify-center">
+                                    @if (!string.IsNullOrEmpty(urun.GorselUrl))
+                                    {
+                                        <img alt="@urun.Ad" class="w-full h-full object-cover" src="@urun.GorselUrl"/>
+                                    }
+                                    else
+                                    {
+                                        <span class="material-symbols-outlined text-stone-300">image</span>
+                                    }
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between items-start">
+                                        <p class="font-bold text-stone-900 mb-0.5">@urun.Ad</p>
+                                        <span class="text-stone-900 font-extrabold">₺@urun.Fiyat.ToString("N2")</span>
+                                    </div>
+                                    <p class="text-[11px] text-stone-500 mb-2">@urun.Kategori.Ad</p>
+                                    <div class="flex gap-2">
+                                        @if (urun.PopulerMi) { <span class="text-[9px] bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded uppercase font-bold tracking-wider">Popüler</span> }
+                                        <button onclick="toggleUrun(@urun.Id)" class="border-0 bg-transparent p-0">
+                                            @if (urun.AktifMi) { <span class="text-[9px] bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded uppercase font-bold">Aktif</span> }
+                                            else { <span class="text-[9px] bg-stone-100 text-stone-400 px-2 py-0.5 rounded uppercase font-bold">Pasif</span> }
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 border-t border-stone-50 pt-4">
+                                <button class="flex-1 bg-stone-100 text-stone-600 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border-0" onclick="urunDuzenle(@urun.Id)">
+                                    <span class="material-symbols-outlined text-sm">edit</span> Düzenle
+                                </button>
+                                <button class="flex-1 bg-stone-100 text-stone-600 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border-0" onclick="opsiyonModal(@urun.Id, '@urun.Ad.Replace("'", "\\'")')">
+                                    <span class="material-symbols-outlined text-sm">settings_suggest</span> Opsiyonlar
+                                </button>
+                                <button class="bg-red-50 text-red-500 p-2.5 rounded-xl border-0 flex items-center justify-center" onclick="urunSil(@urun.Id, '@urun.Ad.Replace("'", "\\'")')">
+                                    <span class="material-symbols-outlined text-sm">delete</span>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
             }
             else
             {
@@ -419,11 +471,20 @@
         var search = document.getElementById('filterSearch').value.toLowerCase();
         var durum = document.getElementById('filterDurum').value;
 
+        // Desktop rows
         document.querySelectorAll('.urun-row').forEach(function(tr) {
             var matchKat = !katId || tr.dataset.kategori === katId;
             var matchSearch = !search || tr.dataset.ad.includes(search);
             var matchDurum = !durum || tr.dataset.durum === durum;
             tr.style.display = (matchKat && matchSearch && matchDurum) ? '' : 'none';
+        });
+
+        // Mobile cards
+        document.querySelectorAll('.urun-row-mobile').forEach(function(div) {
+            var matchKat = !katId || div.dataset.kategori === katId;
+            var matchSearch = !search || div.dataset.ad.includes(search);
+            var matchDurum = !durum || div.dataset.durum === durum;
+            div.style.display = (matchKat && matchSearch && matchDurum) ? 'flex' : 'none';
         });
     }
 
