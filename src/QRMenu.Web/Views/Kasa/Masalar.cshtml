@@ -715,38 +715,66 @@
             }, Math.max(0, waitMs));
         }
 
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl('/hubs/order')
-            .withAutomaticReconnect()
-            .configureLogging(signalR.LogLevel.Error)
-            .build();
+        function buildConnection(useFallbackTransports) {
+            const options = useFallbackTransports
+                ? { transport: signalR.HttpTransportType.ServerSentEvents | signalR.HttpTransportType.LongPolling }
+                : undefined;
 
-        connection.on('SiparisGeldi', function () {
-            scheduleSoftRefresh(800);
-        });
+            return new signalR.HubConnectionBuilder()
+                .withUrl('/hubs/order', options)
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Error)
+                .build();
+        }
 
-        connection.on('SiparisEklendi', function () {
-            scheduleSoftRefresh(800);
-        });
+        function registerConnectionHandlers(conn) {
+            conn.on('SiparisGeldi', function () {
+                scheduleSoftRefresh(800);
+            });
 
-        connection.on('SiparisGuncellendi', function () {
-            scheduleSoftRefresh(500);
-        });
+            conn.on('SiparisEklendi', function () {
+                scheduleSoftRefresh(800);
+            });
 
-        connection.on('OdemeYapildi', function () {
-            if (readBoolSetting('kasaPaymentSound', true)) {
-                const bell = document.getElementById('kasaBellSound');
-                if (bell) {
-                    bell.play().catch(() => {});
+            conn.on('SiparisGuncellendi', function () {
+                scheduleSoftRefresh(500);
+            });
+
+            conn.on('OdemeYapildi', function () {
+                if (readBoolSetting('kasaPaymentSound', true)) {
+                    const bell = document.getElementById('kasaBellSound');
+                    if (bell) {
+                        bell.play().catch(() => {});
+                    }
                 }
+                scheduleSoftRefresh(300);
+            });
+        }
+
+        let connection = buildConnection(false);
+        registerConnectionHandlers(connection);
+
+        async function startConnection(conn, allowFallback) {
+            try {
+                await conn.start();
+                console.log('Kasa Paneli SignalR bağlantısı başarılı.');
+            } catch (err) {
+                console.error('SignalR Hatası:', err);
+                if (!allowFallback) return;
+
+                try {
+                    await conn.stop();
+                } catch (stopErr) {
+                    console.warn('SignalR kapatılırken hata:', stopErr);
+                }
+
+                connection = buildConnection(true);
+                registerConnectionHandlers(connection);
+                await startConnection(connection, false);
             }
+        }
 
-            scheduleSoftRefresh(300);
-        });
-
-        connection.start().then(() => {
-            console.log('Kasa Paneli SignalR bağlantısı başarılı.');
-        }).catch(err => console.error('SignalR Hatası:', err));
+        startConnection(connection, true);
 
         let kasaResizeTimer = null;
         window.addEventListener('resize', function () {

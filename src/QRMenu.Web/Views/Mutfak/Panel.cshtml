@@ -945,12 +945,6 @@
             }
         }
 
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl('/hubs/order')
-            .withAutomaticReconnect()
-            .configureLogging(signalR.LogLevel.Error)
-            .build();
-
         function playBell() {
             try {
                 if (localStorage.getItem('kdsEnableSound') === '0') {
@@ -966,23 +960,57 @@
             }
         }
 
-        connection.on('SiparisGeldi', function () {
-            playBell();
-            scheduleSoftRefresh(900);
-        });
+        function buildConnection(useFallbackTransports) {
+            const options = useFallbackTransports
+                ? { transport: signalR.HttpTransportType.ServerSentEvents | signalR.HttpTransportType.LongPolling }
+                : undefined;
 
-        connection.on('SiparisEklendi', function () {
-            playBell();
-            scheduleSoftRefresh(900);
-        });
+            return new signalR.HubConnectionBuilder()
+                .withUrl('/hubs/order', options)
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Error)
+                .build();
+        }
 
-        connection.on('SiparisGuncellendi', function () {
-            scheduleSoftRefresh(500);
-        });
+        function registerConnectionHandlers(conn) {
+            conn.on('SiparisGeldi', function () {
+                playBell();
+                scheduleSoftRefresh(900);
+            });
 
-        connection
-            .start()
-            .then(() => console.log('KDS bağlantısı başarılı.'))
-            .catch(err => console.error('SignalR KDS hatası:', err));
+            conn.on('SiparisEklendi', function () {
+                playBell();
+                scheduleSoftRefresh(900);
+            });
+
+            conn.on('SiparisGuncellendi', function () {
+                scheduleSoftRefresh(500);
+            });
+        }
+
+        let connection = buildConnection(false);
+        registerConnectionHandlers(connection);
+
+        async function startConnection(conn, allowFallback) {
+            try {
+                await conn.start();
+                console.log('KDS bağlantısı başarılı.');
+            } catch (err) {
+                console.error('SignalR KDS hatası:', err);
+                if (!allowFallback) return;
+
+                try {
+                    await conn.stop();
+                } catch (stopErr) {
+                    console.warn('SignalR kapatılırken hata:', stopErr);
+                }
+
+                connection = buildConnection(true);
+                registerConnectionHandlers(connection);
+                await startConnection(connection, false);
+            }
+        }
+
+        startConnection(connection, true);
     </script>
 }

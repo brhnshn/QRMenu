@@ -1,4 +1,4 @@
-@{
+﻿@{
     ViewData["Title"] = "Panel";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 
@@ -698,39 +698,68 @@
             initTrafficChart();
             initGunSonuCountdown();
 
-            const connection = new signalR.HubConnectionBuilder()
-                .withUrl('/hubs/order')
-                .withAutomaticReconnect()
-                .configureLogging(signalR.LogLevel.Error)
-                .build();
+            function buildConnection(useFallbackTransports) {
+                const options = useFallbackTransports
+                    ? { transport: signalR.HttpTransportType.ServerSentEvents | signalR.HttpTransportType.LongPolling }
+                    : undefined;
 
-            connection.on('SiparisGeldi', function () {
-                scheduleSoftRefresh(900);
-            });
+                return new signalR.HubConnectionBuilder()
+                    .withUrl('/hubs/order', options)
+                    .withAutomaticReconnect()
+                    .configureLogging(signalR.LogLevel.Error)
+                    .build();
+            }
 
-            connection.on('SiparisEklendi', function () {
-                scheduleSoftRefresh(900);
-            });
+            function registerConnectionHandlers(conn) {
+                conn.on('SiparisGeldi', function () {
+                    scheduleSoftRefresh(900);
+                });
 
-            connection.on('SiparisGuncellendi', function () {
-                scheduleSoftRefresh(500);
-            });
+                conn.on('SiparisEklendi', function () {
+                    scheduleSoftRefresh(900);
+                });
 
-            connection.on('SiparisHazir', function () {
-                scheduleSoftRefresh(400);
-            });
+                conn.on('SiparisGuncellendi', function () {
+                    scheduleSoftRefresh(500);
+                });
 
-            connection.on('SiparisIptal', function () {
-                scheduleSoftRefresh(400);
-            });
+                conn.on('SiparisHazir', function () {
+                    scheduleSoftRefresh(400);
+                });
 
-            connection.on('OdemeYapildi', function () {
-                scheduleSoftRefresh(300);
-            });
+                conn.on('SiparisIptal', function () {
+                    scheduleSoftRefresh(400);
+                });
 
-            connection.start()
-                .then(() => console.log('Admin panel SignalR bağlantısı başarılı.'))
-                .catch(err => console.error('SignalR hatası:', err));
+                conn.on('OdemeYapildi', function () {
+                    scheduleSoftRefresh(300);
+                });
+            }
+
+            let connection = buildConnection(false);
+            registerConnectionHandlers(connection);
+
+            async function startConnection(conn, allowFallback) {
+                try {
+                    await conn.start();
+                    console.log('Admin panel SignalR bağlantısı başarılı.');
+                } catch (err) {
+                    console.error('SignalR hatası:', err);
+                    if (!allowFallback) return;
+
+                    try {
+                        await conn.stop();
+                    } catch (stopErr) {
+                        console.warn('SignalR kapatılırken hata:', stopErr);
+                    }
+
+                    connection = buildConnection(true);
+                    registerConnectionHandlers(connection);
+                    await startConnection(connection, false);
+                }
+            }
+
+            startConnection(connection, true);
         });
     </script>
 }

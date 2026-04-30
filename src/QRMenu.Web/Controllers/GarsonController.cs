@@ -57,16 +57,13 @@ namespace QRMenu.Web.Controllers
         {
             ViewData["ActivePage"] = "GarsonMasalar";
             ViewData["PageTitle"] = "Garson Paneli - Masalar";
-            var (startUtc, endUtc) = TodayUtcRange();
 
             var masalar = await _context.Masalar
                 .Where(m => m.AktifMi)
                 .Include(m => m.Bolge)
                 .Include(m => m.Siparisler.Where(s => s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal
                     && s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi
-                    && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade
-                    && s.OlusturmaTarihi >= startUtc
-                    && s.OlusturmaTarihi < endUtc))
+                    && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade))
                     .ThenInclude(s => s.SiparisDetaylar)
                 .AsSplitQuery()
                 .OrderBy(m => m.MasaNo)
@@ -107,9 +104,7 @@ namespace QRMenu.Web.Controllers
                     .ThenInclude(sd => sd.Urun)
                 .AsSplitQuery()
                 .Where(s => s.MasaId == id
-                    && aktifDurumlar.Contains(s.Durum)
-                    && s.OlusturmaTarihi >= startUtc
-                    && s.OlusturmaTarihi < endUtc)
+                    && aktifDurumlar.Contains(s.Durum))
                 .OrderByDescending(s => s.OlusturmaTarihi)
                 .ToListAsync();
 
@@ -146,8 +141,6 @@ namespace QRMenu.Web.Controllers
         [HttpGet("/Garson/Masa/{id:int}/YeniSiparis")]
         public async Task<IActionResult> YeniSiparis(int id)
         {
-            var (startUtc, endUtc) = TodayUtcRange();
-
             var masa = await _context.Masalar
                 .Include(m => m.Bolge)
                 .FirstOrDefaultAsync(m => m.Id == id);
@@ -164,9 +157,7 @@ namespace QRMenu.Web.Controllers
                 .Where(s => s.MasaId == id
                     && s.Durum != SiparisDurum.Iptal
                     && s.Durum != SiparisDurum.TamOdendi
-                    && s.Durum != SiparisDurum.Iade
-                    && s.OlusturmaTarihi >= startUtc
-                    && s.OlusturmaTarihi < endUtc)
+                    && s.Durum != SiparisDurum.Iade)
                 .OrderByDescending(s => s.OlusturmaTarihi)
                 .ToListAsync();
 
@@ -395,13 +386,9 @@ namespace QRMenu.Web.Controllers
         {
             try
             {
-                var (startUtc, endUtc) = TodayUtcRange();
-
                 var hazirSiparisIds = await _context.Siparisler
                     .Where(s => s.MasaId == id
-                        && s.Durum == SiparisDurum.Hazir
-                        && s.OlusturmaTarihi >= startUtc
-                        && s.OlusturmaTarihi < endUtc)
+                        && s.Durum == SiparisDurum.Hazir)
                     .Select(s => s.Id)
                     .ToListAsync();
 

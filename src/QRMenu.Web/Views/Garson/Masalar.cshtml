@@ -268,33 +268,40 @@
             }, Math.max(0, waitMs));
         }
 
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl('/hubs/order')
-            .withAutomaticReconnect()
-            .configureLogging(signalR.LogLevel.Error)
-            .build();
+        function buildConnection(useFallbackTransports) {
+            const options = useFallbackTransports
+                ? { transport: signalR.HttpTransportType.ServerSentEvents | signalR.HttpTransportType.LongPolling }
+                : undefined;
 
-        connection.on('SiparisGeldi', function () {
+            return new signalR.HubConnectionBuilder()
+                .withUrl('/hubs/order', options)
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Error)
+                .build();
+        }
+
+        function registerConnectionHandlers(conn) {
+            conn.on('SiparisGeldi', function () {
             scheduleSoftRefresh(900);
-        });
+            });
 
-        connection.on('SiparisEklendi', function () {
+            conn.on('SiparisEklendi', function () {
             scheduleSoftRefresh(900);
-        });
+            });
 
-        connection.on('SiparisGuncellendi', function () {
+            conn.on('SiparisGuncellendi', function () {
             const overlay = document.getElementById('garsonNoticeOverlay');
             if (overlay && overlay.style.display === 'flex') {
                 return;
             }
             scheduleSoftRefresh(500);
-        });
+            });
 
-        connection.on('GarsonCagrisi', function () {
+            conn.on('GarsonCagrisi', function () {
             scheduleSoftRefresh(400);
-        });
+            });
 
-        connection.on('SiparisHazir', function (masaNo) {
+            conn.on('SiparisHazir', function (masaNo) {
             if (garsonSettingEnabled('garsonNoticeOverlay', true)) {
                 showGarsonNotice('Masa ' + masaNo + ' siparişi hazır!');
             }
@@ -304,17 +311,40 @@
             }
 
             scheduleSoftRefresh(350);
-        });
+            });
 
-        connection.on('SiparisIptal', function () {
+            conn.on('SiparisIptal', function () {
             scheduleSoftRefresh(400);
-        });
+            });
 
-        connection.on('OdemeYapildi', function () {
+            conn.on('OdemeYapildi', function () {
             scheduleSoftRefresh(300);
-        });
+            });
+        }
 
-        connection.start().catch(err => console.error('SignalR hatası:', err));
+        let connection = buildConnection(false);
+        registerConnectionHandlers(connection);
+
+        async function startConnection(conn, allowFallback) {
+            try {
+                await conn.start();
+            } catch (err) {
+                console.error('SignalR hatası:', err);
+                if (!allowFallback) return;
+
+                try {
+                    await conn.stop();
+                } catch (stopErr) {
+                    console.warn('SignalR kapatılırken hata:', stopErr);
+                }
+
+                connection = buildConnection(true);
+                registerConnectionHandlers(connection);
+                await startConnection(connection, false);
+            }
+        }
+
+        startConnection(connection, true);
 
         function showGarsonNotice(text) {
             const textNode = document.getElementById('garsonNoticeText');
