@@ -139,24 +139,34 @@
             border-radius: .85rem;
             border: 1px solid #ece8e5;
             background: #ffffff;
-            padding: .72rem .8rem;
-            margin-bottom: .55rem;
-            transition: border-color .2s ease, background-color .2s ease, transform .2s ease;
+            padding: .85rem .75rem;
+            margin-bottom: .45rem;
+            transition: all .2s ease;
             cursor: pointer;
-        }
-
-        .odeme-item-row:last-child {
-            margin-bottom: 0;
         }
 
         .odeme-item-row:hover {
             border-color: #d8cfc9;
+            background: #fdfdfd;
         }
 
         .odeme-item-row.selected {
             border-color: rgba(162, 55, 24, 0.45);
             background: #fff8f5;
             transform: translateY(-1px);
+        }
+
+        .odeme-item-row .odeme-check-wrap {
+            width: 1.75rem;
+            height: 1.75rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: .6rem;
+            border: 2px solid #d9d3cf;
+            background: #fff;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
         }
 
         .odeme-item-main {
@@ -225,6 +235,53 @@
             font-size: .73rem;
             color: #7a7979;
             line-height: 1.3;
+        }
+
+        .odeme-item-cancel {
+            display: none;
+        }
+
+        .iptal-qty-chip-group {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: .35rem;
+            align-items: center;
+        }
+
+        .iptal-qty-chip {
+            border: 1px solid #ddd7d3;
+            background: #fff;
+            color: #5f5e5d;
+            border-radius: .6rem;
+            min-width: 2.05rem;
+            min-height: 1.9rem;
+            padding: .1rem .45rem;
+            font-size: .72rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .iptal-qty-chip.is-active {
+            background: #a23718;
+            border-color: #a23718;
+            color: #fff;
+        }
+
+        .iptal-submit.is-busy {
+            opacity: .88;
+        }
+
+        .iptal-btn-spinner {
+            width: .95rem;
+            height: .95rem;
+            border-radius: 999px;
+            border: 2px solid rgba(162, 55, 24, 0.25);
+            border-top-color: #a23718;
+            animation: kdsSpin .75s linear infinite;
+        }
+
+        @@keyframes kdsSpin {
+            to { transform: rotate(360deg); }
         }
 
         .odeme-item-price {
@@ -370,6 +427,35 @@
             cursor: not-allowed;
         }
 
+        .iptal-submit {
+            width: 100%;
+            margin-top: .65rem;
+            border: 1px solid #f0c5bd;
+            border-radius: .85rem;
+            background: #fff6f4;
+            color: #9a2f14;
+            font-size: .9rem;
+            font-weight: 900;
+            letter-spacing: .02em;
+            padding: .88rem .8rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .25rem;
+            transition: opacity .2s ease, transform .2s ease;
+        }
+
+        .iptal-submit:hover {
+            opacity: .92;
+            transform: translateY(-1px);
+        }
+
+        .iptal-submit:disabled {
+            opacity: .45;
+            transform: none;
+            cursor: not-allowed;
+        }
+
         .empty-box {
             border-radius: 1rem;
             border: 2px dashed #d7d5d3;
@@ -507,7 +593,7 @@
 
                             <article class="adisyon-block">
                                 <div class="adisyon-head">
-                                    <p class="adisyon-title">Adisyon #@siparis.Id • @siparis.OlusturmaTarihi.ToString("HH:mm")</p>
+                                    <p class="adisyon-title">Adisyon #@siparis.GunlukSiparisNo • @siparis.OlusturmaTarihi.ToString("HH:mm")</p>
                                     @if (!string.IsNullOrWhiteSpace(siparis.Notlar) && siparis.Notlar.Contains("🎉 Happy Hour"))
                                     {
                                         var hhNot = siparis.Notlar.Split('|')[0].Trim();
@@ -517,7 +603,7 @@
 
                                 @foreach (var detay in bekleyenDetaylar)
                                 {
-                                    var satirTutar = (detay.Adet * detay.BirimFiyat) * indirimOrani;
+                                    var satirTutar = detay.BirimFiyat * indirimOrani;
                                     var seciliOpsiyonMetni = "";
 
                                     if (!string.IsNullOrWhiteSpace(detay.SeciliOpsiyonlar) && detay.SeciliOpsiyonlar != "[]")
@@ -538,33 +624,40 @@
                                         }
                                     }
 
-                                    <label class="odeme-item-row">
-                                        <div class="odeme-item-main">
-                                            <input type="checkbox"
-                                                   class="odeme-check urun-check"
-                                                   value="@detay.Id"
-                                                   data-fiyat="@satirTutar.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                                                   onchange="hesapla()" />
-
-                                            <div class="odeme-item-icon">
-                                                <span class="material-symbols-outlined">restaurant</span>
-                                            </div>
-
-                                            <div class="min-w-0">
-                                                <p class="odeme-item-name">@detay.Urun?.Ad</p>
-                                                <div class="odeme-item-meta">
-                                                    <span class="meta-pill">@detay.Adet ADET</span>
-                                                    <span class="meta-pill status">@detay.Durum</span>
+                                    @for (var i = 0; i < detay.Adet; i++)
+                                    {
+                                        <label class="odeme-item-row">
+                                            <div class="odeme-item-main">
+                                                <div class="odeme-check-wrap">
+                                                    <input type="checkbox"
+                                                           class="odeme-check urun-check"
+                                                           value="@detay.Id"
+                                                           data-fiyat="@satirTutar.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                           onchange="hesapla()" />
                                                 </div>
-                                                @if (!string.IsNullOrWhiteSpace(seciliOpsiyonMetni))
-                                                {
-                                                    <p class="odeme-item-options">@seciliOpsiyonMetni</p>
-                                                }
-                                            </div>
-                                        </div>
 
-                                        <div class="odeme-item-price">@satirTutar.ToString("N2") TL</div>
-                                    </label>
+                                                <div class="odeme-item-icon">
+                                                    <span class="material-symbols-outlined">restaurant</span>
+                                                </div>
+
+                                                <div class="min-w-0">
+                                                    <p class="odeme-item-name">
+                                                        @detay.Urun?.Ad
+                                                        <span class="text-[10px] bg-stone-100 px-1.5 py-0.5 rounded text-stone-500 ml-1">1 ADET</span>
+                                                    </p>
+                                                    <div class="odeme-item-meta">
+                                                        <span class="meta-pill status">@detay.Durum</span>
+                                                    </div>
+                                                    @if (!string.IsNullOrWhiteSpace(seciliOpsiyonMetni))
+                                                    {
+                                                        <p class="odeme-item-options">@seciliOpsiyonMetni</p>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <div class="odeme-item-price">@satirTutar.ToString("N2") TL</div>
+                                        </label>
+                                    }
                                 }
                             </article>
                         }
@@ -617,6 +710,10 @@
                     <button type="button" class="tahsilat-submit" id="btnTahsilat" onclick="odemeYap()" disabled>
                         <span>TAHSİLAT GİRİŞİ YAP</span>
                         <span class="material-symbols-outlined text-base">chevron_right</span>
+                    </button>
+                    <button type="button" class="iptal-submit flex items-center justify-center gap-2" id="btnIptal" onclick="seciliKalemleriIptalEt()" disabled>
+                        <span class="iptal-btn-spinner hidden" id="kasaIptalSpinner"></span>
+                        <span>SEÇİLENLERİ İPTAL ET</span>
                     </button>
                 </div>
             </aside>
@@ -687,6 +784,7 @@
             const indirimToplamTxt = document.getElementById('indirimToplamTxt');
             const seciliKalemSayisi = document.getElementById('seciliKalemSayisi');
             const btnTahsilat = document.getElementById('btnTahsilat');
+            const btnIptal = document.getElementById('btnIptal');
 
             if (secilenTutarTxt) {
                 secilenTutarTxt.innerText = formatTl(toplam);
@@ -705,6 +803,9 @@
             }
             if (btnTahsilat) {
                 btnTahsilat.disabled = secilenSayisi === 0;
+            }
+            if (btnIptal) {
+                btnIptal.disabled = secilenSayisi === 0;
             }
         }
 
@@ -786,6 +887,7 @@
 
                 const result = await response.json();
                 if (result.success) {
+                    console.log('Kasa işlemi başarılı: Tahsilat girişi yapıldı.');
                     await softRefreshOdemePanel();
                     return;
                 }
@@ -803,6 +905,99 @@
                     title: 'Bağlantı Hatası',
                     text: 'Tahsilat işlemi sırasında sunucuyla iletişim kurulamadı veya CSRF doğrulaması başarısız oldu.'
                 });
+                hesapla();
+            }
+        }
+
+        async function seciliKalemleriIptalEt() {
+            const seciliChecks = Array.from(document.querySelectorAll('.urun-check:checked'));
+            if (!seciliChecks.length) {
+                return;
+            }
+
+            const onay = await Swal.fire({
+                icon: 'warning',
+                title: 'Seçilen kalemler iptal edilsin mi?',
+                text: 'Bu işlem seçili kalemleri iptal durumuna alır.',
+                showCancelButton: true,
+                confirmButtonText: 'Evet, iptal et',
+                cancelButtonText: 'Vazgeç'
+            });
+
+            if (!onay.isConfirmed) {
+                return;
+            }
+
+            const btnIptal = document.getElementById('btnIptal');
+            const spinner = document.getElementById('kasaIptalSpinner');
+            const labelEl = btnIptal?.querySelector('span:not(.iptal-btn-spinner)');
+            const originalText = labelEl ? labelEl.innerText : 'SEÇİLENLERİ İPTAL ET';
+
+            if (btnIptal) {
+                btnIptal.disabled = true;
+                if (spinner) spinner.classList.remove('hidden');
+                if (labelEl) labelEl.innerText = 'İPTAL EDİLİYOR...';
+            }
+
+            const selectionMap = new Map();
+            seciliChecks.forEach(c => {
+                const detailId = Number.parseInt(c.value, 10);
+                if (Number.isFinite(detailId)) {
+                    selectionMap.set(detailId, (selectionMap.get(detailId) || 0) + 1);
+                }
+            });
+
+            const detaylar = [];
+            selectionMap.forEach((adet, siparisDetayId) => {
+                detaylar.push({ siparisDetayId, adet });
+            });
+
+            const payload = {
+                masaId: @Model.Id,
+                detaylar: detaylar
+            };
+
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+            try {
+                const response = await fetch('/Kasa/SeciliKalemleriIptalEt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP Hata ${response.status}`);
+                }
+
+                const result = await response.json();
+                if (result.success) {
+                    console.log('Kasa işlemi başarılı: Seçili sipariş kalemleri iptal edildi.');
+                    await softRefreshOdemePanel();
+                    return;
+                }
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'İptal Hatası',
+                    text: result.message || 'Bilinmeyen bir hata oluştu.'
+                });
+            } catch (err) {
+                console.error(err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Bağlantı Hatası',
+                    text: 'İptal işlemi sırasında sunucuyla iletişim kurulamadı.'
+                });
+            } finally {
+                if (btnIptal) {
+                    btnIptal.disabled = false;
+                    if (spinner) spinner.classList.add('hidden');
+                    if (labelEl) labelEl.innerText = originalText;
+                }
                 hesapla();
             }
         }

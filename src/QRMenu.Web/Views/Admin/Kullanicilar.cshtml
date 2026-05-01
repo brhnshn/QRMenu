@@ -304,7 +304,7 @@
                     <td class="px-8 py-6 text-right">
                         <div class="flex items-center justify-end gap-3 transition-all">
                             ${k.rol === 'Admin' 
-                                ? `<button title="Admin düzenlenemez" disabled class="material-symbols-outlined text-stone-200 cursor-not-allowed p-2 text-xl">edit</button>
+                                ? `<button onclick="sifreModalAc('${k.id}', '${k.kullaniciAdi}')" title="Şifre Değiştir" class="material-symbols-outlined text-outline hover:text-primary p-2 text-xl">lock_reset</button>
                                    <button title="Admin kapatılamaz" disabled class="material-symbols-outlined text-stone-200 cursor-not-allowed p-2 text-xl">${k.aktifMi ? 'pause_circle' : 'play_circle'}</button>
                                    <button title="Admin kullanıcısı silinemez" disabled class="material-symbols-outlined text-stone-200 cursor-not-allowed p-2 text-xl">delete</button>`
                                 : `<button onclick='duzenleAc(${JSON.stringify(k)})' class="material-symbols-outlined text-outline hover:text-primary p-2 text-xl">edit</button>
@@ -339,7 +339,9 @@
                                 <span class="text-xs font-semibold ${k.aktifMi ? 'text-emerald-700' : 'text-stone-400'}">${k.aktifMi ? 'Aktif' : 'Pasif'}</span>
                             </div>
                             <div class="flex gap-1">
-                                ${k.rol === 'Admin' ? '' : `
+                                ${k.rol === 'Admin' 
+                                    ? `<button onclick="sifreModalAc('${k.id}', '${k.kullaniciAdi}')" class="p-2 text-outline hover:text-primary border-0 bg-transparent"><span class="material-symbols-outlined text-xl">lock_reset</span></button>` 
+                                    : `
                                     <button onclick='duzenleAc(${JSON.stringify(k)})' class="p-2 text-outline hover:text-primary border-0 bg-transparent"><span class="material-symbols-outlined text-xl">edit</span></button>
                                     <button onclick="kullaniciToggle('${k.id}')" class="p-2 text-outline hover:text-secondary border-0 bg-transparent"><span class="material-symbols-outlined text-xl">${k.aktifMi ? 'pause_circle' : 'play_circle'}</span></button>
                                     <button onclick="kullaniciSil('${k.id}', '${k.kullaniciAdi}')" class="p-2 text-outline hover:text-error border-0 bg-transparent"><span class="material-symbols-outlined text-xl">delete</span></button>

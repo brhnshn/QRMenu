@@ -47,6 +47,11 @@ namespace QRMenu.Core.Interfaces
         Task<Siparis> IptalEtAsync(int siparisId);
 
         /// <summary>
+        /// Sipariş detaylarını (adet bazlı) iptal eder.
+        /// </summary>
+        Task<IReadOnlyList<Siparis>> SiparisDetayIptalEtAsync(List<SiparisDetayIptalDto> detaylar, int? masaId = null);
+
+        /// <summary>
         /// Belirli bir durumdan geçiş yapılabilecek durumları döner
         /// </summary>
         IReadOnlyList<SiparisDurum> GecerliGecisler(SiparisDurum mevcutDurum);

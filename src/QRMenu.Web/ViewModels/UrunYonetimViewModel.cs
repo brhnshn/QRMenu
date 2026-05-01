@@ -44,6 +44,9 @@ namespace QRMenu.Web.ViewModels
 
         public int? Kalori { get; set; }
 
+        [Range(0, 999999, ErrorMessage = "Stok 0 veya daha buyuk olmalidir.")]
+        public int StokAdet { get; set; }
+
         /// <summary>
         /// Urun gorseli (max 2MB, jpg/png/webp)
         /// </summary>

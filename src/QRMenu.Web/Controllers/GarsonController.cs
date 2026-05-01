@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Hosting;
 
 using Microsoft.AspNetCore.Authorization;
+using QRMenu.Web.Models;
 
 namespace QRMenu.Web.Controllers
 {
@@ -309,6 +310,7 @@ namespace QRMenu.Web.Controllers
             {
                 success = true,
                 id = siparis.Id,
+                gunlukSiparisNo = siparis.GunlukSiparisNo,
                 masaNo = siparis.Masa?.MasaNo,
                 durum = siparis.Durum.ToString(),
                 durumInt = (int)siparis.Durum,
@@ -316,15 +318,83 @@ namespace QRMenu.Web.Controllers
                 notlar = siparis.Notlar,
                 olusturmaTarihi = ToTurkeyTime(siparis.OlusturmaTarihi),
                 guncellemeTarihi = ToTurkeyTime(siparis.GuncellemeTarihi),
-                detaylar = siparis.SiparisDetaylar.Select(sd => new
-                {
-                    urunAd = sd.Urun.Ad,
-                    adet = sd.Adet,
-                    birimFiyat = sd.BirimFiyat,
-                    opsiyonlar = sd.SeciliOpsiyonlar,
-                    durum = sd.Durum.ToString()
-                })
+                detaylar = siparis.SiparisDetaylar
+                    .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal)
+                    .Select(sd => new
+                    {
+                        detayId = sd.Id,
+                        urunAd = sd.Urun.Ad,
+                        adet = sd.Adet,
+                        birimFiyat = sd.BirimFiyat,
+                        opsiyonlar = sd.SeciliOpsiyonlar,
+                        durum = sd.Durum.ToString()
+                    })
             });
+        }
+
+        // POST: /Garson/SiparisDetayIptal
+        [HttpPost("/Garson/SiparisDetayIptal")]
+        public async Task<IActionResult> SiparisDetayIptal([FromBody] SiparisDetayIptalRequest request)
+        {
+            if (request == null || request.Detaylar == null || request.Detaylar.Count == 0)
+                return Json(new { success = false, message = "İptal edilecek kalem seçilmedi." });
+
+            try
+            {
+                // Garson sadece kendi masasına ait ve uygun durumdaki kalemleri iptal edebilmeli
+                if (!request.MasaId.HasValue)
+                    return Json(new { success = false, message = "Masa bilgisi bulunamadı." });
+
+                var ids = request.Detaylar.Select(d => d.SiparisDetayId).ToList();
+                var dbDetaylar = await _context.SiparisDetaylar
+                    .Include(sd => sd.Siparis)
+                        .ThenInclude(s => s.Masa)
+                    .AsSplitQuery()
+                    .Where(sd => ids.Contains(sd.Id))
+                    .ToListAsync();
+
+                if (dbDetaylar.Count != ids.Count)
+                    return Json(new { success = false, message = "Bazı seçilen kalemler bulunamadı." });
+
+                if (dbDetaylar.Any(sd => sd.Siparis.MasaId != request.MasaId.Value))
+                    return Json(new { success = false, message = "Seçilen kalemler farklı masaya ait." });
+
+                var allowed = new[] { QRMenu.Core.Enums.SiparisDurum.Onaylandi, QRMenu.Core.Enums.SiparisDurum.Hazir, QRMenu.Core.Enums.SiparisDurum.TeslimEdildi };
+                var invalid = dbDetaylar.Where(sd => !allowed.Contains(sd.Durum)).ToList();
+                if (invalid.Any())
+                    return Json(new { success = false, message = "Garson yalnızca onaylanmış, hazır veya teslim edilmiş ürünleri iptal edebilir." });
+
+                var siparisler = await _siparisService.SiparisDetayIptalEtAsync(request.Detaylar, request.MasaId);
+
+                var iptalSiparisler = siparisler
+                    .Where(s => s.Durum == SiparisDurum.Iptal)
+                    .DistinctBy(s => s.MasaId)
+                    .ToList();
+
+                foreach (var siparis in iptalSiparisler)
+                {
+                    var masaNo = siparis.Masa?.MasaNo ?? 0;
+                    await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisIptal", masaNo);
+                    await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisIptal", masaNo);
+                    await _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisIptal", masaNo);
+                }
+
+                foreach (var masaId in siparisler.Select(s => s.MasaId).Distinct())
+                {
+                    await _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisGuncellendi");
+                }
+
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
+
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Garson sipariş detay iptal hatası");
+                return Json(new { success = false, message = ex.Message });
+            }
         }
 
         // POST: /Garson/DurumGuncelle/{id}

@@ -37,8 +37,8 @@ namespace QRMenu.Tests
 
                 // Kategori -> Urun -> Opsiyon
                 context.Kategoriler.Add(new Kategori { Id = 100, Ad = "Test Kategori", SiraNo = 1 });
-                context.Urunler.Add(new Urun { Id = 100, KategoriId = 100, Ad = "Çay", Fiyat = 20m, AktifMi = true });
-                context.Urunler.Add(new Urun { Id = 101, KategoriId = 100, Ad = "Kahve", Fiyat = 50m, AktifMi = true });
+                context.Urunler.Add(new Urun { Id = 100, KategoriId = 100, Ad = "Çay", Fiyat = 20m, AktifMi = true, StokAdet = 100 });
+                context.Urunler.Add(new Urun { Id = 101, KategoriId = 100, Ad = "Kahve", Fiyat = 50m, AktifMi = true, StokAdet = 100 });
 
                 context.Opsiyonlar.Add(new Opsiyon { Id = 100, Ad = "Büyük Boy", Grup = "Boyut", EkFiyat = 20m });
                 context.UrunOpsiyonlar.Add(new UrunOpsiyon { UrunId = 101, OpsiyonId = 100 });

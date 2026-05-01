@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using QRMenu.Core.DTOs;
 using QRMenu.Core.Entities;
 using QRMenu.Core.Interfaces;
 using QRMenu.Data.Data;
@@ -43,6 +44,8 @@ namespace QRMenu.Data.Services
                 var cached = await _context.Sepetler
                     .Include(s => s.SepetDetaylar)
                         .ThenInclude(sd => sd.Urun)
+                    .Include(s => s.SepetDetaylar)
+                        .ThenInclude(sd => sd.UrunVaryasyon)
                     .AsSplitQuery()
                     .FirstOrDefaultAsync(s => s.Id == cachedSepetId);
                 if (cached != null) return cached;
@@ -51,6 +54,8 @@ namespace QRMenu.Data.Services
             var sepet = await _context.Sepetler
                 .Include(s => s.SepetDetaylar)
                     .ThenInclude(sd => sd.Urun)
+                .Include(s => s.SepetDetaylar)
+                    .ThenInclude(sd => sd.UrunVaryasyon)
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(s => s.OturumId == oturumId);
 
@@ -73,11 +78,37 @@ namespace QRMenu.Data.Services
         /// <summary>
         /// Sepete ürün ekle — aynı ürün+opsiyon varsa adet artır
         /// </summary>
-        public async Task<SepetDetay> AddItemAsync(int sepetId, int urunId, int adet, List<int>? opsiyonIds = null, decimal? forceDiscountRate = null)
+        public async Task<SepetDetay> AddItemAsync(int sepetId, int urunId, int adet, List<int>? opsiyonIds = null, decimal? forceDiscountRate = null, int? urunVaryasyonId = null)
         {
+            if (adet <= 0)
+                throw new InvalidOperationException("Adet 1 veya daha buyuk olmalidir.");
+
             var urun = await _context.Urunler.FindAsync(urunId);
             if (urun == null || !urun.AktifMi)
                 throw new InvalidOperationException("Ürün bulunamadı veya aktif değil.");
+
+            UrunVaryasyon? varyasyon = null;
+            if (urunVaryasyonId.HasValue)
+            {
+                varyasyon = await _context.UrunVaryasyonlar
+                    .FirstOrDefaultAsync(v => v.Id == urunVaryasyonId.Value && v.UrunId == urunId);
+
+                if (varyasyon == null || !varyasyon.AktifMi)
+                    throw new InvalidOperationException("Urun varyasyonu bulunamadi veya aktif degil.");
+            }
+
+            var mevcutSepetAdet = await _context.SepetDetaylar
+                .Where(sd => sd.SepetId == sepetId
+                    && sd.UrunId == urunId
+                    && sd.UrunVaryasyonId == urunVaryasyonId)
+                .SumAsync(sd => sd.Adet);
+
+            var stokAdet = varyasyon?.StokAdet ?? urun.StokAdet;
+            if (stokAdet <= 0)
+                throw new InvalidOperationException("Stok tukenmistir.");
+
+            if (mevcutSepetAdet + adet > stokAdet)
+                throw new InvalidOperationException($"Stokta sadece {stokAdet} adet kalmistir.");
 
             // Opsiyon bilgilerini al
             string? opsiyonJson = null;
@@ -102,12 +133,13 @@ namespace QRMenu.Data.Services
                 basePrice = Math.Round(basePrice * (1 - forceDiscountRate.Value / 100m), 2);
             }
             
-            decimal birimFiyat = basePrice + opsiyonEkFiyat;
+            decimal birimFiyat = basePrice + (varyasyon?.EkFiyat ?? 0) + opsiyonEkFiyat;
 
             // Aynı ürün + aynı opsiyonlarla zaten sepette var mı?
             var mevcutDetay = await _context.SepetDetaylar
                 .FirstOrDefaultAsync(sd => sd.SepetId == sepetId
                                         && sd.UrunId == urunId
+                                        && sd.UrunVaryasyonId == urunVaryasyonId
                                         && sd.SeciliOpsiyonlar == opsiyonJson);
 
             if (mevcutDetay != null)
@@ -125,6 +157,7 @@ namespace QRMenu.Data.Services
                 {
                     SepetId = sepetId,
                     UrunId = urunId,
+                    UrunVaryasyonId = urunVaryasyonId,
                     Adet = adet,
                     BirimFiyat = birimFiyat,
                     SeciliOpsiyonlar = opsiyonJson
@@ -190,6 +223,29 @@ namespace QRMenu.Data.Services
             if (yeniAdet <= 0)
                 return await RemoveItemAsync(sepetDetayId);
 
+            var stokAdet = detay.UrunVaryasyonId.HasValue
+                ? await _context.UrunVaryasyonlar
+                    .Where(v => v.Id == detay.UrunVaryasyonId.Value && v.AktifMi)
+                    .Select(v => (int?)v.StokAdet)
+                    .FirstOrDefaultAsync()
+                : await _context.Urunler
+                    .Where(u => u.Id == detay.UrunId && u.AktifMi)
+                    .Select(u => (int?)u.StokAdet)
+                    .FirstOrDefaultAsync();
+
+            if (!stokAdet.HasValue || stokAdet.Value <= 0)
+                throw new InvalidOperationException("Stok tukenmistir, urunu sepetten cikarin.");
+
+            var digerSepetAdet = await _context.SepetDetaylar
+                .Where(sd => sd.SepetId == detay.SepetId
+                    && sd.Id != detay.Id
+                    && sd.UrunId == detay.UrunId
+                    && sd.UrunVaryasyonId == detay.UrunVaryasyonId)
+                .SumAsync(sd => sd.Adet);
+
+            if (digerSepetAdet + yeniAdet > stokAdet.Value)
+                throw new InvalidOperationException($"Stokta sadece {stokAdet.Value} adet kalmistir.");
+
             detay.Adet = yeniAdet;
 
             var sepet = await _context.Sepetler
@@ -239,6 +295,8 @@ namespace QRMenu.Data.Services
                 .Include(s => s.SepetDetaylar)
                     .ThenInclude(sd => sd.Urun)
                         .ThenInclude(u => u.Kategori)
+                .Include(s => s.SepetDetaylar)
+                    .ThenInclude(sd => sd.UrunVaryasyon)
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(s => s.Id == sepetId);
         }
@@ -251,8 +309,66 @@ namespace QRMenu.Data.Services
             return await _context.Sepetler
                 .Include(s => s.SepetDetaylar)
                     .ThenInclude(sd => sd.Urun)
+                .Include(s => s.SepetDetaylar)
+                    .ThenInclude(sd => sd.UrunVaryasyon)
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(s => s.OturumId == oturumId);
+        }
+
+        public async Task<SepetStokKontrolDto> ValidateStockAsync(int sepetId)
+        {
+            var sonuc = new SepetStokKontrolDto();
+            var sepet = await GetSepetWithDetailsAsync(sepetId);
+            if (sepet == null || !sepet.SepetDetaylar.Any())
+                return sonuc;
+
+            foreach (var grup in sepet.SepetDetaylar.GroupBy(sd => new { sd.UrunId, sd.UrunVaryasyonId }))
+            {
+                var toplamAdet = grup.Sum(sd => sd.Adet);
+                var ilkDetay = grup.First();
+                var stokAdet = ilkDetay.UrunVaryasyon?.StokAdet ?? ilkDetay.Urun.StokAdet;
+                var aktifMi = ilkDetay.UrunVaryasyon?.AktifMi ?? ilkDetay.Urun.AktifMi;
+
+                if (!aktifMi || stokAdet <= 0)
+                {
+                    foreach (var detay in grup)
+                    {
+                        sonuc.Sorunlar.Add(new SepetStokSorunDto
+                        {
+                            SepetDetayId = detay.Id,
+                            UrunId = detay.UrunId,
+                            UrunVaryasyonId = detay.UrunVaryasyonId,
+                            UrunAd = detay.Urun.Ad,
+                            SepettekiAdet = detay.Adet,
+                            StokAdet = Math.Max(stokAdet, 0),
+                            StokTukendi = true,
+                            Mesaj = "Stok tukenmistir, urunu sepetten cikarin."
+                        });
+                    }
+
+                    continue;
+                }
+
+                if (toplamAdet > stokAdet)
+                {
+                    foreach (var detay in grup)
+                    {
+                        sonuc.Sorunlar.Add(new SepetStokSorunDto
+                        {
+                            SepetDetayId = detay.Id,
+                            UrunId = detay.UrunId,
+                            UrunVaryasyonId = detay.UrunVaryasyonId,
+                            UrunAd = detay.Urun.Ad,
+                            SepettekiAdet = detay.Adet,
+                            StokAdet = stokAdet,
+                            StokTukendi = false,
+                            Mesaj = $"Stokta sadece {stokAdet} adet kalmistir, lutfen miktari guncelleyin."
+                        });
+                    }
+                }
+            }
+
+            return sonuc;
         }
 
         /// <summary>

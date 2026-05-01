@@ -1,3 +1,4 @@
+using QRMenu.Core.DTOs;
 using QRMenu.Core.Entities;
 
 namespace QRMenu.Core.Interfaces
@@ -12,7 +13,7 @@ namespace QRMenu.Core.Interfaces
         /// <summary>
         /// Sepete ürün ekle (aynı ürün+opsiyon varsa adet artır)
         /// </summary>
-        Task<SepetDetay> AddItemAsync(int sepetId, int urunId, int adet, List<int>? opsiyonIds = null, decimal? forceDiscountRate = null);
+        Task<SepetDetay> AddItemAsync(int sepetId, int urunId, int adet, List<int>? opsiyonIds = null, decimal? forceDiscountRate = null, int? urunVaryasyonId = null);
 
         /// <summary>
         /// Sepetten ürün çıkar
@@ -38,5 +39,10 @@ namespace QRMenu.Core.Interfaces
         /// Oturum ID'ye göre sepet özetini getir
         /// </summary>
         Task<Sepet?> GetSepetByOturumAsync(int oturumId);
+
+        /// <summary>
+        /// Sepetteki adetleri anlik veritabani stoguna gore kontrol eder.
+        /// </summary>
+        Task<SepetStokKontrolDto> ValidateStockAsync(int sepetId);
     }
 }

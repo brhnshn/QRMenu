@@ -6,6 +6,8 @@
     var currentLang = Context.Request.Cookies["lang"] ?? "tr";
     bool isEn = currentLang == "en";
     string L(string tr, string? en) => (isEn && !string.IsNullOrEmpty(en)) ? en : tr;
+    var stokKontrol = ViewBag.StokKontrol as QRMenu.Core.DTOs.SepetStokKontrolDto;
+    bool stokGecerli = stokKontrol == null || stokKontrol.GecerliMi;
 }
 
 <!DOCTYPE html>
@@ -99,6 +101,16 @@
                 }
                 <p class="text-on-surface-variant font-medium">@(L("Onayınız alındığında taze olarak hazırlanacaktır.", "It will be freshly prepared upon your approval."))</p>
             </div>
+
+            @if (!stokGecerli)
+            {
+                <div class="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4 text-red-700">
+                    @foreach (var sorun in stokKontrol!.Sorunlar)
+                    {
+                        <p class="text-sm font-bold mb-1">@sorun.UrunAd: @sorun.Mesaj</p>
+                    }
+                </div>
+            }
 
             <!-- Order Items (Stitch Bento) -->
             <div class="space-y-6">
@@ -224,7 +236,7 @@
     {
         <div class="fixed bottom-[72px] left-0 w-full z-[55] px-6 pb-4 pt-4 bg-gradient-to-t from-surface via-surface to-transparent">
             <div class="max-w-2xl mx-auto">
-                <button id="completeOrderBtn" onclick="siparisGonder()"
+                <button id="completeOrderBtn" onclick="siparisGonder()" @(stokGecerli ? "" : "disabled")
                         class="w-full bg-gradient-to-r from-primary to-primary-container text-white py-5 rounded-full font-headline font-bold text-lg shadow-[0_12px_32px_rgba(162,55,24,0.3)] active:scale-95 transition-transform flex items-center justify-center gap-3 border-0 cursor-pointer">
                     <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
                     @(L("Siparişi Onayla", "Confirm Order"))
@@ -395,6 +407,10 @@
         }
 
         function siparisGonder() {
+            if (!@Json.Serialize(stokGecerli)) {
+                showErrorToast('Stok durumunu duzeltmeden siparis tamamlanamaz.');
+                return;
+            }
             showConfirm('restaurant', 'Siparişi Onayla', 'Siparişiniz mutfağa gönderilecek. Onaylıyor musunuz?', 'Gönder', async function(){
                 const btn = document.getElementById('completeOrderBtn');
                 const siparisNotu = getSiparisNotu();

@@ -52,6 +52,8 @@ namespace QRMenu.Web.Controllers
             if (sepet != null)
             {
                 sepet = await _sepetService.GetSepetWithDetailsAsync(sepet.Id);
+                if (sepet != null)
+                    ViewBag.StokKontrol = await _sepetService.ValidateStockAsync(sepet.Id);
             }
 
             var happyHour = await GetActiveHappyHourAsync();
@@ -106,7 +108,7 @@ namespace QRMenu.Web.Controllers
                     discountRate = hh.Value.IndirimOrani;
                 }
 
-                var detay = await _sepetService.AddItemAsync(sepet.Id, request.UrunId, request.Adet, request.OpsiyonIds, discountRate);
+                var detay = await _sepetService.AddItemAsync(sepet.Id, request.UrunId, request.Adet, request.OpsiyonIds, discountRate, request.UrunVaryasyonId);
 
                 // Güncel sepet bilgisini döndür
                 var guncelSepet = await _sepetService.GetSepetWithDetailsAsync(sepet.Id);
@@ -154,7 +156,15 @@ namespace QRMenu.Web.Controllers
             var oturumId = GetOturumId();
             if (oturumId == null) return Unauthorized();
 
-            var result = await _sepetService.UpdateQuantityAsync(detayId, request.Adet);
+            bool result;
+            try
+            {
+                result = await _sepetService.UpdateQuantityAsync(detayId, request.Adet);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
             if (!result) return Json(new { success = false, message = "Ürün bulunamadı" });
 
             var sepet = await _sepetService.GetSepetByOturumAsync(oturumId.Value);
@@ -236,6 +246,7 @@ namespace QRMenu.Web.Controllers
     public class SepeteEkleRequest
     {
         public int UrunId { get; set; }
+        public int? UrunVaryasyonId { get; set; }
         public int Adet { get; set; } = 1;
         public List<int>? OpsiyonIds { get; set; }
     }

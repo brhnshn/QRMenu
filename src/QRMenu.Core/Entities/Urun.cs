@@ -14,9 +14,12 @@ namespace QRMenu.Core.Entities
         public bool PopulerMi { get; set; } = false;
         public int SatisSayisi { get; set; } = 0;
         public int? Kalori { get; set; }
+        public int StokAdet { get; set; }
+        public bool AdminManuelPasifMi { get; set; }
 
         // Navigation Properties
         public Kategori Kategori { get; set; } = null!;
         public ICollection<UrunOpsiyon> UrunOpsiyonlar { get; set; } = new List<UrunOpsiyon>();
+        public ICollection<UrunVaryasyon> Varyasyonlar { get; set; } = new List<UrunVaryasyon>();
     }
 }

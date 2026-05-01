@@ -52,7 +52,7 @@ namespace QRMenu.Tests
             decimal toplam = 0;
             for (int i = 1; i <= urunSayisi; i++)
             {
-                var urun = new Urun { Ad = $"Ürün {i}", Fiyat = 10m * i, KategoriId = kategori.Id, AktifMi = true };
+                var urun = new Urun { Ad = $"Ürün {i}", Fiyat = 10m * i, KategoriId = kategori.Id, AktifMi = true, StokAdet = 100 };
                 context.Urunler.Add(urun);
                 await context.SaveChangesAsync();
 
@@ -334,7 +334,7 @@ namespace QRMenu.Tests
 
             // Sepete tekrar ürün ekleyip ikinci sipariş
             var sepet = await context.Sepetler.FindAsync(sepetId);
-            var urun = await context.Urunler.FirstAsync();
+            var urun = await context.Urunler.OrderByDescending(u => u.Id).FirstAsync();
             context.SepetDetaylar.Add(new SepetDetay { SepetId = sepetId, UrunId = urun.Id, Adet = 1, BirimFiyat = urun.Fiyat });
             sepet!.ToplamTutar = urun.Fiyat;
             await context.SaveChangesAsync();

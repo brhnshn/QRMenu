@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using QRMenu.Data.Data;
@@ -11,9 +12,11 @@ using QRMenu.Data.Data;
 namespace QRMenu.Data.Migrations
 {
     [DbContext(typeof(QRMenuDbContext))]
-    partial class QRMenuDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260501142215_AddSiparisTarihiIndex")]
+    partial class AddSiparisTarihiIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -695,9 +698,6 @@ namespace QRMenu.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("CountryCode")
-                        .HasColumnType("text");
-
                     b.Property<string>("EventType")
                         .IsRequired()
                         .HasColumnType("text");
@@ -713,16 +713,6 @@ namespace QRMenu.Data.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Path")
-                        .HasColumnType("text");
-
-                    b.Property<string>("RequestBody")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Severity")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("TableId")
                         .HasColumnType("text");
 
                     b.Property<DateTime>("Timestamp")

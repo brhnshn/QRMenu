@@ -1,0 +1,143 @@
+@model List<QRMenu.Core.Entities.Siparis>
+@{
+    Layout = null;
+    var primaryColor = "#a23718";
+    var secondaryColor = "#1a1a1a";
+    var borderColor = "#e5e7eb";
+    var bgColor = "#f9fafb";
+    
+    var gecerliSiparisler = Model.Where(s => s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade).ToList();
+    var toplamCiro = gecerliSiparisler.Sum(s => s.ToplamTutar);
+    var toplamUrun = gecerliSiparisler.Sum(s => s.SiparisDetaylar.Sum(sd => sd.Adet));
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <title>Sipariş Arşivi Raporu</title>
+    <style>
+        @@font-face {
+            font-family: 'Inter';
+            src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 40px;
+            color: @secondaryColor;
+            background-color: white;
+            line-height: 1.5;
+        }
+        .header {
+            border-bottom: 2px solid @primaryColor;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            margin: 0;
+            color: @primaryColor;
+            font-size: 24px;
+            font-weight: 900;
+        }
+        .header p {
+            margin: 5px 0 0;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        .summary-grid {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .summary-card {
+            flex: 1;
+            background-color: @bgColor;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid @borderColor;
+        }
+        .summary-label { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
+        .summary-value { font-size: 18px; font-weight: 800; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background-color: #f3f4f6;
+            text-align: left;
+            padding: 10px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            border-bottom: 1px solid @borderColor;
+        }
+        td {
+            padding: 10px;
+            font-size: 11px;
+            border-bottom: 1px solid @borderColor;
+        }
+        .price { color: @primaryColor; font-weight: 700; }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 10px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>SİPARİŞ ARŞİVİ RAPORU</h1>
+        <p>Rapor Tarihi: @DateTime.Now.ToString("dd.MM.yyyy HH:mm")</p>
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-label">Toplam Sipariş</div>
+            <div class="summary-value">@Model.Count</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Toplam Ürün</div>
+            <div class="summary-value">@toplamUrun</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Toplam Ciro</div>
+            <div class="summary-value price">₺@toplamCiro.ToString("N2")</div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th width="40">No</th>
+                <th width="110">Tarih</th>
+                <th width="60">Masa</th>
+                <th>Ürünler</th>
+                <th width="80" class="text-right">Tutar</th>
+                <th width="80">Durum</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Model)
+            {
+                <tr>
+                    <td>#@s.GunlukSiparisNo</td>
+                    <td>@s.OlusturmaTarihi.AddHours(3).ToString("dd.MM.yyyy HH:mm")</td>
+                    <td>Masa @(s.Masa?.MasaNo.ToString() ?? "-")</td>
+                    <td>
+                        @string.Join(", ", s.SiparisDetaylar.Select(sd => $"{sd.Adet}x {sd.Urun.Ad}"))
+                    </td>
+                    <td class="text-right font-bold price">₺@s.ToplamTutar.ToString("N2")</td>
+                    <td>@s.Durum.ToString()</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="footer">
+        QR Menu - Güçlü Yönetim Paneli
+    </div>
+</body>
+</html>

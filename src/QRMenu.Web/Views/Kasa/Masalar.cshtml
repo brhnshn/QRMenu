@@ -129,9 +129,9 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 0.75rem;
             overflow: hidden;
-            padding: 1rem 1.25rem;
+            padding: 0.75rem 1rem;
         }
 
         .kasa-main-scroll::-webkit-scrollbar {
@@ -185,7 +185,7 @@
         }
 
         .table-card {
-            height: 13.5rem;
+            height: 11.5rem;
         }
 
         .table-card.is-clickable {
@@ -266,19 +266,19 @@
             </div>
         }
 
-        <header class="mb-2">
-            <div class="flex items-end justify-between mb-3 gap-3 flex-wrap">
+        <header class="mb-1">
+            <div class="flex items-end justify-between mb-2 gap-3 flex-wrap">
                 <div>
-                    <span class="text-secondary font-bold tracking-widest text-xs uppercase mb-2 block">Operasyon Paneli</span>
-                    <h1 class="text-2xl sm:text-3xl font-extrabold text-on-surface tracking-tight">Bekleyen Masalar</h1>
+                    <span class="text-secondary font-bold tracking-widest text-[10px] uppercase mb-1 block">Operasyon Paneli</span>
+                    <h1 class="text-xl sm:text-2xl font-extrabold text-on-surface tracking-tight">Bekleyen Masalar</h1>
                 </div>
-                <div class="bg-primary/5 px-3 sm:px-5 py-3 rounded-xl flex items-center gap-3 w-full sm:w-auto">
-                    <div class="w-10 h-10 bg-primary flex items-center justify-center rounded-full text-white">
-                        <span class="material-symbols-outlined">receipt_long</span>
+                <div class="bg-primary/5 px-3 sm:px-4 py-2 rounded-xl flex items-center gap-3 w-full sm:w-auto">
+                    <div class="w-8 h-8 bg-primary flex items-center justify-center rounded-full text-white">
+                        <span class="material-symbols-outlined text-sm">receipt_long</span>
                     </div>
                     <div>
-                        <p class="text-xs text-on-surface-variant font-semibold">Toplam Ödeme Bekleyen</p>
-                        <p class="text-xl font-black text-primary">@toplamOdemeBekleyen Masa</p>
+                        <p class="text-[10px] text-on-surface-variant font-semibold">Toplam Ödeme Bekleyen</p>
+                        <p class="text-lg font-black text-primary">@toplamOdemeBekleyen Masa</p>
                     </div>
                 </div>
             </div>
@@ -349,17 +349,17 @@
                          tabindex="0"
                          aria-label="Masa @kart.MasaNo detayını aç">
                     <div>
-                        <div class="flex justify-between items-start mb-4 gap-2">
-                            <span class="text-3xl font-black text-on-surface opacity-30">#@kart.MasaNo</span>
-                            <div class="@badgeClass px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">@badgeText</div>
+                        <div class="flex justify-between items-start mb-2 gap-2">
+                            <span class="text-2xl font-black text-on-surface opacity-30">#@kart.MasaNo</span>
+                            <div class="@badgeClass px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider">@badgeText</div>
                         </div>
-                        <h3 class="text-xl font-bold text-on-surface mb-1">Masa @kart.MasaNo</h3>
-                        <p class="text-sm text-on-surface-variant">Durum: @kart.DurumMetni</p>
+                        <h3 class="text-lg font-bold text-on-surface mb-0.5">Masa @kart.MasaNo</h3>
+                        <p class="text-xs text-on-surface-variant">Durum: @kart.DurumMetni</p>
                     </div>
-                    <div class="flex items-center justify-between border-t border-surface-container-high pt-4 gap-2">
+                    <div class="flex items-center justify-between border-t border-surface-container-high pt-3 gap-2">
                         <div>
-                            <p class="text-[10px] text-on-surface-variant font-bold uppercase">Tutar</p>
-                            <p class="text-lg font-black text-on-surface">@displayAmount.ToString("N2") TL</p>
+                            <p class="text-[9px] text-on-surface-variant font-bold uppercase">Tutar</p>
+                            <p class="text-base font-black text-on-surface">@displayAmount.ToString("N2") TL</p>
                         </div>
 
                         @if (kart.DoluMu)

@@ -13,6 +13,7 @@ using iText.Kernel.Pdf;
 using iText.Layout;
 using iText.Layout.Element;
 using iText.Layout.Properties;
+using iText.Html2pdf;
 using QRCoder;
 using QRMenu.Web.ViewModels;
 using QRMenu.Web.Hubs;
@@ -39,6 +40,21 @@ namespace QRMenu.Web.Controllers
         {
             return DateTime.TryParse(tarih, out var parsedDate) ? parsedDate.Date : fallbackDate.Date;
         }
+        private static void ApplyUrunStokDurumu(Urun urun, int stokAdet, bool adminAktifIstiyor)
+        {
+            urun.StokAdet = Math.Max(0, stokAdet);
+
+            if (!adminAktifIstiyor)
+            {
+                urun.AdminManuelPasifMi = true;
+                urun.AktifMi = false;
+                urun.AdminManuelPasifMi = true;
+                return;
+            }
+
+            urun.AdminManuelPasifMi = false;
+            urun.AktifMi = urun.StokAdet > 0;
+        }
 
         private readonly QRMenuDbContext _context;
         private readonly ILogger<AdminController> _logger;
@@ -46,6 +62,8 @@ namespace QRMenu.Web.Controllers
         private readonly ISiparisService _siparisService;
         private readonly IHubContext<OrderHub> _menuHub;
         private readonly UserManager<Kullanici> _userManager;
+        private readonly Helpers.IRazorViewRenderer _viewRenderer;
+
 
         public AdminController(
             QRMenuDbContext context,
@@ -53,7 +71,7 @@ namespace QRMenu.Web.Controllers
             IWebHostEnvironment env,
             ISiparisService siparisService,
             IHubContext<OrderHub> menuHub,
-            UserManager<Kullanici> userManager)
+            UserManager<Kullanici> userManager, Helpers.IRazorViewRenderer viewRenderer)
         {
             _context = context;
             _logger = logger;
@@ -61,6 +79,8 @@ namespace QRMenu.Web.Controllers
             _siparisService = siparisService;
             _menuHub = menuHub;
             _userManager = userManager;
+            _viewRenderer = viewRenderer;
+
         }
 
         // Admin ana sayfa -> Dashboard
@@ -278,8 +298,94 @@ namespace QRMenu.Web.Controllers
         public async Task<IActionResult> GunSonuPdf(string? tarih)
         {
             var model = await BuildGunSonuExportModelAsync(tarih);
-            return File(CreateGunSonuPdf(model), "application/pdf", $"z-raporu-{model.Tarih:yyyy-MM-dd}.pdf");
+            var pdfBytes = await CreateGunSonuPdfAsync(model);
+            return File(pdfBytes, "application/pdf", $"z-raporu-{model.Tarih:yyyy-MM-dd}.pdf");
         }
+
+        // ============================================================
+        // SİPARİŞ ARŞİVİ PDF DIŞA AKTARMA (Z-raporu ile aynı pattern)
+        // ============================================================
+
+        [HttpGet("/admin/siparisler-pdf")]
+        public async Task<IActionResult> SiparislerArsivPdf(string? tarih, string? durum, int? masaId, string? arama)
+        {
+            var siparisler = await BuildSiparislerPdfListAsync(tarih, durum, masaId, arama);
+            var pdfBytes = await CreateSiparisListePdfAsync(siparisler);
+            var dosyaAdi = $"siparis-arsivi-{DateTime.Now:yyyy-MM-dd-HHmm}.pdf";
+            return File(pdfBytes, "application/pdf", dosyaAdi);
+        }
+
+        private async Task<List<Siparis>> BuildSiparislerPdfListAsync(string? tarih, string? durum, int? masaId, string? arama)
+        {
+            var query = _context.Siparisler
+                .Include(s => s.Masa)
+                .Include(s => s.SiparisDetaylar)
+                    .ThenInclude(sd => sd.Urun)
+                .AsNoTracking()
+                .AsQueryable();
+
+            // Tarih Filtresi
+            if (tarih == "today")
+            {
+                var bugunTr = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _turkeyTz).Date;
+                var bas = TimeZoneInfo.ConvertTimeToUtc(bugunTr, _turkeyTz);
+                var bit = TimeZoneInfo.ConvertTimeToUtc(bugunTr.AddDays(1), _turkeyTz);
+                query = query.Where(s => s.OlusturmaTarihi >= bas && s.OlusturmaTarihi < bit);
+            }
+            else if (tarih == "yesterday")
+            {
+                var dunTr = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _turkeyTz).Date.AddDays(-1);
+                var bas = TimeZoneInfo.ConvertTimeToUtc(dunTr, _turkeyTz);
+                var bit = TimeZoneInfo.ConvertTimeToUtc(dunTr.AddDays(1), _turkeyTz);
+                query = query.Where(s => s.OlusturmaTarihi >= bas && s.OlusturmaTarihi < bit);
+            }
+            else if (tarih == "haftalik")
+            {
+                var bugunTr = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _turkeyTz).Date;
+                // Haftanın başı: Pazartesi
+                int gunFarki = ((int)bugunTr.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+                var haftaBasiTr = bugunTr.AddDays(-gunFarki);
+                var bas = TimeZoneInfo.ConvertTimeToUtc(haftaBasiTr, _turkeyTz);
+                var bit = TimeZoneInfo.ConvertTimeToUtc(bugunTr.AddDays(1), _turkeyTz);
+                query = query.Where(s => s.OlusturmaTarihi >= bas && s.OlusturmaTarihi < bit);
+            }
+            else if (tarih == "aylik")
+            {
+                var bugunTr = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _turkeyTz).Date;
+                var ayBasiTr = new DateTime(bugunTr.Year, bugunTr.Month, 1);
+                var bas = TimeZoneInfo.ConvertTimeToUtc(ayBasiTr, _turkeyTz);
+                var bit = TimeZoneInfo.ConvertTimeToUtc(bugunTr.AddDays(1), _turkeyTz);
+                query = query.Where(s => s.OlusturmaTarihi >= bas && s.OlusturmaTarihi < bit);
+            }
+
+            // Durum Filtresi
+            if (durum == "bekleyen")
+            {
+                var aktifDurumlar = new[] { SiparisDurum.Onaylandi, SiparisDurum.Hazirlaniyor, SiparisDurum.Hazir, SiparisDurum.TeslimEdildi, SiparisDurum.KismiOdendi };
+                query = query.Where(s => aktifDurumlar.Contains(s.Durum));
+            }
+            else if (!string.IsNullOrEmpty(durum) && durum != "all" && Enum.TryParse<SiparisDurum>(durum, out var durumEnum))
+            {
+                query = query.Where(s => s.Durum == durumEnum);
+            }
+
+            // Masa Filtresi
+            if (masaId.HasValue && masaId > 0)
+                query = query.Where(s => s.MasaId == masaId.Value);
+
+            // Arama Filtresi
+            if (!string.IsNullOrWhiteSpace(arama))
+            {
+                var clean = arama.Replace("#", "").Trim();
+                if (int.TryParse(clean, out var noSearch))
+                    query = query.Where(s => s.Id == noSearch || s.GunlukSiparisNo == noSearch);
+                else
+                    query = query.Where(s => s.Notlar != null && s.Notlar.Contains(arama));
+            }
+
+            return await query.OrderByDescending(s => s.OlusturmaTarihi).ToListAsync();
+        }
+
 
         [HttpGet("/admin/gun-sonu-excel")]
         public async Task<IActionResult> GunSonuExcel(string? tarih)
@@ -292,7 +398,7 @@ namespace QRMenu.Web.Controllers
         }
 
         [HttpGet("/admin/loglar")]
-        public async Task<IActionResult> Loglar(string? eventType, string? sortOrder)
+        public async Task<IActionResult> Loglar(string? eventType, string? sortOrder, string? range, string? search)
         {
             ViewData["ActivePage"] = "Loglar";
             ViewData["PageTitle"] = "Güvenlik Logları";
@@ -300,25 +406,165 @@ namespace QRMenu.Web.Controllers
             var query = _context.SecurityLogs.AsQueryable();
 
             if (!string.IsNullOrEmpty(eventType))
-            {
                 query = query.Where(l => l.EventType == eventType);
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(l => (l.IpAddress != null && l.IpAddress.Contains(search)) || 
+                                         (l.Message != null && l.Message.Contains(search)) || 
+                                         (l.Path != null && l.Path.Contains(search)));
+            }
+
+            if (!string.IsNullOrEmpty(range))
+            {
+                var cutoff = range switch
+                {
+                    "15m" => DateTime.UtcNow.AddMinutes(-15),
+                    "1h" => DateTime.UtcNow.AddHours(-1),
+                    "24h" => DateTime.UtcNow.AddHours(-24),
+                    _ => DateTime.MinValue
+                };
+                query = query.Where(l => l.Timestamp >= cutoff);
             }
 
             if (sortOrder == "asc")
-            {
                 query = query.OrderBy(l => l.Timestamp);
-            }
             else
-            {
                 query = query.OrderByDescending(l => l.Timestamp);
-            }
 
             var logs = await query.Take(1000).ToListAsync();
+
+            // Kullanıcı adlarını çek (ID -> Ad Soyad)
+            var users = await _userManager.Users.ToListAsync();
+            var userNames = new Dictionary<string, string>();
+            foreach (var user in users)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                var displayName = roles.Contains("Müşteri") ? "Müşteri" : (user.AdSoyad ?? user.UserName);
+                userNames[user.Id] = displayName;
+            }
+            ViewBag.UserNames = userNames;
+
+            // İstatistikler (Yeni Tasarım İçin)
+            var now = DateTime.UtcNow;
+            var today = now.Date;
+            var last24h = now.AddHours(-24);
+            
+            ViewBag.TotalLogCount = await _context.SecurityLogs.CountAsync();
+            ViewBag.CriticalEventCount = await _context.SecurityLogs.CountAsync(l => l.EventType == "Forbidden" || l.EventType == "Unauthorized");
+            ViewBag.TodaySpamCount = await _context.SecurityLogs.CountAsync(l => l.EventType == "RateLimit" && l.Timestamp >= today);
+            ViewBag.LastCheckTime = TimeZoneInfo.ConvertTimeFromUtc(now, _turkeyTz).ToString("HH:mm");
+
+            // Son 24 saatlik saatlik dağılım (Chart.js için)
+            var last24hLogs = await _context.SecurityLogs
+                .Where(l => l.Timestamp >= last24h)
+                .Select(l => new { l.Timestamp, l.EventType })
+                .ToListAsync();
+
+            var hourlyData = Enumerable.Range(0, 24).Select(i =>
+            {
+                var hourStart = last24h.AddHours(i);
+                var hourEnd = hourStart.AddHours(1);
+                return last24hLogs.Count(l => l.Timestamp >= hourStart && l.Timestamp < hourEnd);
+            }).ToList();
+
+            var hourlyLabels = Enumerable.Range(0, 24).Select(i =>
+                TimeZoneInfo.ConvertTimeFromUtc(last24h.AddHours(i), _turkeyTz).ToString("HH:00")
+            ).ToList();
+
+            ViewBag.HourlyData = System.Text.Json.JsonSerializer.Serialize(hourlyData);
+            ViewBag.HourlyLabels = System.Text.Json.JsonSerializer.Serialize(hourlyLabels);
 
             ViewBag.CurrentFilter = eventType;
             ViewBag.CurrentSort = sortOrder;
             
             return View(logs);
+        }
+
+        [HttpGet("/admin/loglar-pdf")]
+        public async Task<IActionResult> LoglarPdf(string search, string eventType, string range, string tarih)
+        {
+            var query = _context.SecurityLogs.AsQueryable();
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(l => l.Message.Contains(search) || l.IpAddress.Contains(search) || l.Path.Contains(search));
+            }
+
+            if (!string.IsNullOrEmpty(eventType))
+            {
+                query = query.Where(l => l.EventType == eventType);
+            }
+
+            var nowUtc = DateTime.UtcNow;
+            var turkeyNow = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, _turkeyTz);
+            DateTime? cutoffUtc = null;
+
+            if (!string.IsNullOrEmpty(tarih))
+            {
+                switch (tarih)
+                {
+                    case "today":
+                        cutoffUtc = TimeZoneInfo.ConvertTimeToUtc(turkeyNow.Date, _turkeyTz);
+                        break;
+                    case "yesterday":
+                        var yesterdayStart = turkeyNow.Date.AddDays(-1);
+                        var yesterdayEnd = turkeyNow.Date;
+                        var yesterdayStartUtc = TimeZoneInfo.ConvertTimeToUtc(yesterdayStart, _turkeyTz);
+                        var yesterdayEndUtc = TimeZoneInfo.ConvertTimeToUtc(yesterdayEnd, _turkeyTz);
+                        query = query.Where(l => l.Timestamp >= yesterdayStartUtc && l.Timestamp < yesterdayEndUtc);
+                        break;
+                    case "haftalik":
+                        // Hafta başı (Pazartesi)
+                        int diff = (7 + (turkeyNow.DayOfWeek - DayOfWeek.Monday)) % 7;
+                        var weekStart = turkeyNow.Date.AddDays(-1 * diff);
+                        cutoffUtc = TimeZoneInfo.ConvertTimeToUtc(weekStart, _turkeyTz);
+                        break;
+                    case "aylik":
+                        var monthStart = new DateTime(turkeyNow.Year, turkeyNow.Month, 1);
+                        cutoffUtc = TimeZoneInfo.ConvertTimeToUtc(monthStart, _turkeyTz);
+                        break;
+                }
+            }
+            else if (!string.IsNullOrEmpty(range))
+            {
+                cutoffUtc = range switch
+                {
+                    "15m" => nowUtc.AddMinutes(-15),
+                    "1h" => nowUtc.AddHours(-1),
+                    "24h" => nowUtc.AddHours(-24),
+                    _ => null
+                };
+            }
+
+            if (cutoffUtc.HasValue)
+            {
+                query = query.Where(l => l.Timestamp >= cutoffUtc.Value);
+            }
+
+            var logs = await query.OrderByDescending(l => l.Timestamp).Take(2000).ToListAsync();
+            
+            // Kullanıcı adlarını PDF şablonu için de hazırla
+            var users = await _userManager.Users.ToListAsync();
+            var userNames = new Dictionary<string, string>();
+            foreach (var user in users)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                var displayName = roles.Contains("Müşteri") ? "Müşteri" : (user.AdSoyad ?? user.UserName);
+                userNames[user.Id] = displayName;
+            }
+            ViewBag.UserNames = userNames;
+
+            var pdfBytes = await CreateLoglarPdfAsync(logs);
+            return File(pdfBytes, "application/pdf", $"GuvenlikLoglari_{DateTime.Now:yyyyMMdd}.pdf");
+        }
+
+        private async Task<byte[]> CreateLoglarPdfAsync(List<SecurityLog> logs)
+        {
+            var html = await _viewRenderer.RenderViewToStringAsync("Admin/Export/LogsTemplate", logs);
+            using var stream = new MemoryStream();
+            HtmlConverter.ConvertToPdf(html, stream);
+            return stream.ToArray();
         }
 
         [HttpGet("/admin/masalar")]
@@ -622,6 +868,16 @@ namespace QRMenu.Web.Controllers
             return View(siparisler);
         }
 
+
+        private async Task<byte[]> CreateSiparisListePdfAsync(List<Siparis> siparisler)
+        {
+            var html = await _viewRenderer.RenderViewToStringAsync("Admin/Export/OrdersTemplate", siparisler);
+            using var stream = new MemoryStream();
+            HtmlConverter.ConvertToPdf(html, stream);
+            return stream.ToArray();
+        }
+
+
         [HttpGet("/admin/siparis-detay/{id:int}")]
         public async Task<IActionResult> SiparisDetayJson(int id)
         {
@@ -722,12 +978,12 @@ namespace QRMenu.Web.Controllers
                 toplamTutar = s.ToplamTutar,
                 olusturmaTarihi = ToTurkeyTime(s.OlusturmaTarihi),
                 urunSayisi = s.SiparisDetaylar.Sum(sd => sd.Adet),
-                detayOzet = string.Join(", ", s.SiparisDetaylar.Select(sd => $"{sd.Adet}Ã— {sd.Urun.Ad}"))
+                detayOzet = string.Join(", ", s.SiparisDetaylar.Select(sd => $"{sd.Adet}— {sd.Urun.Ad}"))
             }));
         }
 
         // ============================================================
-        // ÃœRÃœN YÃ–NETİMİ SAYFASI
+        // ÜRÜN YÖNETİMİ SAYFASI
         // ============================================================
 
         [HttpGet("/admin/urunler")]
@@ -818,7 +1074,7 @@ namespace QRMenu.Web.Controllers
                 return Json(new { success = false, message = "Kategori bulunamadı." });
 
             if (kategori.Urunler.Any())
-                return Json(new { success = false, message = $"Bu kategoride {kategori.Urunler.Count} ürün var. Ã–nce ürünleri taşıyın veya silin." });
+                return Json(new { success = false, message = $"Bu kategoride {kategori.Urunler.Count} ürün var. Önce ürünleri taşıyın veya silin." });
 
             _context.Kategoriler.Remove(kategori);
             await _context.SaveChangesAsync();
@@ -829,7 +1085,7 @@ namespace QRMenu.Web.Controllers
         }
 
         // ============================================================
-        // ÃœRÃœN CRUD
+        // ÜRÜN CRUD
         // ============================================================
 
         [HttpPost("/admin/urun-tasi")]
@@ -854,7 +1110,7 @@ namespace QRMenu.Web.Controllers
 
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Ãœrünler taşındı. Adet={Adet}, Yeni Kategori={KatId}", urunler.Count, model.YeniKategoriId);
+            _logger.LogInformation("Ürünler taşındı. Adet={Adet}, Yeni Kategori={KatId}", urunler.Count, model.YeniKategoriId);
             await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
             return Json(new { success = true, tasinanAdet = urunler.Count });
         }
@@ -870,7 +1126,7 @@ namespace QRMenu.Web.Controllers
                 .FirstOrDefaultAsync(u => u.Id == id);
 
             if (urun == null)
-                return Json(new { success = false, message = "Ãœrün bulunamadı." });
+                return Json(new { success = false, message = "Ürün bulunamadı." });
 
             return Json(new
             {
@@ -887,6 +1143,8 @@ namespace QRMenu.Web.Controllers
                     urun.GorselUrl,
                     urun.PopulerMi,
                     urun.AktifMi,
+                    urun.StokAdet,
+                    urun.AdminManuelPasifMi,
                     urun.Kalori,
                     Opsiyonlar = urun.UrunOpsiyonlar.OrderBy(uo => uo.Opsiyon.EkFiyat).Select(uo => new
                     {
@@ -917,14 +1175,14 @@ namespace QRMenu.Web.Controllers
                 Fiyat = model.Fiyat,
                 KategoriId = model.KategoriId,
                 PopulerMi = model.PopulerMi,
-                AktifMi = model.AktifMi,
                 Kalori = model.Kalori
             };
+            ApplyUrunStokDurumu(urun, model.StokAdet, model.AktifMi);
 
             _context.Urunler.Add(urun);
             await _context.SaveChangesAsync();
 
-            // FotoÄŸraf upload - dosya sistemine kaydet
+            // Fotoğraf upload - dosya sistemine kaydet
             if (model.Gorsel != null)
             {
                 var savedPath = await SaveImageToFileAsync(model.Gorsel, urun.Id);
@@ -935,7 +1193,7 @@ namespace QRMenu.Web.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            _logger.LogInformation("Ãœrün eklendi. Id={Id}, Ad={Ad}", urun.Id, urun.Ad);
+            _logger.LogInformation("Ürün eklendi. Id={Id}, Ad={Ad}", urun.Id, urun.Ad);
             await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
             return Json(new { success = true, id = urun.Id });
         }
@@ -945,7 +1203,7 @@ namespace QRMenu.Web.Controllers
         {
             var urun = await _context.Urunler.FindAsync(id);
             if (urun == null)
-                return Json(new { success = false, message = "Ãœrün bulunamadı." });
+                return Json(new { success = false, message = "Ürün bulunamadı." });
 
             urun.Ad = model.Ad;
             urun.AdEN = model.AdEN;
@@ -954,10 +1212,10 @@ namespace QRMenu.Web.Controllers
             urun.Fiyat = model.Fiyat;
             urun.KategoriId = model.KategoriId;
             urun.PopulerMi = model.PopulerMi;
-            urun.AktifMi = model.AktifMi;
             urun.Kalori = model.Kalori;
+            ApplyUrunStokDurumu(urun, model.StokAdet, model.AktifMi);
 
-            // FotoÄŸraf güncelleme - dosya sistemine kaydet
+            // Fotoğraf güncelleme - dosya sistemine kaydet
             if (model.Gorsel != null)
             {
                 var savedPath = await SaveImageToFileAsync(model.Gorsel, urun.Id);
@@ -969,7 +1227,7 @@ namespace QRMenu.Web.Controllers
 
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Ãœrün güncellendi. Id={Id}", id);
+            _logger.LogInformation("Ürün güncellendi. Id={Id}", id);
             await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
             return Json(new { success = true });
         }
@@ -979,9 +1237,9 @@ namespace QRMenu.Web.Controllers
         {
             var urun = await _context.Urunler.FindAsync(id);
             if (urun == null)
-                return Json(new { success = false, message = "Ãœrün bulunamadı." });
+                return Json(new { success = false, message = "Ürün bulunamadı." });
 
-            // Aktif (tamamlanmamış) siparişlerde baÄŸlı detay varsa pasife çek
+            // Aktif (tamamlanmamış) siparişlerde bağlı detay varsa pasife çek
             var aktifSiparisVar = await _context.SiparisDetaylar
                 .AnyAsync(sd => sd.UrunId == id
                     && sd.Siparis.Durum != SiparisDurum.Iptal
@@ -991,9 +1249,9 @@ namespace QRMenu.Web.Controllers
             {
                 urun.AktifMi = false;
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("Ãœrün pasife alındı (aktif sipariş var). Id={Id}", id);
+                _logger.LogInformation("Ürün pasife alındı (aktif sipariş var). Id={Id}", id);
                 await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
-                return Json(new { success = true, message = "Ãœrün pasife alındı (aktif sipariş kayıtları var)." });
+                return Json(new { success = true, message = "Ürün pasife alındı (aktif sipariş kayıtları var)." });
             }
 
             var urunSiparisTarihleri = await _context.SiparisDetaylar
@@ -1009,12 +1267,13 @@ namespace QRMenu.Web.Controllers
             if (kilitliKayitVar)
             {
                 urun.AktifMi = false;
+                urun.AdminManuelPasifMi = true;
                 await _context.SaveChangesAsync();
                 await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
-                return Json(new { success = true, message = "Ãœrün kapatılmış gün sonu kayıtlarında yer aldıÄŸı için silinmedi, pasife alındı." });
+                return Json(new { success = true, message = "Ürün kapatılmış gün sonu kayıtlarında yer aldığı için silinmedi, pasife alındı." });
             }
 
-            // FK Restrict olduÄŸu için ilişkili kayıtları temizle
+            // FK Restrict olduğu için ilişkili kayıtları temizle
             var sepetDetaylar = await _context.SepetDetaylar.Where(sd => sd.UrunId == id).ToListAsync();
             if (sepetDetaylar.Any())
                 _context.SepetDetaylar.RemoveRange(sepetDetaylar);
@@ -1027,7 +1286,7 @@ namespace QRMenu.Web.Controllers
             _context.Urunler.Remove(urun);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Ãœrün silindi. Id={Id}, Ad={Ad}", id, urun.Ad);
+            _logger.LogInformation("Ürün silindi. Id={Id}, Ad={Ad}", id, urun.Ad);
             await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
             return Json(new { success = true });
         }
@@ -1037,14 +1296,68 @@ namespace QRMenu.Web.Controllers
         {
             var urun = await _context.Urunler.FindAsync(id);
             if (urun == null)
-                return Json(new { success = false, message = "Ãœrün bulunamadı." });
+                return Json(new { success = false, message = "Ürün bulunamadı." });
 
-            urun.AktifMi = !urun.AktifMi;
+            if (urun.AktifMi)
+            {
+                urun.AktifMi = false;
+                urun.AdminManuelPasifMi = true;
+            }
+            else
+            {
+                if (urun.StokAdet <= 0)
+                    return Json(new { success = false, message = "Stok 0 iken urun aktif yapilamaz." });
+
+                urun.AdminManuelPasifMi = false;
+                urun.AktifMi = true;
+            }
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Ãœrün durumu deÄŸiştirildi. Id={Id}, AktifMi={Aktif}", id, urun.AktifMi);
+            _logger.LogInformation("Ürün durumu değiştirildi. Id={Id}, AktifMi={Aktif}", id, urun.AktifMi);
             await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
             return Json(new { success = true, aktifMi = urun.AktifMi });
+        }
+
+        [HttpPost("/admin/urun-stok-guncelle/{id:int}")]
+        public async Task<IActionResult> UrunStokGuncelle(int id, [FromBody] UrunStokGuncelleRequest request)
+        {
+            if (request.StokAdet < 0)
+                return Json(new { success = false, message = "Stok 0 veya daha buyuk olmalidir." });
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var urun = await _context.Urunler.FirstOrDefaultAsync(u => u.Id == id);
+                if (urun == null)
+                    return Json(new { success = false, message = "Urun bulunamadi." });
+
+                urun.StokAdet = request.StokAdet;
+                if (urun.StokAdet <= 0)
+                {
+                    urun.AktifMi = false;
+                }
+                else if (!urun.AdminManuelPasifMi)
+                {
+                    urun.AktifMi = true;
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                await _menuHub.Clients.All.SendAsync("MenuGuncellendi");
+
+                return Json(new
+                {
+                    success = true,
+                    stokAdet = urun.StokAdet,
+                    aktifMi = urun.AktifMi,
+                    adminManuelPasifMi = urun.AdminManuelPasifMi
+                });
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         // ============================================================
@@ -1059,7 +1372,7 @@ namespace QRMenu.Web.Controllers
 
             var urun = await _context.Urunler.FindAsync(model.UrunId);
             if (urun == null)
-                return Json(new { success = false, message = "Ãœrün bulunamadı." });
+                return Json(new { success = false, message = "Ürün bulunamadı." });
 
             // Aynı ad+grup ile opsiyon var mı kontrol et
             var mevcutOpsiyon = await _context.Opsiyonlar
@@ -1068,7 +1381,7 @@ namespace QRMenu.Web.Controllers
             Opsiyon opsiyon;
             if (mevcutOpsiyon != null)
             {
-                // Fiyat, zorunluluk veya İngilizce isimler deÄŸiştiyse güncelle
+                // Fiyat, zorunluluk veya İngilizce isimler değiştiyse güncelle
                 if (mevcutOpsiyon.EkFiyat != model.EkFiyat || mevcutOpsiyon.Zorunlu != model.Zorunlu ||
                     mevcutOpsiyon.AdEN != model.AdEN || mevcutOpsiyon.GrupEN != model.GrupEN)
                 {
@@ -1095,7 +1408,7 @@ namespace QRMenu.Web.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // Ãœrün-Opsiyon baÄŸlantısı zaten var mı?
+            // Ürün-Opsiyon bağlantısı zaten var mı?
             var baglanti = await _context.UrunOpsiyonlar
                 .AnyAsync(uo => uo.UrunId == model.UrunId && uo.OpsiyonId == opsiyon.Id);
 
@@ -1119,13 +1432,13 @@ namespace QRMenu.Web.Controllers
         {
             var urunId = request?.UrunId ?? 0;
             if (urunId == 0)
-                return Json(new { success = false, message = "Ãœrün ID gerekli." });
+                return Json(new { success = false, message = "Ürün ID gerekli." });
 
             var baglanti = await _context.UrunOpsiyonlar
                 .FirstOrDefaultAsync(uo => uo.UrunId == urunId && uo.OpsiyonId == opsiyonId);
 
             if (baglanti == null)
-                return Json(new { success = false, message = "Opsiyon baÄŸlantısı bulunamadı." });
+                return Json(new { success = false, message = "Opsiyon bağlantısı bulunamadı." });
 
             _context.UrunOpsiyonlar.Remove(baglanti);
             await _context.SaveChangesAsync();
@@ -1147,7 +1460,7 @@ namespace QRMenu.Web.Controllers
         }
 
         // ============================================================
-        // YARDIMCI METODLAR - FotoÄŸraf Upload (Dosya Sistemi)
+        // YARDIMCI METODLAR - Fotoğraf Upload (Dosya Sistemi)
         // ============================================================
 
         private static readonly HashSet<string> _allowedExtensions = new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
@@ -1189,7 +1502,7 @@ namespace QRMenu.Web.Controllers
         [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)]
         public async Task<IActionResult> UrunGorsel(int id)
         {
-            // Ã–nce static dosya var mı bak
+            // Önce static dosya var mı bak
             var uploadsDir = Path.Combine(_env.WebRootPath, "uploads", "urunler");
             var staticFiles = Directory.Exists(uploadsDir) ? Directory.GetFiles(uploadsDir, $"{id}.*") : Array.Empty<string>();
             if (staticFiles.Length > 0)
@@ -1208,7 +1521,7 @@ namespace QRMenu.Web.Controllers
         }
 
         // ============================================================
-        // HAPPY HOUR YÃ–NETİMİ
+        // HAPPY HOUR YÖNETİMİ
         // ============================================================
 
         [HttpGet("/admin/happy-hour")]
@@ -1293,7 +1606,7 @@ namespace QRMenu.Web.Controllers
                 _context.HappyHourlar.Add(hh);
             }
 
-            // â”€â”€ Kapatma akışı: sadece AktifMi=false yap, geri kalanı dokunma â”€â”€
+            // ——— Kapatma akışı: sadece AktifMi=false yap, geri kalanı dokunma ———
             if (!model.AktifMi)
             {
                 hh.AktifMi = false;
@@ -1311,7 +1624,7 @@ namespace QRMenu.Web.Controllers
                 if (model.IndirimOrani > 0)
                     hh.IndirimOrani = model.IndirimOrani;
 
-                // Ãœrün seçimlerini güncelle (gelirse)
+                // Ürün seçimlerini güncelle (gelirse)
                 if (model.UrunIds != null)
                 {
                     var yeniIds = model.UrunIds.Where(x => x > 0).Distinct().ToList();
@@ -1331,7 +1644,7 @@ namespace QRMenu.Web.Controllers
                 return Json(new { success = true, message = "İndirim sistemi kapatıldı." });
             }
 
-            // â”€â”€ Açma/Güncelleme akışı: tam validasyon â”€â”€
+            // ——— Açma/Güncelleme akışı: tam validasyon ———
             if (model.IndirimOrani < 1 || model.IndirimOrani > 99)
                 return Json(new { success = true, message = "İndirim oranı 1-99 arasında olmalıdır." });
 
@@ -1382,7 +1695,7 @@ namespace QRMenu.Web.Controllers
         }
 
         // ============================================================
-        // KULLANICI YÃ–NETİMİ
+        // KULLANICI YÖNETİMİ
         // ============================================================
 
         public class EnCokSatanViewModel
@@ -1504,7 +1817,7 @@ namespace QRMenu.Web.Controllers
                 return Json(new { success = false, message = "Güvenlik: Admin hesapları bu ekrandan güncellenemez." });
             }
 
-            // Rol deÄŸişmişse Identity rol tablosunu da güncelle
+            // Rol değiştirilmişse Identity rol tablosunu da güncelle
             if (kullanici.Rol != rol)
             {
                 var eskiRoller = await _userManager.GetRolesAsync(kullanici);
@@ -1524,7 +1837,7 @@ namespace QRMenu.Web.Controllers
                 return Json(new { success = false, message = hatalar });
             }
 
-            // Rol deÄŸiştirildiÄŸinde veya kullanıcı pasife alındıÄŸında, kullanıcının mevcut oturumunu anında sonlandırıyoruz (damga yenileyerek)
+            // Rol değiştirildiğinde veya kullanıcı pasife alındığında, kullanıcının mevcut oturumunu anında sonlandırıyoruz (damga yenileyerek)
             await _userManager.UpdateSecurityStampAsync(kullanici);
 
             _logger.LogInformation("Kullanıcı güncellendi. Id={Id}, Rol={Rol}, Aktif={Aktif}", id, rol, model.AktifMi);
@@ -1541,8 +1854,9 @@ namespace QRMenu.Web.Controllers
             if (kullanici == null)
                 return Json(new { success = false, message = "Kullanıcı bulunamadı." });
 
-            if (kullanici.Rol == KullaniciRol.Admin)
-                return Json(new { success = false, message = "Güvenlik: Admin şifreleri bu ekrandan deÄŸiştirilemez." });
+            // Admin şifre değişimine izin veriliyor (talep üzerine)
+            // if (kullanici.Rol == KullaniciRol.Admin)
+            //     return Json(new { success = false, message = "Güvenlik: Admin şifreleri bu ekrandan değiştirilemez." });
 
             // Identity ile şifre sıfırla (hash'leme otomatik)
             var token = await _userManager.GeneratePasswordResetTokenAsync(kullanici);
@@ -1554,7 +1868,7 @@ namespace QRMenu.Web.Controllers
                 return Json(new { success = false, message = hatalar });
             }
 
-            _logger.LogInformation("Şifre deÄŸiştirildi. KullaniciId={Id}", id);
+            _logger.LogInformation("Şifre değiştirildi. KullaniciId={Id}", id);
             return Json(new { success = true });
         }
 
@@ -1595,16 +1909,16 @@ namespace QRMenu.Web.Controllers
             // Admin pasife alınamaz (tamamen yasaklandı)
             if (kullanici.Rol == KullaniciRol.Admin)
             {
-                return Json(new { success = false, message = "Güvenlik: Admin hesaplarının durumu deÄŸiştirilemez." });
+                return Json(new { success = false, message = "Güvenlik: Admin hesaplarının durumu değiştirilemez." });
             }
 
             kullanici.AktifMi = !kullanici.AktifMi;
             await _userManager.UpdateAsync(kullanici);
 
-            // Damgayı yenile, böylece hesap pasife alındıÄŸında kullanıcı anında sistemden çıkarılsın
+            // Damgayı yenile, böylece hesap pasife alındığında kullanıcı anında sistemden çıkarılsın
             await _userManager.UpdateSecurityStampAsync(kullanici);
 
-            _logger.LogInformation("Kullanıcı durumu deÄŸiştirildi. Id={Id}, AktifMi={AktifMi}", id, kullanici.AktifMi);
+            _logger.LogInformation("Kullanıcı durumu değiştirildi. Id={Id}, AktifMi={AktifMi}", id, kullanici.AktifMi);
             return Json(new { success = true, aktifMi = kullanici.AktifMi });
         }
 
@@ -1613,8 +1927,8 @@ namespace QRMenu.Web.Controllers
         // ============================================================
 
         /// <summary>
-        /// Happy Hour kaydedildiÄŸinde sepetteki ürünlerin BirimFiyatını günceller.
-        /// happyHour null ise indirim kaldırılmış demektir â€” orijinal fiyata döner.
+        /// Happy Hour kaydedildiğinde sepetteki ürünlerin BirimFiyatını günceller.
+        /// happyHour null ise indirim kaldırılmış demektir — orijinal fiyata döner.
         /// </summary>
         private async Task<GunSonuExportViewModel> BuildGunSonuExportModelAsync(string? tarih)
         {
@@ -1679,90 +1993,11 @@ namespace QRMenu.Web.Controllers
             };
         }
 
-        private static byte[] CreateGunSonuPdf(GunSonuExportViewModel model)
+        private async Task<byte[]> CreateGunSonuPdfAsync(GunSonuExportViewModel model)
         {
+            var html = await _viewRenderer.RenderViewToStringAsync("Admin/Export/ZReportTemplate", model);
             using var stream = new MemoryStream();
-            using var writer = new PdfWriter(stream);
-            using var pdf = new PdfDocument(writer);
-            using var document = new Document(pdf);
-            var fontPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), "arial.ttf");
-            var pdfFont = PdfFontFactory.CreateFont(fontPath, PdfEncodings.IDENTITY_H);
-
-            document.SetMargins(24, 24, 24, 24);
-            document.SetFont(pdfFont);
-
-            document.Add(new Paragraph("Gün Sonu Z Raporu").SetFontSize(20).SetBold());
-            document.Add(new Paragraph($"{model.Tarih:dd.MM.yyyy} tarihli satış özeti")
-                .SetFontSize(11)
-                .SetFontColor(ColorConstants.DARK_GRAY));
-
-            if (model.KapanisTarihi.HasValue)
-            {
-                document.Add(new Paragraph($"Kapanış: {ToTurkeyTime(model.KapanisTarihi.Value)}")
-                    .SetFontSize(10)
-                    .SetFontColor(ColorConstants.GRAY));
-            }
-
-            var ozetTablo = new Table(UnitValue.CreatePercentArray(new float[] { 1, 1, 1 })).UseAllAvailableWidth();
-            ozetTablo.AddHeaderCell("Toplam Ciro");
-            ozetTablo.AddHeaderCell("Sipariş Sayısı");
-            ozetTablo.AddHeaderCell("Toplam Ürün");
-            ozetTablo.AddCell($"₺{model.ToplamCiro:N2}");
-            ozetTablo.AddCell(model.SiparisSayisi.ToString());
-            ozetTablo.AddCell(model.Siparisler.Sum(x => x.Urunler.Sum(y => y.Adet)).ToString());
-            document.Add(new Paragraph(" "));
-            document.Add(ozetTablo);
-
-            document.Add(new Paragraph("Ödeme Dağılımı").SetFontSize(14).SetBold().SetMarginTop(18));
-            var odemeTablo = new Table(UnitValue.CreatePercentArray(new float[] { 2, 1, 1 })).UseAllAvailableWidth();
-            odemeTablo.AddHeaderCell("Ödeme Tipi");
-            odemeTablo.AddHeaderCell("Adet");
-            odemeTablo.AddHeaderCell("Tutar");
-            foreach (var odeme in model.OdemeTipleri)
-            {
-                odemeTablo.AddCell(odeme.Tip);
-                odemeTablo.AddCell(odeme.Adet.ToString());
-                odemeTablo.AddCell($"₺{odeme.Tutar:N2}");
-            }
-            if (!model.OdemeTipleri.Any())
-            {
-                odemeTablo.AddCell(new Cell(1, 3).Add(new Paragraph("Ödeme kaydı yok.")));
-            }
-            document.Add(odemeTablo);
-
-            document.Add(new Paragraph("Detaylı Günlük Satış Dökümü").SetFontSize(14).SetBold().SetMarginTop(18));
-            var detayTablo = new Table(UnitValue.CreatePercentArray(new float[] { 1.2f, 1f, 1.1f, 4.2f, 1.2f })).UseAllAvailableWidth();
-            detayTablo.AddHeaderCell("Saat");
-            detayTablo.AddHeaderCell("Masa");
-            detayTablo.AddHeaderCell("Sipariş");
-            detayTablo.AddHeaderCell("Ürünler");
-            detayTablo.AddHeaderCell("Tutar");
-
-            foreach (var siparis in model.Siparisler)
-            {
-                var urunMetni = string.Join("\n", siparis.Urunler.Select(u =>
-                    $"{u.Adet}x {u.UrunAd}" +
-                    (string.IsNullOrWhiteSpace(u.Secenekler) ? string.Empty : $" ({u.Secenekler})")));
-
-                if (!string.IsNullOrWhiteSpace(siparis.Notlar))
-                {
-                    urunMetni += $"\nNot: {siparis.Notlar}";
-                }
-
-                detayTablo.AddCell(siparis.Saat);
-                detayTablo.AddCell(siparis.MasaNo?.ToString() ?? "-");
-                detayTablo.AddCell($"#{siparis.Id}\n{siparis.Durum}");
-                detayTablo.AddCell(urunMetni);
-                detayTablo.AddCell($"₺{siparis.ToplamTutar:N2}");
-            }
-
-            if (!model.Siparisler.Any())
-            {
-                detayTablo.AddCell(new Cell(1, 5).Add(new Paragraph("Seçilen gün için satış bulunamadı.")));
-            }
-
-            document.Add(detayTablo);
-            document.Close();
+            HtmlConverter.ConvertToPdf(html, stream);
             return stream.ToArray();
         }
 
@@ -1913,7 +2148,7 @@ namespace QRMenu.Web.Controllers
                 }
                 else
                 {
-                    // İndirim yok â€” orijinal fiyat
+                    // İndirim yok — orijinal fiyat
                     yeniBirimFiyat = urun.Fiyat + opsiyonEkFiyat;
                 }
 
@@ -1923,7 +2158,6 @@ namespace QRMenu.Web.Controllers
                     herhangiGuncellendi = true;
                 }
             }
-
             if (!herhangiGuncellendi) return;
 
             // Sepet toplamlarını da güncelle
@@ -1941,7 +2175,6 @@ namespace QRMenu.Web.Controllers
             }
 
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Sepet fiyatları Happy Hour deÄŸişikliÄŸine göre güncellendi.");
         }
     }
 
@@ -1953,6 +2186,11 @@ namespace QRMenu.Web.Controllers
     public class AdminDurumRequest
     {
         public string YeniDurum { get; set; } = "";
+    }
+
+    public class UrunStokGuncelleRequest
+    {
+        public int StokAdet { get; set; }
     }
 }
 

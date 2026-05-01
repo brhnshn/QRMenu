@@ -7,6 +7,7 @@ namespace QRMenu.Core.Entities
         public int Id { get; set; }
         public int SiparisId { get; set; }
         public int UrunId { get; set; }
+        public int? UrunVaryasyonId { get; set; }
         public int Adet { get; set; }
         public decimal BirimFiyat { get; set; }
         public string? SeciliOpsiyonlar { get; set; } // JSON string
@@ -15,5 +16,6 @@ namespace QRMenu.Core.Entities
         // Navigation Properties
         public Siparis Siparis { get; set; } = null!;
         public Urun Urun { get; set; } = null!;
+        public UrunVaryasyon? UrunVaryasyon { get; set; }
     }
 }

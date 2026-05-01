@@ -1,0 +1,242 @@
+@model QRMenu.Web.Controllers.AdminController.GunSonuExportViewModel
+@{
+    Layout = null;
+    var primaryColor = "#a23718";
+    var secondaryColor = "#1a1a1a";
+    var borderColor = "#e5e7eb";
+    var bgColor = "#f9fafb";
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <title>Z Raporu - @Model.Tarih.ToString("dd.MM.yyyy")</title>
+    <style>
+        @@font-face {
+            font-family: 'Inter';
+            src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 40px;
+            color: @secondaryColor;
+            background-color: white;
+            line-height: 1.5;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid @primaryColor;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo-area h1 {
+            margin: 0;
+            color: @primaryColor;
+            font-size: 28px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: -1px;
+        }
+        .report-info {
+            text-align: right;
+        }
+        .report-info h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .report-info p {
+            margin: 5px 0 0;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .stats-grid {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            flex: 1;
+            background-color: @bgColor;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid @borderColor;
+        }
+        .stat-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: 900;
+            color: @secondaryColor;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 800;
+            margin: 30px 0 15px;
+            padding-left: 10px;
+            border-left: 4px solid @primaryColor;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th {
+            background-color: #f3f4f6;
+            text-align: left;
+            padding: 12px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #374151;
+            border-bottom: 1px solid @borderColor;
+        }
+        td {
+            padding: 12px 10px;
+            font-size: 12px;
+            border-bottom: 1px solid @borderColor;
+        }
+        tr:nth-child(even) {
+            background-color: #fdfdfd;
+        }
+        .text-right { text-align: right; }
+        .font-bold { font-weight: 700; }
+        .price { color: @primaryColor; font-weight: 700; }
+        
+        .payment-methods {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        .payment-item {
+            background: white;
+            border: 1px solid @borderColor;
+            border-radius: 8px;
+            padding: 10px 15px;
+            min-width: 120px;
+        }
+        .payment-name { font-size: 10px; color: #6b7280; font-weight: 600; }
+        .payment-value { font-size: 14px; font-weight: 700; }
+
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid @borderColor;
+            text-align: center;
+            font-size: 10px;
+            color: #9ca3af;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 10px;
+            font-weight: 700;
+            background: #e5e7eb;
+            color: #374151;
+        }
+        .badge-success { background: #dcfce7; color: #166534; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo-area">
+            <h1>QR MENU</h1>
+        </div>
+        <div class="report-info">
+            <h2>GÜN SONU Z RAPORU</h2>
+            <p>Tarih: @Model.Tarih.ToString("dd MMMM yyyy dddd")</p>
+            @if(Model.KapanisTarihi.HasValue) {
+                <p>Kapanış: @Model.KapanisTarihi.Value.AddHours(3).ToString("HH:mm")</p>
+            }
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Toplam Ciro</div>
+            <div class="stat-value price">₺@Model.ToplamCiro.ToString("N2")</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Sipariş Sayısı</div>
+            <div class="stat-value">@Model.SiparisSayisi</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Satılan Ürün</div>
+            <div class="stat-value">@Model.Siparisler.Sum(x => x.Urunler.Sum(y => y.Adet))</div>
+        </div>
+    </div>
+
+    <div class="section-title">Ödeme Dağılımı</div>
+    <div class="payment-methods">
+        @foreach (var odeme in Model.OdemeTipleri)
+        {
+            <div class="payment-item">
+                <div class="payment-name">@odeme.Tip</div>
+                <div class="payment-value">₺@odeme.Tutar.ToString("N2")</div>
+                <div style="font-size: 9px; color: #9ca3af;">@odeme.Adet İşlem</div>
+            </div>
+        }
+        @if(!Model.OdemeTipleri.Any()) {
+            <p style="font-size: 12px; color: #9ca3af;">Henüz ödeme kaydı bulunmamaktadır.</p>
+        }
+    </div>
+
+    <div class="section-title">Sipariş Detayları</div>
+    <table>
+        <thead>
+            <tr>
+                <th width="60">Saat</th>
+                <th width="80">Masa</th>
+                <th>Ürünler</th>
+                <th width="100" class="text-right">Tutar</th>
+                <th width="100">Durum</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var siparis in Model.Siparisler)
+            {
+                <tr>
+                    <td class="font-bold">@siparis.Saat</td>
+                    <td>Masa @(siparis.MasaNo?.ToString() ?? "-")</td>
+                    <td>
+                        <div style="font-weight: 600;">#@siparis.Id</div>
+                        <div style="font-size: 11px; color: #4b5563;">
+                            @string.Join(", ", siparis.Urunler.Select(u => $"{u.Adet}x {u.UrunAd}"))
+                        </div>
+                        @if(!string.IsNullOrEmpty(siparis.Notlar)) {
+                            <div style="font-size: 10px; color: #9ca3af; font-style: italic;">Not: @siparis.Notlar</div>
+                        }
+                    </td>
+                    <td class="text-right font-bold price">₺@siparis.ToplamTutar.ToString("N2")</td>
+                    <td>
+                        <span class="badge @(siparis.Durum == "TamOdendi" ? "badge-success" : "")">@siparis.Durum</span>
+                    </td>
+                </tr>
+            }
+            @if(!Model.Siparisler.Any()) {
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 30px; color: #9ca3af;">Bu tarih için kayıt bulunamadı.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="footer">
+        Bu rapor otomatik olarak QR Menu sistemi tarafından oluşturulmuştur.<br>
+        Oluşturulma Tarihi: @DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss")
+    </div>
+</body>
+</html>

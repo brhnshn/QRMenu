@@ -13,6 +13,7 @@ namespace QRMenu.Data.Data
         public DbSet<Masa> Masalar => Set<Masa>();
         public DbSet<Kategori> Kategoriler => Set<Kategori>();
         public DbSet<Urun> Urunler => Set<Urun>();
+        public DbSet<UrunVaryasyon> UrunVaryasyonlar => Set<UrunVaryasyon>();
         public DbSet<Opsiyon> Opsiyonlar => Set<Opsiyon>();
         public DbSet<UrunOpsiyon> UrunOpsiyonlar => Set<UrunOpsiyon>();
         public DbSet<UrunGorsel> UrunGorseller => Set<UrunGorsel>();
@@ -63,15 +64,36 @@ namespace QRMenu.Data.Data
                 entity.Property(e => e.AciklamaEN).HasMaxLength(500);
                 entity.Property(e => e.Fiyat).HasPrecision(18, 2);
                 entity.Property(e => e.GorselUrl).HasMaxLength(500);
+                entity.Property(e => e.StokAdet).HasDefaultValue(0);
+                entity.Property(e => e.AdminManuelPasifMi).HasDefaultValue(false);
 
                 // Index: Aktif ürünlerin hızlı sorgulanması
                 entity.HasIndex(e => e.AktifMi).HasDatabaseName("IX_Urunler_AktifMi");
+                entity.HasIndex(e => new { e.AktifMi, e.StokAdet }).HasDatabaseName("IX_Urunler_AktifMi_StokAdet");
 
                 // Foreign Key: Kategori
                 entity.HasOne(e => e.Kategori)
                       .WithMany(k => k.Urunler)
                       .HasForeignKey(e => e.KategoriId)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ===== URUN VARYASYON =====
+            modelBuilder.Entity<UrunVaryasyon>(entity =>
+            {
+                entity.ToTable("UrunVaryasyonlar");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Ad).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.AdEN).HasMaxLength(100);
+                entity.Property(e => e.EkFiyat).HasPrecision(18, 2);
+                entity.Property(e => e.StokAdet).HasDefaultValue(0);
+                entity.Property(e => e.AdminManuelPasifMi).HasDefaultValue(false);
+                entity.HasIndex(e => new { e.UrunId, e.AktifMi, e.StokAdet }).HasDatabaseName("IX_UrunVaryasyonlar_Urun_Aktif_Stok");
+
+                entity.HasOne(e => e.Urun)
+                      .WithMany(u => u.Varyasyonlar)
+                      .HasForeignKey(e => e.UrunId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             // ===== OPSİYON =====
@@ -165,6 +187,14 @@ namespace QRMenu.Data.Data
                       .WithMany()
                       .HasForeignKey(e => e.UrunId)
                       .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.UrunVaryasyon)
+                      .WithMany()
+                      .HasForeignKey(e => e.UrunVaryasyonId)
+                      .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasIndex(e => new { e.SepetId, e.UrunId, e.UrunVaryasyonId })
+                      .HasDatabaseName("IX_SepetDetaylar_Sepet_Urun_Varyasyon");
             });
 
             // ===== SİPARİŞ =====
@@ -174,6 +204,9 @@ namespace QRMenu.Data.Data
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.ToplamTutar).HasPrecision(18, 2);
                 entity.Property(e => e.Notlar).HasMaxLength(500);
+                entity.Property(e => e.SiparisTarihi).IsRequired();
+                entity.Property(e => e.SiparisGunu).IsRequired();
+                entity.Property(e => e.GunlukSiparisNo).HasDefaultValue(0);
 
                 // Concurrency: PostgreSQL'de IsRowVersion() çalışmaz, IsConcurrencyToken kullan
                 entity.Property(e => e.RowVersion)
@@ -183,6 +216,10 @@ namespace QRMenu.Data.Data
                 // Indexes
                 entity.HasIndex(e => e.Durum).HasDatabaseName("IX_Siparisler_Durum");
                 entity.HasIndex(e => e.MasaId).HasDatabaseName("IX_Siparisler_MasaId");
+                entity.HasIndex(e => e.SiparisTarihi).HasDatabaseName("IX_Siparisler_SiparisTarihi");
+                entity.HasIndex(e => new { e.SiparisGunu, e.GunlukSiparisNo })
+                      .IsUnique()
+                      .HasDatabaseName("UX_Siparisler_SiparisGunu_GunlukSiparisNo");
                 entity.HasIndex(e => new { e.OturumId, e.OlusturmaTarihi }).HasDatabaseName("IX_Siparisler_OturumId_OlusturmaTarihi");
 
                 // Foreign Keys
@@ -214,6 +251,11 @@ namespace QRMenu.Data.Data
                       .WithMany()
                       .HasForeignKey(e => e.UrunId)
                       .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.UrunVaryasyon)
+                      .WithMany()
+                      .HasForeignKey(e => e.UrunVaryasyonId)
+                      .OnDelete(DeleteBehavior.SetNull);
             });
 
             // ===== ÖDEME =====

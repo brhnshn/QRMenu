@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewData["Title"] = "Panel";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 
@@ -611,7 +611,7 @@
                     throw new Error(data.message || 'Sipariş detayı alınamadı.');
                 }
 
-                document.getElementById('adminDetailTitle').textContent = `Ticket #${data.id}`;
+                document.getElementById('adminDetailTitle').textContent = `Ticket #${data.gunlukSiparisNo}`;
                 document.getElementById('adminDetailMasa').textContent = data.masaNo ? `Masa ${data.masaNo}` : 'Masa bilgisi yok';
                 document.getElementById('adminDetailTotal').textContent = `₺${Number(data.toplamTutar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
 

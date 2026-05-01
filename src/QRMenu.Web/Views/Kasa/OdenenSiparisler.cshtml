@@ -369,7 +369,7 @@
                                 var tip = odemeTipLabel(s);
                                 var durumClass = s.Durum == SiparisDurum.Iade ? "chip status-refund" : "chip status-paid";
                                 <tr>
-                                    <td><span class="order-id">#ORD-@s.Id</span></td>
+                                    <td><span class="order-id">#@s.GunlukSiparisNo</span></td>
                                     <td>
                                         <div class="d-flex flex-column">
                                             <span class="fw-bold">Masa @s.Masa?.MasaNo</span>

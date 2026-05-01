@@ -7,6 +7,7 @@ using QRMenu.Data.Data;
 using QRMenu.Web.Hubs;
 
 using Microsoft.AspNetCore.Authorization;
+using QRMenu.Web.Models;
 
 namespace QRMenu.Web.Controllers
 {
@@ -15,13 +16,15 @@ namespace QRMenu.Web.Controllers
     {
         private readonly QRMenuDbContext _context;
         private readonly IOdemeService _odemeService;
+        private readonly ISiparisService _siparisService;
         private readonly IHubContext<OrderHub> _orderHub;
         private readonly ILogger<KasaController> _logger;
 
-        public KasaController(QRMenuDbContext context, IOdemeService odemeService, IHubContext<OrderHub> orderHub, ILogger<KasaController> logger)
+        public KasaController(QRMenuDbContext context, IOdemeService odemeService, ISiparisService siparisService, IHubContext<OrderHub> orderHub, ILogger<KasaController> logger)
         {
             _context = context;
             _odemeService = odemeService;
+            _siparisService = siparisService;
             _orderHub = orderHub;
             _logger = logger;
         }
@@ -185,6 +188,66 @@ namespace QRMenu.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Tahsilat işlemi sırasında hata oluştu");
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // POST: /Kasa/SeciliKalemleriIptalEt
+        [HttpPost("/Kasa/SeciliKalemleriIptalEt")]
+        public async Task<IActionResult> SeciliKalemleriIptalEt([FromBody] SiparisDetayIptalRequest request)
+        {
+            if (request?.Detaylar == null || request.Detaylar.Count == 0)
+                return Json(new { success = false, message = "İptal edilecek kalem seçilmedi." });
+
+            if (!request.MasaId.HasValue)
+                return Json(new { success = false, message = "Masa bilgisi bulunamadı." });
+
+            try
+            {
+                // Kasa sadece verilen masa için, ödeme aşamasında olan (TeslimEdildi/KismiOdendi) kalemleri iptal edebilmeli
+                var ids = request.Detaylar.Select(d => d.SiparisDetayId).ToList();
+                var dbDetaylar = await _context.SiparisDetaylar
+                    .Include(sd => sd.Siparis)
+                        .ThenInclude(s => s.Masa)
+                    .AsSplitQuery()
+                    .Where(sd => ids.Contains(sd.Id))
+                    .ToListAsync();
+
+                if (dbDetaylar.Count != ids.Count)
+                    return Json(new { success = false, message = "Bazı seçilen kalemler bulunamadı." });
+
+                if (dbDetaylar.Any(sd => sd.Siparis.MasaId != request.MasaId.Value))
+                    return Json(new { success = false, message = "Seçilen kalemler farklı masaya ait." });
+
+                var allowed = new[] { QRMenu.Core.Enums.SiparisDurum.TeslimEdildi, QRMenu.Core.Enums.SiparisDurum.KismiOdendi };
+                var invalid = dbDetaylar.Where(sd => !allowed.Contains(sd.Durum)).ToList();
+                if (invalid.Any())
+                    return Json(new { success = false, message = "Kasa sadece teslim edilmiş veya kısmi ödemeye uygun ürünleri iptal edebilir." });
+
+                var siparisler = await _siparisService.SiparisDetayIptalEtAsync(request.Detaylar, request.MasaId);
+
+                var masaNo = await _context.Masalar
+                    .Where(m => m.Id == request.MasaId.Value)
+                    .Select(m => m.MasaNo)
+                    .FirstOrDefaultAsync();
+
+                if (siparisler.Any(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.Iptal))
+                {
+                    await _orderHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisIptal", masaNo);
+                    await _orderHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisIptal", masaNo);
+                    await _orderHub.Clients.Group(SignalRGroups.Table(request.MasaId.Value)).SendAsync("SiparisIptal", masaNo);
+                }
+
+                await _orderHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
+                await _orderHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
+                await _orderHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
+                await _orderHub.Clients.Group(SignalRGroups.Table(request.MasaId.Value)).SendAsync("SiparisGuncellendi");
+
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Kasa seçili kalem iptal işlemi sırasında hata oluştu");
                 return Json(new { success = false, message = ex.Message });
             }
         }

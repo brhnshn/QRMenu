@@ -10,6 +10,10 @@ namespace QRMenu.Core.Entities
         public string? Method { get; set; }
         public string? UserAgent { get; set; }
         public string? UserId { get; set; } // Nullable if not logged in
+        public string? RequestBody { get; set; }
+        public string Severity { get; set; } = "Info"; // "Critical", "Warning", "Info"
+        public string? CountryCode { get; set; } // e.g., "TR", "US"
+        public string? TableId { get; set; } // Hangi masadan geldiği
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
 }

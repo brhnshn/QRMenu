@@ -212,6 +212,7 @@ namespace QRMenu.Web.Controllers
                     success = true,
                     message = "Siparişiniz alındı!",
                     siparisId = siparis.Id,
+                    gunlukSiparisNo = siparis.GunlukSiparisNo,
                     toplamTutar = siparis.ToplamTutar,
                     durum = siparis.Durum.ToString()
                 });
@@ -236,6 +237,7 @@ namespace QRMenu.Web.Controllers
             {
                 success = true,
                 siparisId = siparis.Id,
+                gunlukSiparisNo = siparis.GunlukSiparisNo,
                 durum = siparis.Durum.ToString(),
                 toplamTutar = siparis.ToplamTutar,
                 olusturmaTarihi = ToTurkeyTime(siparis.OlusturmaTarihi),
@@ -291,6 +293,7 @@ namespace QRMenu.Web.Controllers
                 siparisler = siparisler.Select(s => new
                 {
                     siparisId = s.Id,
+                    gunlukSiparisNo = s.GunlukSiparisNo,
                     durum = s.Durum.ToString(),
                     toplamTutar = s.ToplamTutar,
                     oyunOynandiMi = s.OyunOynandiMi,

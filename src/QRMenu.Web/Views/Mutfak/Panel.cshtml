@@ -1,4 +1,4 @@
-﻿@using System.Text.Json
+@using System.Text.Json
 @using QRMenu.Core.Enums
 @model List<QRMenu.Core.Entities.Siparis>
 @{
@@ -101,14 +101,14 @@
 
         @@media (min-width: 1024px) {
             .kds-order-grid {
-                grid-template-columns: repeat(4, minmax(0, 1fr));
+                grid-template-columns: repeat(3, minmax(0, 1fr));
                 gap: 1.5rem;
             }
         }
 
         @@media (min-width: 1280px) {
             .kds-order-grid {
-                grid-template-columns: repeat(5, minmax(0, 1fr));
+                grid-template-columns: repeat(4, minmax(0, 1fr));
                 gap: 1.5rem;
             }
         }
@@ -142,9 +142,9 @@
         .kds-receipt-shell {
             display: flex;
             flex-direction: column;
-            width: min(96vw, 860px);
-            max-width: 860px;
-            height: min(94dvh, 760px);
+            width: min(96vw, 960px);
+            max-width: 960px;
+            height: min(94dvh, 820px);
             max-height: calc(100dvh - 1rem);
             background: #ffffff;
             border-radius: 1.5rem;
@@ -181,7 +181,13 @@
             border-top: 1px solid #f0f0f0;
             flex-shrink: 0;
             display: flex;
+            flex-wrap: wrap;
             gap: 0.75rem;
+        }
+
+        .kds-receipt-footer > button {
+            min-height: 2.9rem;
+            flex: 1 1 10.5rem;
         }
 
         .kds-receipt-items {
@@ -189,13 +195,145 @@
             gap: .55rem;
         }
 
+        .kds-receipt-actions {
+            margin-top: .75rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: .6rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .kds-select-mode-group {
+            display: none;
+        }
+
+        .kds-select-mode-btn {
+            border: 0;
+            background: transparent;
+            padding: .35rem .7rem;
+            border-radius: .65rem;
+            font-size: .7rem;
+            font-weight: 800;
+            letter-spacing: .04em;
+            color: #6a6969;
+            text-transform: uppercase;
+        }
+
+        .kds-select-mode-btn.is-active {
+            background: #2e2f2f;
+            color: #fff;
+        }
+
+        .kds-cancel-btn {
+            border: 0;
+            background: #c62828;
+            color: #fff;
+            padding: .45rem .95rem;
+            border-radius: .9rem;
+            font-size: .7rem;
+            font-weight: 900;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+
+        .kds-cancel-btn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+
         .kds-receipt-item {
             display: grid;
             grid-template-columns: auto minmax(0, 1fr) auto;
-            align-items: start;
+            align-items: center;
             gap: .75rem;
-            padding: .65rem 0;
+            padding: .85rem .75rem;
             border-bottom: 1px solid rgb(239 236 234);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: .85rem;
+            margin-bottom: 2px;
+        }
+
+        .kds-receipt-item:hover {
+            background: #fdfdfd;
+        }
+
+        .kds-receipt-item.is-selected {
+            background: #fff6f3;
+            border-radius: .85rem;
+            padding-left: .65rem;
+            padding-right: .65rem;
+            outline: 1px solid rgba(198, 40, 40, 0.18);
+        }
+
+        .kds-receipt-lead {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: .35rem;
+        }
+
+        .kds-cancel-check {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.75rem;
+            height: 1.75rem;
+            border-radius: .6rem;
+            border: 2px solid #d9d3cf;
+            background: #fff;
+            transition: all 0.2s ease;
+        }
+
+        .kds-cancel-input {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            accent-color: #c62828;
+        }
+
+        .kds-cancel-btn.is-busy {
+            opacity: .92;
+        }
+
+        .kds-btn-spinner {
+            width: .95rem;
+            height: .95rem;
+            border-radius: 999px;
+            border: 2px solid rgba(255,255,255,0.42);
+            border-top-color: #fff;
+            animation: kdsSpin .75s linear infinite;
+        }
+
+        .kds-qty-chip-group {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: .35rem;
+            align-items: center;
+        }
+
+        .kds-qty-chip {
+            border: 1px solid #ddd7d3;
+            background: #fff;
+            color: #5f5e5d;
+            border-radius: .6rem;
+            min-width: 2.05rem;
+            min-height: 1.9rem;
+            padding: .1rem .45rem;
+            font-size: .72rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .kds-qty-chip.is-active {
+            background: #c62828;
+            border-color: #c62828;
+            color: #fff;
+        }
+
+        .kds-cancel-qty {
+            display: none;
         }
 
         .kds-receipt-item:last-child {
@@ -248,6 +386,20 @@
 
         .kds-receipt-item.is-prepared .kds-prepared-status {
             display: block;
+        }
+
+        .kds-spinner, .kds-btn-spinner {
+            width: 1.1rem;
+            height: 1.1rem;
+            border-radius: 999px;
+            border: 2px solid rgba(255,255,255,0.35);
+            border-top-color: #fff;
+            animation: kdsSpin .7s linear infinite;
+            display: inline-block;
+        }
+
+        @@keyframes kdsSpin {
+            to { transform: rotate(360deg); }
         }
 
         @@keyframes modalPopIn {
@@ -377,6 +529,7 @@
                         var elapsed = now - siparis.OlusturmaTarihi;
                         var danger = elapsed.TotalMinutes >= 5;
                         var yeniBilet = siparis.Durum == SiparisDurum.Onaylandi && !danger;
+                        var detayIptalAktif = siparis.Durum == SiparisDurum.Onaylandi || siparis.Durum == SiparisDurum.Hazirlaniyor;
 
                         var kartSinifi = danger
                             ? "ring-2 ring-error/15 border border-error-container/20 kds-ticket-card kds-danger"
@@ -400,7 +553,7 @@
                             <div class="@baslikSinifi p-4 sm:p-5 flex justify-between items-center ticket-head">
                                 <div class="@(yeniBilet ? "text-white" : "")">
                                     <div class="text-xs font-bold uppercase tracking-tighter @(yeniBilet ? "opacity-80" : "text-on-surface-variant")">Masa @siparis.Masa.MasaNo</div>
-                                    <div class="text-xl sm:text-2xl font-headline font-black @(yeniBilet ? "" : "text-on-surface")">Ticket #@siparis.Id</div>
+                                    <div class="text-xl sm:text-2xl font-headline font-black @(yeniBilet ? "" : "text-on-surface")">Ticket #@siparis.GunlukSiparisNo</div>
                                 </div>
                                 <div class="@sureRozetiSinifi px-3 py-1.5 rounded-lg flex items-center gap-2">
                                     <span class="material-symbols-outlined text-sm">timer</span>
@@ -449,16 +602,22 @@
                                     </button>
                                     @if (siparis.Durum == SiparisDurum.Onaylandi)
                                     {
-                                        <button type="button" onclick="durumGuncelle(@siparis.Id, 'Hazirlaniyor')" class="flex-[2] bg-primary hover:bg-primary-dim text-white py-3 sm:py-4 rounded-xl font-headline font-extrabold text-base sm:text-lg transition-all flex justify-center items-center gap-2">
+                                        <button type="button" onclick="durumGuncelleClick(this, @siparis.Id, 'Hazirlaniyor')" class="flex-[2] bg-primary hover:bg-primary-dim text-white py-3 sm:py-4 rounded-xl font-headline font-extrabold text-base sm:text-lg transition-all flex justify-center items-center gap-2">
                                             <span>Hazırlanıyor</span>
                                             <span class="material-symbols-outlined">chevron_right</span>
+                                        </button>
+                                        <button type="button" onclick="durumGuncelleClick(this, @siparis.Id, 'Iptal')" class="bg-error hover:bg-error/90 text-white py-3 sm:py-4 px-4 rounded-xl font-headline font-extrabold text-base sm:text-lg transition-all flex justify-center items-center gap-2">
+                                            <span class="material-symbols-outlined">cancel</span>
                                         </button>
                                     }
                                     else if (siparis.Durum == SiparisDurum.Hazirlaniyor)
                                     {
-                                        <button type="button" onclick="durumGuncelle(@siparis.Id, 'Hazir')" class="flex-[2] bg-primary hover:bg-primary-dim text-white py-3 sm:py-4 rounded-xl font-headline font-extrabold text-base sm:text-lg transition-all flex justify-center items-center gap-2">
+                                        <button type="button" onclick="durumGuncelleClick(this, @siparis.Id, 'Hazir')" class="flex-[2] bg-primary hover:bg-primary-dim text-white py-3 sm:py-4 rounded-xl font-headline font-extrabold text-base sm:text-lg transition-all flex justify-center items-center gap-2">
                                             <span>Hazır</span>
                                             <span class="material-symbols-outlined">check_circle</span>
+                                        </button>
+                                        <button type="button" onclick="durumGuncelleClick(this, @siparis.Id, 'Iptal')" class="bg-error hover:bg-error/90 text-white py-3 sm:py-4 px-4 rounded-xl font-headline font-extrabold text-base sm:text-lg transition-all flex justify-center items-center gap-2">
+                                            <span class="material-symbols-outlined">cancel</span>
                                         </button>
                                     }
                                 </div>
@@ -471,10 +630,16 @@
                             <div class="flex items-start justify-between">
                                 <div>
                                     <div class="text-[10px] font-bold uppercase tracking-widest text-outline">Masa @siparis.Masa.MasaNo</div>
-                                    <div class="text-2xl font-headline font-black text-on-surface">Ticket #@siparis.Id</div>
+                                    <div class="text-2xl font-headline font-black text-on-surface">Ticket #@siparis.GunlukSiparisNo</div>
                                     <div class="text-xs text-on-surface-variant mt-1">@siparis.OlusturmaTarihi.AddHours(3).ToString("dd.MM.yyyy HH:mm")</div>
                                 </div>
                                 <div class="text-[10px] font-bold px-2 py-1 rounded-full bg-surface-container text-on-surface">@siparis.Durum.ToString()</div>
+                            </div>
+                            <div class="kds-receipt-actions">
+                                <button type="button" class="kds-cancel-btn flex items-center justify-center gap-2" data-cancel-selected data-cancel-enabled="@(detayIptalAktif ? "1" : "0")" @(detayIptalAktif ? "" : "disabled")>
+                                    <span class="kds-btn-spinner hidden" id="cancelSpinner"></span>
+                                    <span>Seçilenleri İptal Et</span>
+                                </button>
                             </div>
                         </div>
 
@@ -491,26 +656,36 @@
                                 @foreach (var detay in detaylar)
                                 {
                                     var opsiyonlar = OpsiyonlariCoz(detay.SeciliOpsiyonlar);
-                                    <div class="kds-receipt-item" data-detail-id="@detay.Id">
-                                        <div class="bg-surface-container-highest px-2.5 py-1 rounded-lg font-black text-on-surface">@detay.Adet</div>
-                                        <div class="min-w-0 pt-0.5">
-                                            <div class="kds-receipt-item-name font-headline font-bold text-on-surface break-words">@detay.Urun.Ad</div>
-                                            @if (opsiyonlar.Any())
-                                            {
-                                                <div class="mt-1 space-y-1 text-xs text-on-surface-variant font-medium">
-                                                @foreach (var opsiyon in opsiyonlar)
-                                                {
-                                                    <div class="kds-receipt-option">• @opsiyon</div>
-                                                }
+                                    @for (var i = 0; i < detay.Adet; i++)
+                                    {
+                                        <div class="kds-receipt-item" data-detail-id="@detay.Id">
+                                            <div class="kds-receipt-lead">
+                                                <label class="kds-cancel-check">
+                                                    <input type="checkbox" class="kds-cancel-input" value="@detay.Id" @(detayIptalAktif ? "" : "disabled") />
+                                                </label>
+                                            </div>
+                                            <div class="min-w-0 pt-0.5">
+                                                <div class="kds-receipt-item-name font-headline font-bold text-on-surface break-words">
+                                                    @detay.Urun.Ad 
+                                                    <span class="text-xs bg-surface-container-highest px-1.5 py-0.5 rounded text-on-surface-variant ml-1">1 ADET</span>
                                                 </div>
-                                            }
+                                                @if (opsiyonlar.Any())
+                                                {
+                                                    <div class="mt-1 space-y-1 text-xs text-on-surface-variant font-medium">
+                                                    @foreach (var opsiyon in opsiyonlar)
+                                                    {
+                                                        <div class="kds-receipt-option">• @opsiyon</div>
+                                                    }
+                                                    </div>
+                                                }
+                                            </div>
+                                            <button type="button" class="kds-prepared-toggle" data-prepared-toggle="@detay.Id" aria-pressed="false">
+                                                <span class="material-symbols-outlined text-[18px]">radio_button_unchecked</span>
+                                                <span class="kds-prepared-label">Hazırlandı</span>
+                                            </button>
+                                            <div class="kds-prepared-status">Hazırlandı olarak işaretlendi</div>
                                         </div>
-                                        <button type="button" class="kds-prepared-toggle" data-prepared-toggle="@detay.Id" aria-pressed="false">
-                                            <span class="material-symbols-outlined text-[18px]">radio_button_unchecked</span>
-                                            <span class="kds-prepared-label">Hazırlandı</span>
-                                        </button>
-                                        <div class="kds-prepared-status">Hazırlandı olarak işaretlendi</div>
-                                    </div>
+                                    }
                                 }
                             </div>
 
@@ -523,16 +698,24 @@
                         <div class="kds-receipt-footer flex-col sm:flex-row">
                             @if (siparis.Durum == SiparisDurum.Onaylandi)
                             {
-                                <button type="button" onclick="durumGuncelle(@siparis.Id, 'Hazirlaniyor'); closeReceipt();" class="flex-1 bg-primary hover:bg-primary-dim text-white py-3 rounded-xl font-headline font-extrabold text-base transition-all flex justify-center items-center gap-2">
+                                <button type="button" onclick="durumGuncelleClick(this, @siparis.Id, 'Hazirlaniyor', true)" class="flex-1 bg-primary hover:bg-primary-dim text-white py-3 rounded-xl font-headline font-extrabold text-base transition-all flex justify-center items-center gap-2">
                                     <span>Hazırlanıyor</span>
                                     <span class="material-symbols-outlined">chevron_right</span>
+                                </button>
+                                <button type="button" onclick="durumGuncelleClick(this, @siparis.Id, 'Iptal', true)" class="flex-1 bg-error hover:bg-error/90 text-white py-3 rounded-xl font-headline font-extrabold text-base transition-all flex justify-center items-center gap-2">
+                                    <span>Hepsini İptal Et</span>
+                                    <span class="material-symbols-outlined">cancel</span>
                                 </button>
                             }
                             else if (siparis.Durum == SiparisDurum.Hazirlaniyor)
                             {
-                                <button type="button" onclick="durumGuncelle(@siparis.Id, 'Hazir'); closeReceipt();" class="flex-1 bg-primary hover:bg-primary-dim text-white py-3 rounded-xl font-headline font-extrabold text-base transition-all flex justify-center items-center gap-2">
+                                <button type="button" onclick="durumGuncelleClick(this, @siparis.Id, 'Hazir', true)" class="flex-1 bg-primary hover:bg-primary-dim text-white py-3 rounded-xl font-headline font-extrabold text-base transition-all flex justify-center items-center gap-2">
                                     <span>Hazır</span>
                                     <span class="material-symbols-outlined">check_circle</span>
+                                </button>
+                                <button type="button" onclick="durumGuncelleClick(this, @siparis.Id, 'Iptal', true)" class="flex-1 bg-error hover:bg-error/90 text-white py-3 rounded-xl font-headline font-extrabold text-base transition-all flex justify-center items-center gap-2">
+                                    <span>Hepsini İptal Et</span>
+                                    <span class="material-symbols-outlined">cancel</span>
                                 </button>
                             }
                             <button type="button" onclick="closeReceipt();" class="flex-1 border border-surface-container-high text-on-surface py-3 rounded-xl font-headline font-extrabold text-base transition-all hover:bg-surface-container-lowest">
@@ -724,6 +907,11 @@
             body.innerHTML = '';
             body.appendChild(template.content.cloneNode(true));
             applyPreparedMarks(body);
+            const receipt = body.querySelector('.kds-receipt-shell');
+            if (receipt) {
+                setKdsCancelMode(getKdsCancelMode(), receipt);
+                updateKdsReceiptSelection(receipt);
+            }
             modal.classList.add('is-open');
             document.body.classList.add('kds-modal-open');
             document.body.style.overflow = 'hidden';
@@ -824,6 +1012,16 @@
         updateTimers();
 
         document.addEventListener('click', function (event) {
+
+            const cancelButton = event.target.closest('[data-cancel-selected]');
+            if (cancelButton) {
+                event.preventDefault();
+                if (!cancelButton.disabled) {
+                    iptalSeciliDetaylar();
+                }
+                return;
+            }
+
             const preparedButton = event.target.closest('[data-prepared-toggle]');
             if (preparedButton) {
                 event.preventDefault();
@@ -844,6 +1042,23 @@
                 return;
             }
 
+            // Eğer fiş içindeki herhangi bir yere tıklanmışsa, küçük kutucukla uğraşılmasın; kartın herhangi bir yeri seçimi değiştirsin
+            const receiptItem = event.target.closest('.kds-receipt-item');
+            if (receiptItem) {
+                // Eğer tıklama interaktif bir öğe üzerindeyse (input, select, button, a, label) geri dön
+                if (event.target.closest('input,select,button,a,label')) {
+                    return;
+                }
+
+                const checkbox = receiptItem.querySelector('.kds-cancel-input');
+                if (checkbox && !checkbox.disabled) {
+                    checkbox.checked = !checkbox.checked;
+                    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+
+                return;
+            }
+
             const receiptButton = event.target.closest('[data-receipt-id]');
             if (receiptButton) {
                 event.preventDefault();
@@ -854,6 +1069,18 @@
             const modal = document.getElementById('kdsReceiptModal');
             if (modal && event.target === modal) {
                 closeReceipt();
+            }
+        });
+
+        document.addEventListener('change', function (event) {
+            const cancelInput = event.target.closest('.kds-cancel-input');
+            if (!cancelInput) {
+                return;
+            }
+
+            const receipt = cancelInput.closest('.kds-receipt-shell');
+            if (receipt) {
+                updateKdsReceiptSelection(receipt);
             }
         });
 
@@ -919,7 +1146,153 @@
             }, Math.max(0, waitMs));
         }
 
+        const inFlightDurumGuncellemeleri = new Set();
+
+        async function durumGuncelleClick(button, siparisId, durum, closeAfter = false) {
+            if (inFlightDurumGuncellemeleri.has(siparisId)) {
+                return;
+            }
+
+            const originalHtml = button ? button.innerHTML : null;
+            if (button) {
+                button.disabled = true;
+                button.classList.add('opacity-80', 'cursor-not-allowed');
+                button.innerHTML = '<span class="kds-spinner" aria-hidden="true"></span><span>İşleniyor</span>';
+            }
+
+            const ok = await durumGuncelle(siparisId, durum, true);
+
+            if (button && !ok) {
+                button.disabled = false;
+                button.classList.remove('opacity-80', 'cursor-not-allowed');
+                if (originalHtml !== null) {
+                    button.innerHTML = originalHtml;
+                }
+            }
+
+            if (ok && closeAfter) {
+                closeReceipt();
+            }
+        }
+
+        const kdsCancelModeKey = 'kdsCancelMode';
+
+        function getKdsCancelMode() {
+            return 'multi';
+        }
+
+        function setKdsCancelMode(mode, receipt) {
+            // Artık sadece çoklu seçim var
+            if (!receipt) return;
+            receipt.dataset.cancelMode = 'multi';
+            updateKdsReceiptSelection(receipt);
+        }
+
+        function updateKdsReceiptSelection(receipt) {
+            if (!receipt) {
+                return;
+            }
+
+            let selectedCount = 0;
+            receipt.querySelectorAll('.kds-receipt-item').forEach(row => {
+                const checked = row.querySelector('.kds-cancel-input')?.checked;
+                row.classList.toggle('is-selected', Boolean(checked));
+                if (checked) {
+                    selectedCount += 1;
+                }
+            });
+
+            const cancelBtn = receipt.querySelector('[data-cancel-selected]');
+            const enabled = cancelBtn?.getAttribute('data-cancel-enabled') !== '0';
+            if (cancelBtn) {
+                cancelBtn.disabled = !enabled || selectedCount === 0;
+            }
+        }
+
+        function collectKdsCancelDetails(receipt) {
+            if (!receipt) {
+                return [];
+            }
+
+            const selectionMap = new Map();
+            receipt.querySelectorAll('.kds-cancel-input:checked').forEach(input => {
+                const detailId = Number.parseInt(input.value, 10);
+                if (Number.isFinite(detailId)) {
+                    selectionMap.set(detailId, (selectionMap.get(detailId) || 0) + 1);
+                }
+            });
+
+            const result = [];
+            selectionMap.forEach((adet, siparisDetayId) => {
+                result.push({ siparisDetayId, adet });
+            });
+            return result;
+        }
+
+        async function iptalSeciliDetaylar() {
+            const receipt = document.querySelector('#kdsReceiptBody .kds-receipt-shell');
+            if (!receipt) {
+                return;
+            }
+
+            const detaylar = collectKdsCancelDetails(receipt);
+            if (!detaylar.length) {
+                return;
+            }
+
+            const onay = confirm('Seçilen kalemler iptal edilsin mi?');
+            if (!onay) {
+                return;
+            }
+
+            const cancelBtn = receipt.querySelector('[data-cancel-selected]');
+            const spinner = receipt.querySelector('#cancelSpinner');
+            const originalHtml = cancelBtn ? cancelBtn.querySelector('span:not(.kds-btn-spinner)')?.innerText : 'Seçilenleri İptal Et';
+
+            if (cancelBtn) {
+                cancelBtn.disabled = true;
+                cancelBtn.classList.add('is-busy');
+                if (spinner) spinner.classList.remove('hidden');
+                const label = cancelBtn.querySelector('span:not(.kds-btn-spinner)');
+                if (label) label.innerText = 'İşleniyor...';
+            }
+
+            try {
+                const res = await fetch('/Mutfak/SiparisDetayIptal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ detaylar })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    closeReceipt();
+                    scheduleSoftRefresh(120);
+                    return;
+                }
+
+                alert('İptal sırasında hata: ' + (data.message || 'Bilinmeyen hata'));
+            } catch (err) {
+                console.error(err);
+                alert('İptal sırasında bağlantı hatası oluştu.');
+            } finally {
+                if (cancelBtn) {
+                    cancelBtn.disabled = false;
+                    cancelBtn.classList.remove('is-busy');
+                    if (spinner) spinner.classList.add('hidden');
+                    const label = cancelBtn.querySelector('span:not(.kds-btn-spinner)');
+                    if (label) label.innerText = originalHtml;
+                }
+                updateKdsReceiptSelection(receipt);
+            }
+        }
+
         async function durumGuncelle(siparisId, durum, refresh = true) {
+            if (inFlightDurumGuncellemeleri.has(siparisId)) {
+                return false;
+            }
+
+            inFlightDurumGuncellemeleri.add(siparisId);
             try {
                 const payload = { yeniDurum: durum };
                 const res = await fetch(`/Mutfak/DurumGuncelle/${siparisId}`, {
@@ -942,6 +1315,8 @@
                 console.error(err);
                 alert('Durum güncellenirken beklenmeyen bir hata oluştu.');
                 return false;
+            } finally {
+                inFlightDurumGuncellemeleri.delete(siparisId);
             }
         }
 

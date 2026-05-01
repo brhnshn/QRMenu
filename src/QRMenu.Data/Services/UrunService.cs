@@ -19,6 +19,7 @@ namespace QRMenu.Data.Services
             return await _context.Urunler
                 .AsNoTracking()
                 .Include(u => u.Kategori)
+                .Include(u => u.Varyasyonlar)
                 .Include(u => u.UrunOpsiyonlar)
                     .ThenInclude(uo => uo.Opsiyon)
                 .OrderBy(u => u.Kategori.SiraNo)
@@ -31,6 +32,7 @@ namespace QRMenu.Data.Services
             return await _context.Urunler
                 .AsNoTracking()
                 .Include(u => u.Kategori)
+                .Include(u => u.Varyasyonlar)
                 .Include(u => u.UrunOpsiyonlar)
                     .ThenInclude(uo => uo.Opsiyon)
                 .Where(u => u.AktifMi)
@@ -44,6 +46,7 @@ namespace QRMenu.Data.Services
             return await _context.Urunler
                 .AsNoTracking()
                 .Include(u => u.Kategori)
+                .Include(u => u.Varyasyonlar)
                 .Include(u => u.UrunOpsiyonlar)
                     .ThenInclude(uo => uo.Opsiyon)
                 .FirstOrDefaultAsync(u => u.Id == id);

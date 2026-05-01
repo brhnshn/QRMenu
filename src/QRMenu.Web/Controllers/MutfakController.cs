@@ -7,6 +7,7 @@ using QRMenu.Core.Interfaces;
 using QRMenu.Web.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authorization;
+using QRMenu.Web.Models;
 
 namespace QRMenu.Web.Controllers
 {
@@ -33,7 +34,7 @@ namespace QRMenu.Web.Controllers
             ViewData["PageTitle"] = "Mutfak KDS Ekranı";
             ViewData["MutfakPageTitle"] = "Mutfak KDS";
             ViewData["MutfakActivePage"] = "CanliSiparisler";
-            ViewData["MutfakContentClass"] = "p-5 lg:p-8 pb-28 md:pb-8 flex-1 overflow-y-auto";
+            ViewData["MutfakContentClass"] = "p-5 lg:p-8 pb-28 md:pb-8 h-full overflow-y-auto";
 
             // Sadece Onaylandı veya Hazırlanıyor ürün barındıran ve son 24 saat içinde olan siparişleri getir
             var sinirTarih = DateTime.UtcNow.AddHours(-24);
@@ -60,7 +61,7 @@ namespace QRMenu.Web.Controllers
             ViewData["PageTitle"] = "Sipariş Geçmişi";
             ViewData["MutfakPageTitle"] = "Sipariş Geçmişi";
             ViewData["MutfakActivePage"] = "SiparisGecmisi";
-            ViewData["MutfakContentClass"] = "p-5 lg:p-8 pb-8 flex-1 overflow-y-auto";
+            ViewData["MutfakContentClass"] = "p-5 lg:p-8 pb-8 h-full overflow-y-auto";
 
             var sinirTarih = DateTime.UtcNow.AddDays(-7);
             var gecmisSiparisler = await _context.Siparisler
@@ -84,7 +85,7 @@ namespace QRMenu.Web.Controllers
             ViewData["PageTitle"] = "Mutfak Ayarları";
             ViewData["MutfakPageTitle"] = "Mutfak Ayarları";
             ViewData["MutfakActivePage"] = "MutfakAyarlari";
-            ViewData["MutfakContentClass"] = "p-5 lg:p-8 pb-8 flex-1 overflow-y-auto";
+            ViewData["MutfakContentClass"] = "p-5 lg:p-8 pb-8 h-full overflow-y-auto";
 
             return View();
         }
@@ -116,6 +117,12 @@ namespace QRMenu.Web.Controllers
                     await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisHazir", masaNo);
                     await _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisHazir", masaNo);
                 }
+                else if (durum == SiparisDurum.Iptal)
+                {
+                    await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisIptal", masaNo);
+                    await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisIptal", masaNo);
+                    await _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisIptal", masaNo);
+                }
 
                 await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
                 await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
@@ -127,6 +134,63 @@ namespace QRMenu.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Mutfak sipariş durum güncelleme hatası");
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost("/Mutfak/SiparisDetayIptal")]
+        public async Task<IActionResult> SiparisDetayIptal([FromBody] SiparisDetayIptalRequest request)
+        {
+            if (request == null || request.Detaylar == null || request.Detaylar.Count == 0)
+                return Json(new { success = false, message = "İptal edilecek kalem seçilmedi." });
+
+            try
+            {
+                // Sunucu tarafı kontrol: seçilen kalemlerin mutfak tarafından işlenebilecek durumlarda olduğunu doğrula
+                var ids = request.Detaylar.Select(d => d.SiparisDetayId).ToList();
+                var dbDetaylar = await _context.SiparisDetaylar
+                    .Include(sd => sd.Siparis)
+                        .ThenInclude(s => s.Masa)
+                    .AsSplitQuery()
+                    .Where(sd => ids.Contains(sd.Id))
+                    .ToListAsync();
+
+                if (dbDetaylar.Count != ids.Count)
+                    return Json(new { success = false, message = "Bazı seçilen kalemler bulunamadı." });
+
+                var invalid = dbDetaylar.Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.Onaylandi && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Hazirlaniyor).ToList();
+                if (invalid.Any())
+                    return Json(new { success = false, message = "Sadece onaylanmış veya hazırlanıyor durumundaki ürünler mutfakta işlenebilir/iptal edilebilir." });
+
+                var siparisler = await _siparisService.SiparisDetayIptalEtAsync(request.Detaylar);
+
+                var iptalSiparisler = siparisler
+                    .Where(s => s.Durum == SiparisDurum.Iptal)
+                    .DistinctBy(s => s.MasaId)
+                    .ToList();
+
+                foreach (var siparis in iptalSiparisler)
+                {
+                    var masaNo = siparis.Masa?.MasaNo ?? 0;
+                    await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisIptal", masaNo);
+                    await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisIptal", masaNo);
+                    await _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisIptal", masaNo);
+                }
+
+                foreach (var masaId in siparisler.Select(s => s.MasaId).Distinct())
+                {
+                    await _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisGuncellendi");
+                }
+
+                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
+                await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
+
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Mutfak sipariş detay iptal hatası");
                 return Json(new { success = false, message = ex.Message });
             }
         }

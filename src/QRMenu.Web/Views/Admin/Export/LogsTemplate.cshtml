@@ -1,0 +1,163 @@
+@model List<QRMenu.Core.Entities.SecurityLog>
+@{
+    Layout = null;
+    var primaryColor = "#CC5533";
+    var secondaryColor = "#1a1a1a";
+    var borderColor = "#e5e7eb";
+    var bgColor = "#f9fafb";
+    
+    var userNames = ViewBag.UserNames as Dictionary<string, string>;
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <title>Güvenlik Log Raporu</title>
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            margin: 0;
+            padding: 30px;
+            color: @secondaryColor;
+            background-color: white;
+            line-height: 1.4;
+        }
+        .header {
+            border-bottom: 2px solid @primaryColor;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        .header h1 {
+            margin: 0;
+            color: @primaryColor;
+            font-size: 22px;
+            font-weight: bold;
+        }
+        .header p {
+            margin: 5px 0 0;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .summary-grid {
+            display: table;
+            width: 100%;
+            margin-bottom: 25px;
+            border-spacing: 10px 0;
+        }
+        .summary-card {
+            display: table-cell;
+            background-color: @bgColor;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid @borderColor;
+            width: 33%;
+        }
+        .summary-label { font-size: 9px; font-weight: bold; color: #6b7280; text-transform: uppercase; }
+        .summary-value { font-size: 16px; font-weight: bold; margin-top: 4px; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        th {
+            background-color: #f3f4f6;
+            text-align: left;
+            padding: 8px;
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-bottom: 1px solid @borderColor;
+        }
+        td {
+            padding: 8px;
+            font-size: 10px;
+            border-bottom: 1px solid @borderColor;
+            word-wrap: break-word;
+        }
+        .severity {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 8px;
+            font-weight: bold;
+            color: white;
+        }
+        .sev-Critical { background-color: #B31B25; }
+        .sev-Warning { background-color: #F59E0B; }
+        .sev-Info { background-color: #3B82F6; }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 9px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>GÜVENLİK LOG RAPORU</h1>
+        <p>Rapor Tarihi: @DateTime.Now.ToString("dd.MM.yyyy HH:mm")</p>
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-label">Toplam Kayıt</div>
+            <div class="summary-value">@Model.Count</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Kritik Olaylar</div>
+            <div class="summary-value" style="color: #B31B25;">@Model.Count(l => l.Severity == "Critical")</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Uyarılar</div>
+            <div class="summary-value" style="color: #F59E0B;">@Model.Count(l => l.Severity == "Warning")</div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th width="100">Tarih</th>
+                <th width="80">Olay Tipi</th>
+                <th width="80">IP Adresi</th>
+                <th>Mesaj / Yol</th>
+                <th width="100">Kaynak</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var l in Model)
+            {
+                <tr>
+                    <td>@l.Timestamp.AddHours(3).ToString("dd.MM.yyyy HH:mm")</td>
+                    <td>
+                        <span class="severity @(l.Severity == "Critical" ? "sev-Critical" : (l.Severity == "Warning" ? "sev-Warning" : "sev-Info"))">
+                            @l.EventType
+                        </span>
+                    </td>
+                    <td>@l.IpAddress</td>
+                    <td>
+                        <strong>@l.Method</strong> @l.Path<br/>
+                        <span style="font-size: 8px; color: #6b7280;">@l.Message</span>
+                    </td>
+                    <td>
+                        @{
+                            var sourceName = "ANONİM";
+                            if (l.TableId != null) sourceName = "MASA: " + l.TableId;
+                            else if (l.UserId != null && userNames != null && userNames.ContainsKey(l.UserId)) sourceName = userNames[l.UserId].ToUpper();
+                            else if (l.UserId != null) sourceName = "MÜŞTERİ";
+                        }
+                        @sourceName
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="footer">
+        QR Menu Dijital Güvenlik Portalı - Otomatik Raporlama
+    </div>
+</body>
+</html>

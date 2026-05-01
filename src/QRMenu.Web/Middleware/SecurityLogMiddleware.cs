@@ -57,6 +57,17 @@ namespace QRMenu.Web.Middleware
                 using var scope = serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<QRMenuDbContext>();
 
+                var severity = statusCode switch
+                {
+                    429 => "Warning",
+                    403 => "Critical",
+                    401 => "Warning",
+                    _ => "Info"
+                };
+
+                // Masa ID veya Personel bilgisini çekmeye çalış
+                var tableId = context.Session.GetString("MasaId") ?? context.Request.Cookies["MasaId"];
+
                 var log = new SecurityLog
                 {
                     EventType = eventType,
@@ -66,6 +77,9 @@ namespace QRMenu.Web.Middleware
                     Method = method,
                     UserAgent = userAgent,
                     UserId = userId,
+                    TableId = tableId,
+                    Severity = severity,
+                    CountryCode = ip == "::1" || ip == "127.0.0.1" ? "TR" : "UN", // Basit bir eşleme, ileride API eklenebilir
                     Timestamp = DateTime.UtcNow
                 };
 

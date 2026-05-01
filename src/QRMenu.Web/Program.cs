@@ -61,6 +61,7 @@ builder.Services.AddDbContext<QRMenuDbContext>((sp, options) =>
             maxRetryDelay: TimeSpan.FromSeconds(10),
             errorCodesToAdd: null);
         npgsqlOptions.CommandTimeout(30);
+        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
     });
     
     // AuditLogInterceptor'ı DI üzerinden alıp ekle
@@ -80,6 +81,8 @@ builder.Services.AddScoped<IUrunService, UrunService>();
 builder.Services.AddScoped<ISepetService, SepetService>();
 builder.Services.AddScoped<ISiparisService, SiparisService>();
 builder.Services.AddScoped<IOdemeService, OdemeService>();
+builder.Services.AddScoped<QRMenu.Web.Helpers.IRazorViewRenderer, QRMenu.Web.Helpers.RazorViewRenderer>();
+
 
 // MVC
 builder.Services.AddControllersWithViews()

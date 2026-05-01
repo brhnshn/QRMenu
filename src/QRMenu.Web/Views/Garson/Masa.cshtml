@@ -99,6 +99,116 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+
+        .fis-item-row {
+            display: flex;
+            gap: .85rem;
+            align-items: center;
+            padding: .85rem .75rem;
+            border-bottom: 1px dashed #e5e3e1;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: .85rem;
+            margin-bottom: 2px;
+        }
+
+        .fis-item-row:hover {
+            background: #fdfdfd;
+        }
+
+        .fis-item-row.is-selected {
+            background: #fff6f3;
+            border-radius: .85rem;
+            padding: .85rem .75rem;
+            outline: 1px solid rgba(162, 55, 24, 0.18);
+        }
+
+        .fis-cancel-check {
+            width: 1.75rem;
+            height: 1.75rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: .6rem;
+            border: 2px solid #d9d3cf;
+            background: #fff;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+
+        .fis-cancel-btn {
+            border: 0;
+            background: #c62828;
+            color: #fff;
+            padding: .5rem 1rem;
+            border-radius: .9rem;
+            font-size: .74rem;
+            font-weight: 900;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .45rem;
+        }
+
+        .fis-cancel-btn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+
+        .fis-cancel-btn.is-busy {
+            opacity: .9;
+        }
+
+        .fis-btn-spinner {
+            width: 0.9rem;
+            height: 0.9rem;
+            border-radius: 999px;
+            border: 2px solid rgba(255,255,255,0.42);
+            border-top-color: #fff;
+            animation: fisSpin .75s linear infinite;
+        }
+
+        .fis-qty-chip-group {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: .35rem;
+            align-items: center;
+        }
+
+        .fis-qty-chip {
+            border: 1px solid #ddd7d3;
+            background: #fff;
+            color: #5f5e5d;
+            border-radius: .6rem;
+            min-width: 2.05rem;
+            min-height: 1.9rem;
+            padding: .1rem .45rem;
+            font-size: .72rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .fis-qty-chip.is-active {
+            background: #c62828;
+            border-color: #c62828;
+            color: #fff;
+        }
+
+        .fis-cancel-qty {
+            display: none;
+        }
+
+        @@keyframes fisSpin {
+            to { transform: rotate(360deg); }
+        }
+
+        .fis-cancel-input {
+            width: 1rem;
+            height: 1rem;
+            accent-color: #c62828;
+        }
         .durum-Onaylandi { background: #e0f2fe; color: #0369a1; }
         .durum-Hazirlaniyor { background: #dbeafe; color: #1d4ed8; }
         .durum-Hazir { background: #fff7ed; color: #c2410c; }
@@ -266,6 +376,7 @@
         <div class="flex flex-wrap items-center justify-start md:justify-end gap-2 sm:gap-3 w-full md:w-auto">
             <button type="button"
                     onclick="topluTeslimEt(@Model.Id)"
+                    id="btnTopluTeslim"
                     class="px-3 py-1 rounded-xl border border-sky-300 bg-sky-50 text-sky-700 text-xs font-bold flex items-center gap-1.5 hover:bg-sky-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     @(hazirSiparisSayisi == 0 ? "disabled" : null)>
                 <span class="material-symbols-outlined text-[16px]">done_all</span>
@@ -299,7 +410,7 @@
                                 var gecmisDetay = string.Join(", ", gs.SiparisDetaylar.Select(sd => $"{sd.Adet}x {sd.Urun.Ad}"));
                                 <button type="button" class="w-full text-left px-4 py-3 border-b border-surface-container-low hover:bg-surface-container-low/50 transition-colors" onclick="siparisDetayAc(@gs.Id); closeGecmisPanel();">
                                     <div class="flex items-center justify-between gap-3 mb-1">
-                                        <div class="font-bold text-sm">#@gs.Id</div>
+                                        <div class="font-bold text-sm">#@gs.GunlukSiparisNo</div>
                                         <span class="durum-chip durum-@gs.Durum">@DurumLabel(gs.Durum.ToString())</span>
                                     </div>
                                     <div class="text-xs text-on-surface-variant line-clamp-2">@gecmisDetay</div>
@@ -355,10 +466,10 @@
                         {
                             @foreach (var s in gorunenSiparisler)
                             {
-                                var detayOzet = string.Join(", ", s.SiparisDetaylar.Select(sd => $"{sd.Adet}x {sd.Urun.Ad}"));
+                                var detayOzet = string.Join(", ", s.SiparisDetaylar.Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal).Select(sd => $"{sd.Adet}x {sd.Urun.Ad}"));
 
                                 <tr class="hover:bg-surface-container-low/50 cursor-pointer" onclick="siparisDetayAc(@s.Id)">
-                                    <td class="px-4 py-3 font-bold text-sm">#@s.Id</td>
+                                    <td class="px-4 py-3 font-bold text-sm">#@s.GunlukSiparisNo</td>
                                     <td class="px-4 py-3 text-sm"><span class="urun-ozet">@detayOzet</span></td>
                                     <td class="px-3 py-3 font-semibold text-sm whitespace-nowrap">@s.ToplamTutar.ToString("N2") TL</td>
                                     <td class="px-3 py-3"><span class="durum-chip durum-@s.Durum">@DurumLabel(s.Durum.ToString())</span></td>
@@ -380,7 +491,7 @@
                                             <button type="button"
                                                     class="@teslimClass"
                                                     disabled="@(!teslimAktif)"
-                                                    onclick="event.stopPropagation(); durumGuncelle(@s.Id, 'TeslimEdildi')">
+                                                    onclick="event.stopPropagation(); durumGuncelle(@s.Id, 'TeslimEdildi', this)">
                                                 Teslim Et
                                             </button>
                                             <button type="button"
@@ -430,7 +541,7 @@
                         {
                             <button type="button" class="w-full text-left rounded-xl border border-outline-variant/25 bg-white/70 px-2.5 py-2 hover:bg-white transition-colors" onclick="siparisDetayAc(@item.Siparis.Id)">
                                 <div class="flex items-center justify-between gap-2 mb-0.5">
-                                    <span class="text-[11px] font-extrabold text-on-surface">#@item.Siparis.Id</span>
+                                    <span class="text-[11px] font-extrabold text-on-surface">#@item.Siparis.GunlukSiparisNo</span>
                                     <span class="durum-chip durum-@item.Siparis.Durum">@DurumLabel(item.Siparis.Durum.ToString())</span>
                                 </div>
                                 <p class="text-xs text-on-surface-variant leading-relaxed line-clamp-1 break-all">@item.MusteriNotu</p>
@@ -609,22 +720,41 @@
                 renderFis(data);
             } catch (e) {
                 console.error(e);
+                if (typeof btnToplu !== 'undefined' && btnToplu && original !== null) {
+                    btnToplu.innerHTML = original;
+                    btnToplu.disabled = false;
+                }
+                if (button && original !== null) {
+                    button.innerHTML = original;
+                    button.disabled = false;
+                }
                 document.getElementById('fisContent').innerHTML = '<div class="text-center text-red-600 py-8">Detay yüklenemedi.</div>';
             }
         }
 
         function renderFis(data) {
+            const iptalEdilebilir = data.durum === 'Hazir' || data.durum === 'TeslimEdildi';
             let urunlerHtml = '';
             data.detaylar.forEach(d => {
                 const opsiyonlarHtml = formatOpsiyonlarHtml(d.opsiyonlar);
-                urunlerHtml += `
-                    <div class="flex items-start justify-between py-3 border-b border-dashed">
-                        <div>
-                            <div class="font-semibold">${d.adet}x ${escapeHtml(d.urunAd)}</div>
-                            ${opsiyonlarHtml}
-                        </div>
-                        <div class="font-bold">${(d.adet * d.birimFiyat).toFixed(2)} TL</div>
-                    </div>`;
+                const secimDisabled = iptalEdilebilir ? '' : 'disabled';
+                
+                for(let i = 0; i < d.adet; i++) {
+                    urunlerHtml += `
+                        <div class="fis-item-row" data-detail-id="${d.detayId}">
+                            <div class="fis-cancel-check">
+                                <input type="checkbox" class="fis-cancel-input" value="${d.detayId}" ${secimDisabled} />
+                            </div>
+                            <div class="flex-1">
+                                <div class="font-semibold">
+                                    ${escapeHtml(d.urunAd)}
+                                    <span class="text-[10px] bg-stone-100 px-1.5 py-0.5 rounded text-stone-500 ml-1">1 ADET</span>
+                                </div>
+                                ${opsiyonlarHtml}
+                            </div>
+                            <div class="font-bold">${d.birimFiyat.toFixed(2)} TL</div>
+                        </div>`;
+                }
             });
 
             const musteriNotu = musteriNotunuAyikla(data.notlar);
@@ -635,22 +765,27 @@
                    </div>`
                 : '';
 
-            const iptalEdilebilir = data.durum === 'Hazir' || data.durum === 'TeslimEdildi';
             let aksiyonlar = '';
             if (data.durum === 'Hazir') {
-                aksiyonlar += `<button class="min-w-[156px] px-4 py-2.5 rounded-2xl bg-sky-600 text-white text-sm font-extrabold tracking-tight shadow-sm hover:bg-sky-700 active:scale-95 transition-all" onclick="durumGuncelle(${data.id}, 'TeslimEdildi')">Teslim Edildi</button>`;
+                aksiyonlar += `<button class="min-w-[156px] px-4 py-2.5 rounded-2xl bg-sky-600 text-white text-sm font-extrabold tracking-tight shadow-sm hover:bg-sky-700 active:scale-95 transition-all" onclick="durumGuncelle(${data.id}, 'TeslimEdildi', this)">Teslim Edildi</button>`;
             }
             if (iptalEdilebilir) {
                 aksiyonlar += `<button class="min-w-[156px] px-4 py-2.5 rounded-2xl border-2 border-red-300 bg-red-50 text-red-700 text-sm font-extrabold tracking-tight shadow-sm hover:bg-red-100 active:scale-95 transition-all" onclick="siparisIptalEt(${data.id})">Siparişi İptal Et</button>`;
             }
 
             document.getElementById('fisContent').innerHTML = `
-                <div class="space-y-4">
+                <div class="space-y-4" data-fis-order-id="${data.id}">
                     <div class="flex items-center justify-between">
-                        <div class="text-2xl font-extrabold">#${data.id}</div>
+                        <div class="text-2xl font-extrabold">#${data.gunlukSiparisNo}</div>
                         <span class="durum-chip durum-${data.durum}">${DurumLabel(data.durum)}</span>
                     </div>
                     ${notHtml}
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <button type="button" class="fis-cancel-btn" id="garsonFisCancelBtn" onclick="garsonIptalSeciliDetaylar()" data-cancel-selected data-cancel-enabled="${iptalEdilebilir ? '1' : '0'}" ${iptalEdilebilir ? '' : 'disabled'}>
+                            <span class="fis-btn-spinner hidden" id="garsonFisCancelSpinner"></span>
+                            <span>Seçilenleri İptal Et</span>
+                        </button>
+                    </div>
                     <div class="rounded-2xl border p-4">${urunlerHtml}</div>
                     <div class="flex items-center justify-between text-lg font-extrabold">
                         <span>Toplam</span>
@@ -658,6 +793,130 @@
                     </div>
                     <div class="flex gap-2 flex-wrap">${aksiyonlar || '<span class="text-stone-400 text-sm">Bu durum için işlem yok</span>'}</div>
                 </div>`;
+
+            updateGarsonFisSelection();
+
+            // Satırların herhangi bir yerine tıklanınca seçimi toggle et
+            const root = document.getElementById('fisContent').querySelector('[data-fis-order-id]');
+            if (root) {
+                root.querySelectorAll('.fis-item-row').forEach(row => {
+                    row.addEventListener('click', (e) => {
+                        if (e.target.closest('input,select,button,a,label')) return;
+                        const cb = row.querySelector('.fis-cancel-input');
+                        if (cb && !cb.disabled) {
+                            cb.checked = !cb.checked;
+                            updateGarsonFisSelection();
+                        }
+                    });
+                });
+            }
+        }
+
+        function updateGarsonFisSelection() {
+            const root = document.querySelector('#fisContent [data-fis-order-id]');
+            if (!root) {
+                return;
+            }
+
+            let selectedCount = 0;
+            root.querySelectorAll('.fis-item-row').forEach(row => {
+                const checked = row.querySelector('.fis-cancel-input')?.checked;
+                row.classList.toggle('is-selected', Boolean(checked));
+                if (checked) {
+                    selectedCount += 1;
+                }
+            });
+
+            const cancelBtn = root.querySelector('[data-cancel-selected]');
+            const enabled = cancelBtn?.getAttribute('data-cancel-enabled') !== '0';
+            if (cancelBtn) {
+                cancelBtn.disabled = !enabled || selectedCount === 0;
+            }
+        }
+
+        function collectGarsonCancelDetails() {
+            const root = document.querySelector('#fisContent [data-fis-order-id]');
+            if (!root) {
+                return [];
+            }
+
+            const selectionMap = new Map();
+            root.querySelectorAll('.fis-cancel-input:checked').forEach(input => {
+                const detailId = Number.parseInt(input.value, 10);
+                if (Number.isFinite(detailId)) {
+                    selectionMap.set(detailId, (selectionMap.get(detailId) || 0) + 1);
+                }
+            });
+
+            const result = [];
+            selectionMap.forEach((adet, siparisDetayId) => {
+                result.push({ siparisDetayId, adet });
+            });
+            return result;
+        }
+
+        async function garsonIptalSeciliDetaylar() {
+            const detaylar = collectGarsonCancelDetails();
+            if (!detaylar.length) {
+                return;
+            }
+
+            const onay = await showGarsonConfirm({
+                title: 'Seçili İptal Onayı',
+                message: `Seçilen ${detaylar.length} kalem iptal edilsin mi?`,
+                okText: 'Seçilenleri İptal Et',
+                cancelText: 'Vazgeç',
+                tone: 'danger'
+            });
+
+            if (!onay) {
+                return;
+            }
+
+            const root = document.querySelector('#fisContent [data-fis-order-id]');
+            const cancelBtn = root?.querySelector('#garsonFisCancelBtn');
+            const spinner = root?.querySelector('#garsonFisCancelSpinner');
+            const labelEl = cancelBtn?.querySelector('span:not(.fis-btn-spinner)');
+            const originalText = labelEl ? labelEl.innerText : 'Seçilenleri İptal Et';
+
+            if (cancelBtn) {
+                cancelBtn.disabled = true;
+                cancelBtn.classList.add('is-busy');
+                if (spinner) spinner.classList.remove('hidden');
+                if (labelEl) labelEl.innerText = 'İşleniyor...';
+            }
+
+            try {
+                const res = await fetch('/Garson/SiparisDetayIptal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        masaId: @Model.Id,
+                        detaylar 
+                    })
+                });
+
+                const result = await res.json();
+                if (!result.success) {
+                    showGarsonToast('Hata: ' + (result.message || 'Bilinmeyen hata'), 'error');
+                    return;
+                }
+
+                showGarsonToast('Seçilen kalemler iptal edildi.', 'success');
+                fisKapat();
+                scheduleSoftRefresh(120);
+            } catch (err) {
+                console.error(err);
+                showGarsonToast('İptal işlemi sırasında bağlantı hatası oluştu.', 'error');
+            } finally {
+                if (cancelBtn) {
+                    cancelBtn.disabled = false;
+                    cancelBtn.classList.remove('is-busy');
+                    if (spinner) spinner.classList.add('hidden');
+                    if (labelEl) labelEl.innerText = originalText;
+                }
+                updateGarsonFisSelection();
+            }
         }
 
         function fisKapat() {
@@ -743,7 +1002,12 @@
             }
         }
 
-        async function durumGuncelle(id, durum) {
+        async function durumGuncelle(id, durum, button = null) {
+            const original = button ? button.innerHTML : null;
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = 'İşleniyor';
+            }
             try {
                 const res = await fetch(`/Garson/DurumGuncelle/${id}`, {
                     method: 'POST',
@@ -751,8 +1015,15 @@
                     body: JSON.stringify({ yeniDurum: durum })
                 });
                 const result = await res.json();
-                if (result.success) scheduleSoftRefresh(120);
-                else showGarsonToast('Hata: ' + result.message, 'error');
+                if (result.success) {
+                    scheduleSoftRefresh(120);
+                } else {
+                    if (button && original !== null) {
+                        button.innerHTML = original;
+                        button.disabled = false;
+                    }
+                    showGarsonToast('Hata: ' + result.message, 'error');
+                }
             } catch (e) {
                 console.error(e);
                 showGarsonToast('Bağlantı hatası. Lütfen tekrar deneyin.', 'error');
@@ -760,6 +1031,8 @@
         }
 
         async function topluTeslimEt(masaId) {
+            const btnToplu = document.getElementById('btnTopluTeslim');
+            const original = btnToplu ? btnToplu.innerHTML : null;
             const onay = await showGarsonConfirm({
                 title: 'Toplu Teslim Onayı',
                 message: 'Hazır durumdaki tüm siparişler teslim edildi olarak işaretlenecek. Devam edilsin mi?',
@@ -770,6 +1043,10 @@
             if (!onay) return;
 
             try {
+                if (btnToplu) {
+                    btnToplu.disabled = true;
+                    btnToplu.innerHTML = '<span>İşleniyor</span>';
+                }
                 const res = await fetch(`/Garson/Masa/${masaId}/TopluTeslimEt`, {
                     method: 'POST',
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -821,6 +1098,37 @@
             if (!widget.contains(event.target)) {
                 closeGecmisPanel();
             }
+        });
+
+        document.addEventListener('click', (event) => {
+            const qtyBtn = event.target.closest('[data-cancel-qty-btn]');
+            if (qtyBtn) {
+                event.preventDefault();
+                const detailId = qtyBtn.getAttribute('data-cancel-qty-btn');
+                const row = qtyBtn.closest('[data-detail-id]');
+                if (row) {
+                    row.querySelectorAll(`[data-cancel-qty-btn="${detailId}"]`).forEach(btn => btn.classList.remove('is-active'));
+                    qtyBtn.classList.add('is-active');
+                }
+                return;
+            }
+
+            const cancelBtn = event.target.closest('[data-cancel-selected]');
+            if (cancelBtn) {
+                event.preventDefault();
+                if (!cancelBtn.disabled) {
+                    garsonIptalSeciliDetaylar();
+                }
+            }
+        });
+
+        document.addEventListener('change', (event) => {
+            const cancelInput = event.target.closest('.fis-cancel-input');
+            if (!cancelInput) {
+                return;
+            }
+
+            updateGarsonFisSelection();
         });
 
         document.addEventListener('click', (event) => {

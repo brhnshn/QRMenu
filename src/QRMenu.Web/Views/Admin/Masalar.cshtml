@@ -375,15 +375,13 @@
     }
 
     document.addEventListener("DOMContentLoaded", async function() {
-        if (!localStorage.getItem('qrBaseUrl')) {
-            await updateQrBaseUrl();
-        }
+        // Otomatik prompt kaldırıldı. Link ayarı buton ile manuel yapılacak.
     });
 
     async function getQrUrlBase() {
         var savedUrl = localStorage.getItem('qrBaseUrl');
         if (savedUrl) return savedUrl;
-        return await updateQrBaseUrl();
+        return window.location.origin; // Varsayılan olarak mevcut site adresi
     }
 
     async function updateQrBaseUrl() {
@@ -403,7 +401,7 @@
             mesaj('QR bağlantı adresi güncellendi', 'success');
             return urlBase;
         }
-        return null;
+        return currentUrl;
     }
 
     async function olustur(masaNo) {
