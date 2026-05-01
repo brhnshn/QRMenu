@@ -33,7 +33,7 @@ Haftalık ilerleme raporları ve teknik detaylara aşağıdaki tablodan ulaşabi
 | **Hafta 6** | **İndirim Saatleri ve diğer işler** | [PDF](https://github.com/brhnshn/QRMenu/blob/main/docs/Pdfler/Hafta%206%20%C4%B0ndirim%20Saatleri%20ve%20di%C4%9Fer%20i%C5%9Fler.pdf) |
 | **Hafta 7** | **Performans, Canlı Ekran Soft Refresh, Oyunlaştırma ve TR-EN İyileştirmeleri** | [PDF](https://github.com/brhnshn/QRMenu/blob/main/docs/Pdfler/Hafta%207%20-%20%20Gelistirme%20Raporu.pdf) |
 | **Hafta 8** | **Garson, Mutfak ve Kasa Panellerinde Soft Refresh, SignalR Uyum Checklisti ve Operasyonel UI Tamamlamaları** | [PDF](docs/Pdfler/8.%20Hafta%20Geli%C5%9Ftirme%20Raporu.pdf) |
-| **Hafta 9** | **Stok & Varyasyon Yönetimi, Stitch Tasarım Sistemi, Gelişmiş PDF Raporlama ve Güvenlik Sertleştirme** | [**HTML RAPOR**](docs/Html/Hafta9_Rapor.html) |
+| **Hafta 9** | **Stok & Varyasyon Yönetimi, Stitch Tasarım Sistemi, Gelişmiş PDF Raporlama ve Güvenlik Sertleştirme** | [**PDF**](https://github.com/brhnshn/QRMenu/blob/main/docs/Pdfler/9.%20Hafta%20Geli%C5%9Ftirme%20Raporu%20-%20QR%20Men%C3%BC%20Sistemi.pdf) |
 | **Dosya Yapısı** | QR Menü Otomasyonu Genel Dosya Mimarisi | [PDF](docs/Pdfler/Proje%20Dosya%20Yapısı%20—%20QR%20Menü%20Otomasyonu.pdf) |
 
 ---
