@@ -100,20 +100,25 @@ namespace QRMenu.Web.Middleware
 
         private static async Task WriteUnauthorized(HttpContext context, string message)
         {
-            context.Response.StatusCode = 401;
             var isAjax = context.Request.Headers["Content-Type"].ToString().Contains("application/json")
                       || context.Request.Headers["Accept"].ToString().Contains("application/json")
                       || context.Request.Headers["X-Requested-With"] == "XMLHttpRequest";
 
             if (isAjax)
             {
+                context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json; charset=utf-8";
                 await context.Response.WriteAsync(
                     System.Text.Json.JsonSerializer.Serialize(new { success = false, message }));
             }
             else
             {
+                context.Response.StatusCode = 200;
                 context.Response.ContentType = "text/html; charset=utf-8";
+                var masaNo = context.Request.Cookies["masa_no"];
+                var masaNoValue = !string.IsNullOrWhiteSpace(masaNo) && int.TryParse(masaNo, out _)
+                    ? masaNo
+                    : "";
                 var html = $@"<!DOCTYPE html>
 <html lang=""tr"">
 <head>
@@ -204,6 +209,27 @@ namespace QRMenu.Web.Middleware
             body {{
                 min-height: max(884px, 100dvh);
             }}
+            .toast {{
+                position: fixed;
+                left: 50%;
+                bottom: 20px;
+                transform: translateX(-50%) translateY(16px);
+                background: #2e2f2f;
+                color: #fff;
+                padding: 10px 14px;
+                border-radius: 999px;
+                font-family: 'Be Vietnam Pro', sans-serif;
+                font-size: 13px;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity .2s ease, transform .2s ease;
+                z-index: 200;
+                box-shadow: 0 10px 24px rgba(0,0,0,.18);
+            }}
+            .toast.show {{
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }}
         </style>
 </head>
 <body class=""bg-surface font-body text-on-surface antialiased min-h-screen flex flex-col"">
@@ -234,6 +260,12 @@ namespace QRMenu.Web.Middleware
                 <p class=""text-on-surface-variant font-body leading-relaxed max-w-[300px] mx-auto"">
                     Güvenliğiniz ve güncel menüye erişiminiz için lütfen masanızdaki QR kodunu tekrar okutunuz.
                 </p>
+                <div class=""pt-2 flex flex-col items-center gap-3"">
+                    <input id=""masaNoInput"" type=""number"" min=""1"" inputmode=""numeric"" value=""{masaNoValue}"" placeholder=""Masa numarası"" class=""w-44 text-center px-4 py-2 rounded-xl border border-outline-variant bg-white text-on-surface font-headline font-bold"" />
+                    <button type=""button"" onclick=""goQr()"" class=""inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-primary text-on-primary font-headline font-bold tracking-wide"">
+                        Masaya Geç
+                    </button>
+                </div>
             </div>
 
 
@@ -246,6 +278,50 @@ namespace QRMenu.Web.Middleware
             <p class=""text-[10px] font-label tracking-[0.2em] uppercase text-on-surface"">QR Menü</p>
         </div>
     </footer>
+    <div id=""pageToast"" class=""toast""></div>
+    <script>
+        function showToast(message) {{
+            var toast = document.getElementById('pageToast');
+            if (!toast) return;
+            toast.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(window.__toastTimer);
+            window.__toastTimer = setTimeout(function() {{
+                toast.classList.remove('show');
+            }}, 2200);
+        }}
+
+        async function goQr() {{
+            var el = document.getElementById('masaNoInput');
+            var val = el ? parseInt(el.value, 10) : NaN;
+            if (!Number.isFinite(val) || val <= 0) {{
+                showToast('Lütfen geçerli bir masa numarası girin.');
+                return;
+            }}
+
+            try {{
+                var response = await fetch('/qr/validate/' + val, {{
+                    method: 'GET',
+                    headers: {{ 'Accept': 'application/json' }}
+                }});
+
+                if (!response.ok) {{
+                    showToast('Masa doğrulanırken bir hata oluştu.');
+                    return;
+                }}
+
+                var data = await response.json();
+                if (!data || data.success !== true) {{
+                    showToast((data && data.message) ? data.message : 'Masa doğrulanamadı.');
+                    return;
+                }}
+
+                window.location.href = '/qr/' + val;
+            }} catch (e) {{
+                showToast('Bağlantı hatası. Lütfen tekrar deneyin.');
+            }}
+        }}
+    </script>
 </body>
 </html>";
                 await context.Response.WriteAsync(html);
@@ -262,3 +338,6 @@ namespace QRMenu.Web.Middleware
         }
     }
 }
+
+
+

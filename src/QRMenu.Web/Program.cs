@@ -85,8 +85,11 @@ builder.Services.AddScoped<QRMenu.Web.Helpers.IRazorViewRenderer, QRMenu.Web.Hel
 
 
 // MVC
-builder.Services.AddControllersWithViews()
-.AddRazorRuntimeCompilation();
+var mvcBuilder = builder.Services.AddControllersWithViews();
+if (builder.Environment.IsDevelopment())
+{
+    mvcBuilder.AddRazorRuntimeCompilation();
+}
 
 // ASP.NET Identity
 builder.Services.AddIdentity<Kullanici, IdentityRole>(options =>

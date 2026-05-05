@@ -95,5 +95,34 @@ namespace QRMenu.Web.Controllers
 
             return RedirectToAction("Index", "Menu");
         }
+
+        /// <summary>
+        /// QR yönlendirmesi öncesi masa doğrulama
+        /// URL: /qr/validate/{masaNo}
+        /// </summary>
+        [HttpGet("/qr/validate/{masaNo:int}")]
+        public async Task<IActionResult> Validate(int masaNo)
+        {
+            if (masaNo <= 0)
+            {
+                return Json(new { success = false, message = "Geçersiz masa numarası." });
+            }
+
+            var masa = await _context.Masalar
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.MasaNo == masaNo);
+
+            if (masa == null)
+            {
+                return Json(new { success = false, message = "Böyle bir masa yok." });
+            }
+
+            if (!masa.AktifMi)
+            {
+                return Json(new { success = false, message = "Bu masa şu anda aktif değil." });
+            }
+
+            return Json(new { success = true });
+        }
     }
 }

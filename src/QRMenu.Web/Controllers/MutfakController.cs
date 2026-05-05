@@ -198,6 +198,6 @@ namespace QRMenu.Web.Controllers
 
     public class MutfakDurumRequest
     {
-        public string YeniDurum { get; set; } = "";
+        public string? YeniDurum { get; set; }
     }
 }

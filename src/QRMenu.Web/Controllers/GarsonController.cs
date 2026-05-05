@@ -403,7 +403,10 @@ namespace QRMenu.Web.Controllers
         {
             try
             {
-                var enumDurum = Enum.Parse<QRMenu.Core.Enums.SiparisDurum>(request.YeniDurum);
+                if (!Enum.TryParse<QRMenu.Core.Enums.SiparisDurum>(request.YeniDurum, out var enumDurum))
+                {
+                    return Json(new { success = false, message = "Geçersiz durum." });
+                }
 
                 if (enumDurum == SiparisDurum.Iptal)
                 {
@@ -488,7 +491,7 @@ namespace QRMenu.Web.Controllers
 
         public class DurumGuncelleRequest
         {
-            public string YeniDurum { get; set; } = "";
+            public string? YeniDurum { get; set; }
         }
     }
 

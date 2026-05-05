@@ -440,7 +440,9 @@ namespace QRMenu.Web.Controllers
             foreach (var user in users)
             {
                 var roles = await _userManager.GetRolesAsync(user);
-                var displayName = roles.Contains("Müşteri") ? "Müşteri" : (user.AdSoyad ?? user.UserName);
+                var displayName = roles.Contains("Müşteri")
+                    ? "Müşteri"
+                    : (user.AdSoyad ?? user.UserName ?? "Bilinmeyen Kullanıcı");
                 userNames[user.Id] = displayName;
             }
             ViewBag.UserNames = userNames;
@@ -488,7 +490,10 @@ namespace QRMenu.Web.Controllers
 
             if (!string.IsNullOrEmpty(search))
             {
-                query = query.Where(l => l.Message.Contains(search) || l.IpAddress.Contains(search) || l.Path.Contains(search));
+                query = query.Where(l =>
+                    (l.Message != null && l.Message.Contains(search)) ||
+                    (l.IpAddress != null && l.IpAddress.Contains(search)) ||
+                    (l.Path != null && l.Path.Contains(search)));
             }
 
             if (!string.IsNullOrEmpty(eventType))
@@ -550,7 +555,9 @@ namespace QRMenu.Web.Controllers
             foreach (var user in users)
             {
                 var roles = await _userManager.GetRolesAsync(user);
-                var displayName = roles.Contains("Müşteri") ? "Müşteri" : (user.AdSoyad ?? user.UserName);
+                var displayName = roles.Contains("Müşteri")
+                    ? "Müşteri"
+                    : (user.AdSoyad ?? user.UserName ?? "Bilinmeyen Kullanıcı");
                 userNames[user.Id] = displayName;
             }
             ViewBag.UserNames = userNames;
@@ -586,8 +593,12 @@ namespace QRMenu.Web.Controllers
             using var gen = new QRCodeGenerator();
             var liste = masalar.Select(m => 
             {
-                string base64 = "";
-                if (!string.IsNullOrEmpty(m.QrKodUrl))
+                string base64;
+                if (string.IsNullOrEmpty(m.QrKodUrl))
+                {
+                    base64 = string.Empty;
+                }
+                else
                 {
                     var data = gen.CreateQrCode(m.QrKodUrl, QRCodeGenerator.ECCLevel.H);
                     using var qr = new PngByteQRCode(data);
@@ -755,7 +766,7 @@ namespace QRMenu.Web.Controllers
             return Json(new { success = true, hasRecords = false });
         }
 
-        public class QrOlusturRequest { public string BaseUrl { get; set; } = ""; }
+        public class QrOlusturRequest { public string? BaseUrl { get; set; } }
 
         // AJAX: QR oluştur ve DB'ye kaydet
         [HttpPost("/admin/qr-olustur/{masaNo:int}")]
@@ -2185,7 +2196,7 @@ namespace QRMenu.Web.Controllers
 
     public class AdminDurumRequest
     {
-        public string YeniDurum { get; set; } = "";
+        public string? YeniDurum { get; set; }
     }
 
     public class UrunStokGuncelleRequest

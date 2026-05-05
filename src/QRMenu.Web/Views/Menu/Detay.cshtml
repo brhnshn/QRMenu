@@ -259,6 +259,22 @@
         const BTN_ADD_LABEL = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Sepete Ekle", "Add to Cart")));
         const BTN_ADDING_LABEL = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(L("Ekleniyor...", "Adding...")));
 
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        function goBackToQrFlow() {
+            const masaNo = getCookie('masa_no');
+            if (masaNo && /^\d+$/.test(masaNo)) {
+                window.location.href = `/qr/${masaNo}`;
+                return;
+            }
+            window.location.href = '/Menu/Index';
+        }
+
         const requiredGroups = [];
         @foreach (var grup in gruplar.Where(g => g.First().zorunlu))
         {
@@ -300,11 +316,16 @@
             try {
                 const response = await fetch('/sepet/ekle', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     body: JSON.stringify({ UrunId: URUN_ID, Adet: detayQty, OpsiyonIds: selectedOps })
                 });
                 if (response.status === 401 || response.redirected) {
-                    alert(MSG_SCAN_QR);
+                    goBackToQrFlow();
+                    return;
+                }
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    alert(MSG_CONNECTION);
                     btn.disabled = false;
                     btn.innerHTML = '<span>' + BTN_ADD_LABEL + '</span><span class="text-on-primary/90">' + (BASE_PRICE * detayQty).toFixed(2) + ' ₺</span>';
                     return;
