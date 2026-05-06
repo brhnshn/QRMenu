@@ -55,11 +55,14 @@ namespace QRMenu.Data.Services
                 if (!detaylar.Any())
                     throw new InvalidOperationException("Ödenecek ürün bulunamadı.");
 
-                var kapaliGunVar = detaylar
+                var kapaliGunTarihleri = detaylar
                     .Select(d => d.Siparis.OlusturmaTarihi)
                     .Distinct()
                     .Select(t => DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(t, DateTimeKind.Utc), _turkeyTz).Date, DateTimeKind.Utc))
-                    .Any(tarih => _context.GunSonuRaporlari.Any(r => r.Tarih == tarih));
+                    .ToList();
+
+                var kapaliGunVar = await _context.GunSonuRaporlari
+                    .AnyAsync(r => kapaliGunTarihleri.Contains(r.Tarih));
 
                 if (kapaliGunVar)
                     throw new InvalidOperationException("Gün sonu raporu kapatılmış siparişlerde ödeme işlemi yapılamaz.");
@@ -68,6 +71,23 @@ namespace QRMenu.Data.Services
                 var siparisBazliTutarlar = new Dictionary<int, decimal>();
 
                 // Siparişe uygulanan indirimleri ödeme anında satır tutarlarına oransal dağıt.
+                var siparisIdler = detaylar
+                    .Select(d => d.SiparisId)
+                    .Distinct()
+                    .ToList();
+
+                var siparisBazToplamlari = await _context.SiparisDetaylar
+                    .Where(sd => siparisIdler.Contains(sd.SiparisId) &&
+                                 sd.Durum != SiparisDurum.Iptal &&
+                                 sd.Durum != SiparisDurum.Iade)
+                    .GroupBy(sd => sd.SiparisId)
+                    .Select(g => new
+                    {
+                        SiparisId = g.Key,
+                        BazToplam = g.Sum(sd => sd.BirimFiyat * sd.Adet)
+                    })
+                    .ToDictionaryAsync(x => x.SiparisId, x => x.BazToplam);
+
                 var siparisOranlari = detaylar
                     .Select(d => d.Siparis)
                     .Where(s => s != null)
@@ -76,9 +96,9 @@ namespace QRMenu.Data.Services
                         s => s!.Id,
                         s =>
                         {
-                            var bazToplam = _context.SiparisDetaylar
-                                .Where(sd => sd.SiparisId == s!.Id && sd.Durum != SiparisDurum.Iptal && sd.Durum != SiparisDurum.Iade)
-                                .Sum(sd => sd.BirimFiyat * sd.Adet);
+                            var bazToplam = siparisBazToplamlari.TryGetValue(s!.Id, out var toplam)
+                                ? toplam
+                                : 0m;
 
                             if (bazToplam <= 0) return 1m;
                             return s.ToplamTutar / bazToplam;
@@ -120,21 +140,28 @@ namespace QRMenu.Data.Services
                 var etkilenenSiparisIdler = siparisBazliTutarlar.Keys.ToList();
 
                 // Şimdi etkilenen siparişleri kontrol et, tamamı ödendiyse ana siparişi "TamOdendi" yap
-                foreach (var siparisId in etkilenenSiparisIdler)
-                {
-                    var siparisTamamlandiMi = !await _context.SiparisDetaylar
-                        .AnyAsync(sd => sd.SiparisId == siparisId && 
-                                       sd.Durum != SiparisDurum.TamOdendi && 
-                                       sd.Durum != SiparisDurum.Iptal && 
-                                       sd.Durum != SiparisDurum.Iade);
+                var odemeBekleyenSiparisIdler = await _context.SiparisDetaylar
+                    .Where(sd => etkilenenSiparisIdler.Contains(sd.SiparisId) &&
+                                 sd.Durum != SiparisDurum.TamOdendi &&
+                                 sd.Durum != SiparisDurum.Iptal &&
+                                 sd.Durum != SiparisDurum.Iade)
+                    .Select(sd => sd.SiparisId)
+                    .Distinct()
+                    .ToListAsync();
 
-                    if (siparisTamamlandiMi)
+                var tamamlananSiparisIdler = etkilenenSiparisIdler
+                    .Except(odemeBekleyenSiparisIdler)
+                    .ToList();
+
+                if (tamamlananSiparisIdler.Any())
+                {
+                    var tamamlananSiparisler = await _context.Siparisler
+                        .Where(s => tamamlananSiparisIdler.Contains(s.Id))
+                        .ToListAsync();
+
+                    foreach (var sip in tamamlananSiparisler)
                     {
-                        var sip = await _context.Siparisler.FindAsync(siparisId);
-                        if (sip != null)
-                        {
-                            sip.Durum = SiparisDurum.TamOdendi;
-                        }
+                        sip.Durum = SiparisDurum.TamOdendi;
                     }
                 }
 

@@ -8,6 +8,7 @@ using QRMenu.Web.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authorization;
 using QRMenu.Web.Models;
+using System.Security.Claims;
 
 namespace QRMenu.Web.Controllers
 {
@@ -39,8 +40,10 @@ namespace QRMenu.Web.Controllers
             // Sadece Onaylandı veya Hazırlanıyor ürün barındıran ve son 24 saat içinde olan siparişleri getir
             var sinirTarih = DateTime.UtcNow.AddHours(-24);
             var bekleyenSiparisler = await _context.Siparisler
+                .AsNoTracking()
                 .Include(s => s.Masa)
-                .Include(s => s.SiparisDetaylar)
+                .Include(s => s.SiparisDetaylar.Where(sd =>
+                    sd.Durum == SiparisDurum.Onaylandi || sd.Durum == SiparisDurum.Hazirlaniyor))
                     .ThenInclude(sd => sd.Urun)
                 .AsSplitQuery()
                 .Where(s => s.OlusturmaTarihi >= sinirTarih 
@@ -65,6 +68,7 @@ namespace QRMenu.Web.Controllers
 
             var sinirTarih = DateTime.UtcNow.AddDays(-7);
             var gecmisSiparisler = await _context.Siparisler
+                .AsNoTracking()
                 .Include(s => s.Masa)
                 .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
@@ -99,6 +103,11 @@ namespace QRMenu.Web.Controllers
                     return Json(new { success = false, message = "Geçersiz durum." });
 
                 // ISiparisService ile güvenli durum değişimi yapılıyor
+                var eskiDurum = await _context.Siparisler
+                    .Where(s => s.Id == siparisId)
+                    .Select(s => (SiparisDurum?)s.Durum)
+                    .FirstOrDefaultAsync();
+
                 var siparis = await _siparisService.DurumGuncelleAsync(siparisId, durum);
                 
                 _logger.LogInformation("Mutfak sipariş güncelledi. SiparisId={Id}, YeniDurum={Durum}", siparisId, durum);
@@ -110,6 +119,36 @@ namespace QRMenu.Web.Controllers
 
                 var masaId = sip?.MasaId ?? siparis.MasaId;
                 var masaNo = sip?.Masa?.MasaNo ?? 0;
+
+                // Mutfak için log spam engeli:
+                // - Sadece Hazirlaniyor ve Hazir durumlarını logla
+                // - Aynı Sipariş + Durum kombinasyonunu bir kez yaz
+                var loglanacakDurum = durum == SiparisDurum.Hazirlaniyor || durum == SiparisDurum.Hazir;
+                var durumDegisti = eskiDurum != durum;
+                if (loglanacakDurum && durumDegisti)
+                {
+                    var logKey = $"siparis:{siparisId}|durum:{durum}";
+                    var zatenVar = await _context.SecurityLogs
+                        .AsNoTracking()
+                        .AnyAsync(l => l.Path == "/Mutfak/DurumGuncelle" && l.RequestBody == logKey);
+
+                    if (!zatenVar)
+                    {
+                        _context.SecurityLogs.Add(new SecurityLog
+                        {
+                            EventType = durum == SiparisDurum.Hazir ? "MutfakSiparisHazir" : "MutfakSiparisHazirlaniyor",
+                            Message = $"Mutfak sipariş işlemi: Sipariş #{siparisId}, Masa {masaNo}, Durum {(eskiDurum?.ToString() ?? "-")} -> {durum}",
+                            Path = "/Mutfak/DurumGuncelle",
+                            Method = "POST",
+                            UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub") ?? User?.Identity?.Name,
+                            RequestBody = logKey,
+                            Severity = "Info",
+                            TableId = masaNo > 0 ? masaNo.ToString() : null,
+                            Timestamp = DateTime.UtcNow
+                        });
+                        await _context.SaveChangesAsync();
+                    }
+                }
 
                 // Eğer durum "Hazır" ise Garson'a özel bildirim fırlat
                 if (durum == SiparisDurum.Hazir)
@@ -201,3 +240,5 @@ namespace QRMenu.Web.Controllers
         public string? YeniDurum { get; set; }
     }
 }
+
+

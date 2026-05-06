@@ -1,4 +1,4 @@
-name: Deploy to VDS
+﻿name: Deploy to VDS
 
 on:
   push:
@@ -18,10 +18,10 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
-    - name: � appsettings.json Oluştur (Example'dan kopyala)
+    - name: 📄 appsettings.json Oluştur (Example'dan kopyala)
       run: cp src/QRMenu.Web/appsettings.Example.json src/QRMenu.Web/appsettings.json
 
-    - name: �🔐 Şifreleri (Secrets) AppSettings İçine Enjekte Et
+    - name: 🔐 Şifreleri (Secrets) AppSettings İçine Enjekte Et
       uses: microsoft/variable-substitution@v1
       with:
         files: 'src/QRMenu.Web/appsettings.json'
@@ -74,4 +74,4 @@ jobs:
             bash -i -c "source ~/.bashrc 2>/dev/null || true; source ~/.profile 2>/dev/null || true; cd /var/www/ && project-manager.sh restart"
           fi
 
-          echo "Tüm islemler basariyla tamamlandi!"
+          echo "Tum islemler basariyla tamamlandi!"

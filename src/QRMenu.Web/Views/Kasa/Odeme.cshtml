@@ -577,7 +577,7 @@
                         foreach (var siparis in siparisler)
                         {
                             var bekleyenDetaylar = siparis.SiparisDetaylar
-                                .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal)
+                                .Where(sd => sd.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi || sd.Durum == QRMenu.Core.Enums.SiparisDurum.KismiOdendi)
                                 .ToList();
 
                             if (!bekleyenDetaylar.Any())

@@ -1,467 +1,209 @@
-@model IEnumerable<QRMenu.Core.Entities.SecurityLog>
-@{
+﻿@{
     Layout = "_AdminLayout";
     ViewData["ActivePage"] = "Loglar";
-    ViewData["PageTitle"] = "Güvenlik Log Yönetimi";
-    
-    var turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
-    var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, turkeyTz);
+    ViewData["PageTitle"] = "Log Kayıtları";
 }
 
-<style>
-    .severity-indicator {
-        width: 4px;
-        min-height: 100%;
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-    }
-    .sev-Critical  { background-color: #B31B25; }
-    .sev-Warning   { background-color: #F59E0B; }
-    .sev-Info      { background-color: #3B82F6; }
+<div class="space-y-5">
+    <style>
+        .log-top { background: #ffffff; border: 1px solid rgba(214, 211, 209, .8); box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+        .log-input { background: #f5f5f4; border: 1px solid transparent; color: #292524; }
+        .log-input::placeholder { color: #78716c; }
+        .log-input:focus { outline: none; border-color: #cc5533; box-shadow: 0 0 0 2px rgba(204,85,51,.15); background: #fff; }
+        .log-card { background: #ffffff; border: 1px solid rgba(214, 211, 209, .8); box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+        .row-hover:hover { background: #fafaf9; }
+        #detailOverlay { background: rgba(28, 25, 23, .28); backdrop-filter: blur(2px); }
+        #detailDrawer { transform: translateX(100%); transition: transform .25s ease; }
+        #detailDrawer.open { transform: translateX(0); }
+    </style>
 
-    /* Drawer */
-    #detailDrawer {
-        transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
-        transform: translateX(100%);
-    }
-    #detailDrawer.open { transform: translateX(0); }
-
-    /* Chart container */
-    #anomalyChart { max-height: 120px; }
-</style>
-
-<div class="space-y-6 relative overflow-x-hidden">
-    <!-- Header -->
-    <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 px-4">
-        <div class="flex items-center gap-6">
-            <h1 class="text-2xl md:text-4xl font-black text-on-surface tracking-tighter">Güvenlik Logları</h1>
-            <div class="flex gap-2">
-                @{
-                    var isCritical = (ViewBag.CriticalEventCount ?? 0) > 10;
-                }
-                <span class="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 @(isCritical ? "bg-error/10 text-error" : "bg-success/10 text-success")">
-                    <span class="w-2 h-2 rounded-full @(isCritical ? "bg-error" : "bg-success") animate-pulse"></span>
-                    @(isCritical ? "SİSTEM: KRİTİK" : "SİSTEM: STABİL")
-                </span>
-                <span class="px-4 py-1.5 bg-surface-container-low text-outline rounded-full text-[10px] font-bold uppercase tracking-wider">
-                    SON KONTROL: @ViewBag.LastCheckTime
-                </span>
-            </div>
+    <section class="log-top rounded-2xl p-4">
+        <div class="flex items-center justify-end mb-3">
+            <div class="text-xs text-stone-500 font-bold" id="lastRefresh">Yükleniyor...</div>
         </div>
-        <div class="flex items-center gap-3">
-            @* PDF Dışa Aktar - Tarih Aralığı Seçimi *@
-            <div class="relative" id="pdfDropdownWrapper">
-                <button type="button"
-                        onclick="togglePdfDropdown(event)"
-                        class="flex items-center space-x-2 bg-surface-container-lowest text-on-surface px-4 py-2 rounded-xl border border-surface-container font-bold text-sm shadow-sm hover:bg-surface-container-low transition-colors select-none">
-                    <span class="material-symbols-outlined text-lg">picture_as_pdf</span>
-                    <span>PDF Rapor</span>
-                    <span class="material-symbols-outlined text-base">expand_more</span>
-                </button>
-
-                @* Dropdown Menü *@
-                <div id="pdfDropdownMenu"
-                     class="hidden absolute right-0 mt-2 w-52 bg-surface-container-lowest rounded-xl shadow-lg border border-surface-container z-50 overflow-hidden">
-                    <div class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-on-surface-variant border-b border-surface-container">
-                        Zaman Aralığı Seç
-                    </div>
-                    <a href="/admin/loglar-pdf?tarih=today"
-                       class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-on-surface hover:bg-surface-container transition-colors">
-                        <span class="material-symbols-outlined text-base text-primary">today</span>
-                        Günlük (Bugün)
-                    </a>
-                    <a href="/admin/loglar-pdf?tarih=haftalik"
-                       class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-on-surface hover:bg-surface-container transition-colors">
-                        <span class="material-symbols-outlined text-base text-primary">date_range</span>
-                        Haftalık (Bu Hafta)
-                    </a>
-                    <a href="/admin/loglar-pdf?tarih=aylik"
-                       class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-on-surface hover:bg-surface-container transition-colors">
-                        <span class="material-symbols-outlined text-base text-primary">calendar_month</span>
-                        Aylık (Bu Ay)
-                    </a>
-                    <div class="border-t border-surface-container">
-                        <a href="/admin/loglar-pdf"
-                           class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-on-surface hover:bg-surface-container transition-colors">
-                            <span class="material-symbols-outlined text-base text-on-surface-variant">all_inclusive</span>
-                            Tüm Zamanlar
-                        </a>
-                    </div>
-                </div>
-            </div>
+        <div class="mb-3 text-xs font-semibold text-stone-500">
+            Log kayıtları güvenlik politikası gereği en fazla 1 ay saklanır, daha eski kayıtlar otomatik silinir.
         </div>
-    </header>
-
-    <!-- Statistics -->
-    <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        @foreach (var stat in new[] { 
-            new { Label = "TOPLAM LOG", Value = (int)(ViewBag.TotalLogCount ?? 0), Color = "#CC5533", Icon = "analytics" },
-            new { Label = "KRİTİK OLAYLAR", Value = (int)(ViewBag.CriticalEventCount ?? 0), Color = "#B31B25", Icon = "emergency" },
-            new { Label = "BUGÜNKÜ SPAM", Value = (int)(ViewBag.TodaySpamCount ?? 0), Color = "#F59E0B", Icon = "block" }
-        }) {
-            <div class="bg-surface-container-lowest p-5 rounded-2xl border border-surface-container/50 shadow-sm relative overflow-hidden group">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <p class="text-[10px] font-black text-outline uppercase tracking-[0.2em]">@stat.Label</p>
-                        <h3 class="text-2xl font-black mt-1 tracking-tighter">@string.Format("{0:N0}", stat.Value)</h3>
-                    </div>
-                    <div class="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-on-surface group-hover:bg-primary group-hover:text-white transition-all duration-500">
-                        <span class="material-symbols-outlined text-xl">@stat.Icon</span>
-                    </div>
-                </div>
-            </div>
-        }
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+            <input id="search" class="log-input md:col-span-2 px-4 py-2 rounded-xl" placeholder="Mesaj, olay, kullanıcı veya not ara..." />
+            <select id="source" class="log-input px-4 py-2 rounded-xl">
+                <option value="">Kaynak: Tümü</option>
+                <option value="Security">Güvenlik</option>
+                <option value="Audit">Sistem Kaydı</option>
+            </select>
+            <select id="area" class="log-input px-4 py-2 rounded-xl">
+                <option value="">Alan: Tümü</option>
+                <option value="Güvenlik">Güvenlik</option>
+                <option value="Mutfak">Mutfak</option>
+                <option value="Garson">Garson</option>
+                <option value="Kasa">Kasa</option>
+            </select>
+            <select id="severity" class="log-input px-4 py-2 rounded-xl">
+                <option value="">Seviye: Tümü</option>
+                <option value="Critical">Kritik</option>
+                <option value="Warning">Uyarı</option>
+                <option value="Info">Bilgi</option>
+            </select>
+            <select id="range" class="log-input px-4 py-2 rounded-xl">
+                <option value="">Tüm Zaman</option>
+                <option value="24h">Son 24 Saat</option>
+                <option value="1h">Son 1 Saat</option>
+                <option value="15m">Son 15 Dakika</option>
+                <option value="7d">Son 7 Gün</option>
+            </select>
+        </div>
     </section>
 
-    <!-- Anomaly Chart -->
-    <div class="bg-surface-container-lowest p-6 rounded-3xl border border-surface-container/50 shadow-sm">
-        <div class="flex items-center justify-between mb-4">
-            <div>
-                <p class="text-[10px] font-black text-outline uppercase tracking-[0.2em]">Anomali Grafiği</p>
-                <p class="text-xs font-bold text-on-surface">Son 24 Saatteki Olay Dağılımı</p>
-            </div>
-            <span class="px-3 py-1.5 bg-primary/10 text-primary rounded-xl text-[10px] font-black uppercase tracking-wider">Canlı</span>
-        </div>
-        <canvas id="anomalyChart"></canvas>
-    </div>
-
-    <!-- Filters -->
-    <section class="bg-surface-container-lowest p-5 rounded-3xl border border-surface-container/50 shadow-sm">
-        <form id="filterForm" method="get" class="flex flex-col lg:flex-row gap-4">
-            <div class="flex-1 relative">
-                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">search</span>
-                <input name="search" oninput="debounceFilter()" class="w-full pl-12 pr-4 py-3 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary text-sm font-bold" placeholder="IP, Mesaj veya Yol Ara..." type="text" value="@Context.Request.Query["search"]"/>
-            </div>
-            <div class="flex flex-wrap items-center gap-3">
-                <div class="flex bg-surface-container-low p-1 rounded-2xl">
-                    <button type="button" onclick="setTimeFilter('15m')" class="px-4 py-2 text-[10px] font-black rounded-xl hover:bg-surface-container-lowest transition-all @(Context.Request.Query["range"] == "15m" ? "bg-surface-container-lowest shadow-sm" : "")">15 DK</button>
-                    <button type="button" onclick="setTimeFilter('1h')" class="px-4 py-2 text-[10px] font-black rounded-xl hover:bg-surface-container-lowest transition-all @(Context.Request.Query["range"] == "1h" ? "bg-surface-container-lowest shadow-sm" : "")">1 SAAT</button>
-                    <button type="button" onclick="setTimeFilter('24h')" class="px-4 py-2 text-[10px] font-black rounded-xl hover:bg-surface-container-lowest transition-all @(Context.Request.Query["range"] == "24h" ? "bg-surface-container-lowest shadow-sm" : "")">24 SAAT</button>
-                </div>
-                <select name="eventType" onchange="submitFilter()" class="px-5 py-3 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary text-sm font-black appearance-none min-w-[160px]">
-                    <option value="">Olay Tipi (Tümü)</option>
-                    <option value="Unauthorized" selected="@(ViewBag.CurrentFilter == "Unauthorized")">Yetkisiz Erişim</option>
-                    <option value="Forbidden" selected="@(ViewBag.CurrentFilter == "Forbidden")">Rol Yetersiz</option>
-                    <option value="RateLimit" selected="@(ViewBag.CurrentFilter == "RateLimit")">Spam</option>
-                </select>
-                <input type="hidden" name="range" id="rangeInput" value="@Context.Request.Query["range"]" />
-                <button type="submit" class="px-8 py-3 bg-on-surface text-surface-container-lowest rounded-2xl text-sm font-black shadow-lg shadow-on-surface/10 hover:translate-y-[-1px] active:translate-y-[0] transition-all">Uygula</button>
-            </div>
-        </form>
-    </section>
-
-    <!-- Desktop View: Table -->
-    <div class="hidden md:block bg-surface-container-lowest rounded-3xl overflow-hidden border border-surface-container shadow-sm">
-        <table class="w-full text-left border-collapse">
-            <thead>
-                <tr class="bg-surface-container-low/50 text-[11px] font-black text-outline uppercase tracking-[0.15em] border-b border-surface-container">
-                    <th class="px-8 py-5 w-4"></th>
-                    <th class="px-8 py-5">Tarih / Saat</th>
-                    <th class="px-8 py-5">Olay / Önem</th>
-                    <th class="px-8 py-5">IP Adresi</th>
-                    <th class="px-8 py-5">İşlem Yolu</th>
-                    <th class="px-8 py-5 text-right">Kaynak</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-surface-container text-sm">
-                @if (!Model.Any())
-                {
+    <section class="log-card rounded-2xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-stone-200 text-xs font-black uppercase tracking-wider text-stone-500" id="summary">0 kayıt</div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-stone-800">
+                <thead class="bg-stone-50 text-stone-500 uppercase text-[11px]">
                     <tr>
-                        <td colspan="6" class="px-8 py-16 text-center text-outline italic font-medium opacity-50">Kayıt bulunamadı.</td>
+                        <th class="text-left px-4 py-3">Zaman</th>
+                        <th class="text-left px-4 py-3">Kaynak</th>
+                        <th class="text-left px-4 py-3">Alan</th>
+                        <th class="text-left px-4 py-3">Olay</th>
+                        <th class="text-left px-4 py-3">Mesaj</th>
+                        <th class="text-left px-4 py-3">Kullanıcı</th>
+                        <th class="text-left px-4 py-3">Not</th>
                     </tr>
-                }
-                else
-                {
-                    foreach (var log in Model)
-                    {
-                        var localTime = TimeZoneInfo.ConvertTimeFromUtc(log.Timestamp, turkeyTz);
-                        var isToday = localTime.Date == now.Date;
-                        var dateStr = isToday ? "Bugün, " + localTime.ToString("HH:mm") : localTime.ToString("dd MMM, HH:mm");
-                        
-                        var sevClass = log.Severity switch {
-                            "Critical" => "sev-Critical",
-                            "Warning"  => "sev-Warning",
-                            _          => "sev-Info"
-                        };
-                        var flag = log.CountryCode switch {
-                            "TR" => "🇹🇷",
-                            "US" => "🇺🇸",
-                            "DE" => "🇩🇪",
-                            "RU" => "🇷🇺",
-                            "CN" => "🇨🇳",
-                            "NL" => "🇳🇱",
-                            "FR" => "🇫🇷",
-                            "GB" => "🇬🇧",
-                            _   => "🌐"
-                        };
-
-                        <tr class="hover:bg-surface-container-low/30 transition-all group cursor-pointer relative" onclick="openDetails(@Json.Serialize(log))">
-                            <td class="p-0 relative">
-                                <div class="severity-indicator @sevClass"></div>
-                            </td>
-                            <td class="px-8 py-5 whitespace-nowrap">
-                                <span class="font-black text-on-surface text-base">@dateStr</span>
-                            </td>
-                            <td class="px-8 py-5">
-                                <div class="flex flex-col gap-1">
-                                    <span class="text-[10px] font-black uppercase tracking-widest text-outline">@log.EventType</span>
-                                    <p class="font-bold text-xs truncate max-w-[200px] text-on-surface/80">@log.Message</p>
-                                </div>
-                            </td>
-                            <td class="px-8 py-5">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center text-lg">@flag</div>
-                                    <span class="font-mono text-xs font-black text-outline group-hover:text-primary transition-colors">@log.IpAddress</span>
-                                </div>
-                            </td>
-                            <td class="px-8 py-5">
-                                <div class="flex items-center gap-3">
-                                    <span class="px-2 py-1 bg-on-surface text-surface-container-lowest rounded-lg text-[10px] font-black uppercase tracking-wider">@log.Method</span>
-                                    <span class="font-mono text-[11px] text-outline/80 font-bold truncate max-w-[150px]">@log.Path</span>
-                                </div>
-                            </td>
-                            <td class="px-8 py-5 text-right">
-                                <span class="px-3 py-1.5 bg-surface-container-low rounded-xl text-[11px] font-black text-outline">
-                                    @{
-                                        var userNames = ViewBag.UserNames as Dictionary<string, string>;
-                                        var sourceName = "ANONİM";
-                                        
-                                        if (log.TableId != null)
-                                        {
-                                            sourceName = "MASA: " + log.TableId;
-                                        }
-                                        else if (log.UserId != null && userNames != null && userNames.ContainsKey(log.UserId))
-                                        {
-                                            sourceName = userNames[log.UserId].ToUpper();
-                                        }
-                                        else if (log.UserId != null)
-                                        {
-                                            sourceName = "MÜŞTERİ";
-                                        }
-                                    }
-                                    @sourceName
-                                </span>
-                            </td>
-                        </tr>
-                    }
-                }
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Mobile View -->
-    <div class="md:hidden space-y-4">
-        @foreach (var log in Model) {
-            <div class="bg-surface-container-lowest p-6 rounded-3xl border border-surface-container shadow-sm relative overflow-hidden" onclick="openDetails(@Json.Serialize(log))">
-                <div class="flex justify-between items-start mb-4">
-                    <span class="px-3 py-1 bg-surface-container-low rounded-xl text-[10px] font-black uppercase tracking-wider">@log.EventType</span>
-                    <span class="text-[11px] font-black text-outline">@log.Timestamp.ToString("HH:mm")</span>
-                </div>
-                <h4 class="font-black text-on-surface text-base mb-3">@log.Message</h4>
-                <div class="flex justify-between items-end border-t border-surface-container pt-4">
-                    <div class="flex items-center gap-2">
-                         <span class="font-mono text-[11px] font-black text-outline">@log.IpAddress</span>
-                    </div>
-                    <button class="text-primary text-[11px] font-black uppercase tracking-widest">DETAYLAR</button>
-                </div>
-            </div>
-        }
-    </div>
-
-    <!-- Detail Drawer -->
-    <div id="detailDrawerOverlay" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 hidden" onclick="closeDetails()"></div>
-    <div id="detailDrawer" class="fixed top-0 right-0 h-full w-full max-w-lg bg-surface-container-lowest shadow-2xl z-50 flex flex-col overflow-hidden">
-        <!-- Drawer Header -->
-        <div class="p-6 border-b border-surface-container flex justify-between items-center shrink-0">
-            <div>
-                <h2 class="text-lg font-black">Olay Detayları</h2>
-                <p class="text-[11px] text-outline font-bold" id="drawerTimestamp"></p>
-            </div>
-            <button onclick="closeDetails()" class="p-2 hover:bg-surface-container rounded-2xl transition-colors">
-                <span class="material-symbols-outlined">close</span>
-            </button>
+                </thead>
+                <tbody id="logBody"></tbody>
+            </table>
         </div>
-        <!-- Severity Banner -->
-        <div id="drawerSeverityBanner" class="px-6 py-3 text-[11px] font-black uppercase tracking-widest flex items-center gap-2 shrink-0"></div>
-        <!-- Scrollable Content -->
-        <div id="drawerContent" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
-        <!-- Footer -->
-        <div class="p-6 border-t border-surface-container shrink-0">
-            <p class="text-[10px] text-outline text-center font-medium">Bu panel sadece görüntüleme amaçlıdır.</p>
+    </section>
+
+    <div id="detailOverlay" class="hidden fixed inset-0 z-40" onclick="closeDetails()"></div>
+    <aside id="detailDrawer" class="fixed top-0 right-0 h-full w-full max-w-xl z-50 bg-white border-l border-stone-200 text-stone-800 p-5 overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-black">Kayıt Detayı</h3>
+            <button class="px-3 py-1 rounded-lg border border-stone-200 hover:border-primary" onclick="closeDetails()">Kapat</button>
         </div>
-    </div>
+        <div id="detailContent" class="space-y-3 text-sm"></div>
+    </aside>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-    // ─── Anomali Grafiği ────────────────────────────────────────────────────
-    (function() {
-        const labels = @Html.Raw(ViewBag.HourlyLabels ?? "[]");
-        const data   = @Html.Raw(ViewBag.HourlyData   ?? "[]");
+    const filters = {
+        search: document.getElementById('search'),
+        source: document.getElementById('source'),
+        area: document.getElementById('area'),
+        severity: document.getElementById('severity'),
+        range: document.getElementById('range')
+    };
 
-        new Chart(document.getElementById('anomalyChart'), {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [{
-                    label: 'Olay Sayısı',
-                    data,
-                    borderColor: '#CC5533',
-                    backgroundColor: 'rgba(204,85,51,0.08)',
-                    borderWidth: 2,
-                    pointRadius: 3,
-                    pointHoverRadius: 6,
-                    pointBackgroundColor: '#CC5533',
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: { legend: { display: false }, tooltip: { callbacks: {
-                    title: ctx => ctx[0].label + ' Saati',
-                    label: ctx => ' ' + ctx.parsed.y + ' olay'
-                }}},
-                scales: {
-                    x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 10, weight: '700' }, color: '#777776' } },
-                    y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { stepSize: 1, font: { size: 10, weight: '700' }, color: '#777776' }, beginAtZero: true }
-                }
-            }
+    const logBody = document.getElementById('logBody');
+    const summary = document.getElementById('summary');
+    const lastRefresh = document.getElementById('lastRefresh');
+    const detailOverlay = document.getElementById('detailOverlay');
+    const detailDrawer = document.getElementById('detailDrawer');
+    const detailContent = document.getElementById('detailContent');
+
+    let timer;
+    let currentLogs = [];
+
+    for (const key in filters) {
+        filters[key].addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(loadLogs, 250);
         });
-    })();
-
-    // ─── Filtre ─────────────────────────────────────────────────────────────
-    let filterTimeout;
-    function debounceFilter() {
-        clearTimeout(filterTimeout);
-        filterTimeout = setTimeout(submitFilter, 500);
-    }
-    function submitFilter() { document.getElementById('filterForm').submit(); }
-    function setTimeFilter(range) {
-        document.getElementById('rangeInput').value = range;
-        submitFilter();
+        filters[key].addEventListener('change', loadLogs);
     }
 
-    // ─── Drawer ─────────────────────────────────────────────────────────────
-    function openDetails(log) {
-        const drawer  = document.getElementById('detailDrawer');
-        const overlay = document.getElementById('detailDrawerOverlay');
-        const content = document.getElementById('drawerContent');
-        const banner  = document.getElementById('drawerSeverityBanner');
-        const ts      = document.getElementById('drawerTimestamp');
+    function kaynakCevir(value) {
+        return value === 'Security' ? 'Güvenlik' : 'Sistem Kaydı';
+    }
 
-        // Tarih
-        ts.textContent = new Date(log.timestamp).toLocaleString('tr-TR');
+    function seviyeCevir(value) {
+        if (value === 'Critical') return 'Kritik';
+        if (value === 'Warning') return 'Uyarı';
+        return 'Bilgi';
+    }
 
-        // Severity banner
-        const sevColors = {
-            Critical: { bg: '#FEF2F2', text: '#B31B25', icon: 'emergency', label: '🔴 Kritik Olay' },
-            Warning:  { bg: '#FFFBEB', text: '#D97706', icon: 'warning',   label: '🟠 Uyarı' },
-            Info:     { bg: '#EFF6FF', text: '#2563EB', icon: 'info',      label: '🔵 Bilgi'  }
-        };
-        const sev = sevColors[log.severity] || sevColors.Info;
-        banner.style.backgroundColor = sev.bg;
-        banner.style.color = sev.text;
-        banner.innerHTML = `<span class="material-symbols-outlined text-sm">${sev.icon}</span> ${sev.label}`;
+    function olayCevir(value) {
+        if (value === 'Unauthorized') return 'Yetkisiz Erişim';
+        if (value === 'Forbidden') return 'Erişim Engellendi';
+        if (value === 'RateLimit') return 'Aşırı İstek';
+        return value || '-';
+    }
 
-        // Bayrak
-        const flags = { TR:'🇹🇷', US:'🇺🇸', DE:'🇩🇪', RU:'🇷🇺', CN:'🇨🇳', NL:'🇳🇱', FR:'🇫🇷', GB:'🇬🇧' };
-        const flag = flags[log.countryCode] || '🌐';
+    function escapeHtml(value) {
+        return String(value ?? '-').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+    }
 
-        // Kaynak
-        const source = log.tableId ? `MASA: ${log.tableId}` : (log.userId ? `Kullanıcı` : 'Anonim');
+    function openDetails(index) {
+        const x = currentLogs[index];
+        if (!x) return;
 
-        content.innerHTML = `
-            <div class="grid grid-cols-2 gap-3">
-                <div class="p-4 bg-surface-container-low rounded-2xl col-span-2">
-                    <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-1">Mesaj</p>
-                    <p class="font-bold text-sm">${log.message || '—'}</p>
-                </div>
-                <div class="p-4 bg-surface-container-low rounded-2xl">
-                    <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-1">IP Adresi</p>
-                    <p class="font-mono font-black">${flag} ${log.ipAddress || '—'}</p>
-                </div>
-                <div class="p-4 bg-surface-container-low rounded-2xl">
-                    <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-1">Kaynak</p>
-                    <p class="font-black">${source}</p>
-                </div>
-                <div class="p-4 bg-surface-container-low rounded-2xl">
-                    <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-1">Yöntem</p>
-                    <span class="px-2 py-1 bg-on-surface text-white rounded-lg text-[10px] font-black">${log.method || '—'}</span>
-                </div>
-                <div class="p-4 bg-surface-container-low rounded-2xl">
-                    <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-1">Önem</p>
-                    <p class="font-black" style="color:${sev.text}">${log.severity || 'Info'}</p>
-                </div>
-                <div class="p-4 bg-surface-container-low rounded-2xl col-span-2">
-                    <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-1">Endpoint</p>
-                    <p class="font-mono text-xs font-black text-primary break-all">${log.method} ${log.path || '—'}</p>
-                </div>
-                <div class="p-4 bg-surface-container-low rounded-2xl col-span-2">
-                    <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-2">Tarayıcı Bilgisi (User-Agent)</p>
-                    <p class="text-[11px] font-mono text-outline leading-relaxed break-all">${log.userAgent || 'Bilinmiyor'}</p>
-                </div>
-                ${log.requestBody ? `
-                <div class="p-4 bg-surface-container-low rounded-2xl col-span-2">
-                    <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-2">Request Body</p>
-                    <pre class="text-[11px] font-mono bg-black/5 p-3 rounded-xl overflow-x-auto leading-relaxed">${log.requestBody}</pre>
-                </div>` : ''}
-            </div>
+        const when = new Date(x.timestamp).toLocaleString('tr-TR');
+        detailContent.innerHTML = `
+            <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Zaman</div><div class="font-semibold">${escapeHtml(when)}</div></div>
+            <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Kaynak</div><div class="font-semibold">${escapeHtml(kaynakCevir(x.sourceType))}</div></div>
+            <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Alan</div><div class="font-semibold">${escapeHtml(x.area)}</div></div>
+            <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Olay</div><div class="font-semibold text-primary">${escapeHtml(olayCevir(x.eventType))}</div></div>
+            <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Seviye</div><div class="font-semibold">${escapeHtml(seviyeCevir(x.severity))}</div></div>
+            <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Mesaj</div><div class="font-semibold">${escapeHtml(x.message)}</div></div>
+            <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Yol</div><div class="font-mono text-xs">${escapeHtml(x.method)} ${escapeHtml(x.path)}</div></div>
+            <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Kullanıcı</div><div class="font-semibold">${escapeHtml(x.user)}</div></div>
+            <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Not</div><div class="font-semibold">${escapeHtml(x.meta)}</div></div>
         `;
 
-        drawer.classList.add('open');
-        overlay.classList.remove('hidden');
+        detailOverlay.classList.remove('hidden');
+        detailDrawer.classList.add('open');
         document.body.style.overflow = 'hidden';
     }
 
     function closeDetails() {
-        document.getElementById('detailDrawer').classList.remove('open');
-        document.getElementById('detailDrawerOverlay').classList.add('hidden');
+        detailOverlay.classList.add('hidden');
+        detailDrawer.classList.remove('open');
         document.body.style.overflow = '';
     }
 
-    // ESC tuşu ile kapat
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetails(); });
-
-    // PDF Dropdown aç/kapat
-    function togglePdfDropdown(e) {
-        e.stopPropagation();
-        const menu = document.getElementById('pdfDropdownMenu');
-        menu.classList.toggle('hidden');
-    }
-
-    // Sayfa herhangi bir yerine tıklanınca dropdown'ı kapat
-    document.addEventListener('click', function(e) {
-        const wrapper = document.getElementById('pdfDropdownWrapper');
-        if (wrapper && !wrapper.contains(e.target)) {
-            const menu = document.getElementById('pdfDropdownMenu');
-            if (menu) menu.classList.add('hidden');
-        }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeDetails();
     });
 
-    // Filtreleri PDF linklerine ekle
-    function updatePdfLinks() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const search = urlParams.get('search') || '';
-        const eventType = urlParams.get('eventType') || '';
-        const range = urlParams.get('range') || '';
+    async function loadLogs() {
+        const p = new URLSearchParams({ take: '700' });
+        if (filters.search.value) p.set('search', filters.search.value);
+        if (filters.source.value) p.set('source', filters.source.value);
+        if (filters.area.value) p.set('area', filters.area.value);
+        if (filters.severity.value) p.set('severity', filters.severity.value);
+        if (filters.range.value) p.set('range', filters.range.value);
 
-        const links = document.querySelectorAll('#pdfDropdownMenu a');
-        links.forEach(link => {
-            const url = new URL(link.href, window.location.origin);
-            const tarih = url.searchParams.get('tarih');
-            
-            if (search) url.searchParams.set('search', search);
-            if (eventType) url.searchParams.set('eventType', eventType);
-            if (range) url.searchParams.set('range', range);
-            if (tarih) url.searchParams.set('tarih', tarih);
-            
-            link.href = url.toString();
-        });
+        const resp = await fetch('/admin/loglar/data?' + p.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const data = await resp.json();
+
+        summary.textContent = `${data.total} kayıt listeleniyor`;
+        lastRefresh.textContent = `Son güncelleme: ${new Date().toLocaleString('tr-TR')}`;
+        currentLogs = data.logs || [];
+
+        if (currentLogs.length === 0) {
+            logBody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-stone-500">Kayıt bulunamadı.</td></tr>';
+            return;
+        }
+
+        logBody.innerHTML = currentLogs.map((x, index) => {
+            const when = new Date(x.timestamp).toLocaleString('tr-TR');
+            const sevClass = x.severity === 'Critical' ? 'text-primary' : x.severity === 'Warning' ? 'text-amber-700' : 'text-stone-500';
+            const kaynak = kaynakCevir(x.sourceType);
+            const olay = olayCevir(x.eventType);
+            const seviye = seviyeCevir(x.severity);
+
+            return `
+                <tr class="row-hover border-t border-stone-200 cursor-pointer" onclick="openDetails(${index})">
+                    <td class="px-4 py-3 whitespace-nowrap font-semibold">${escapeHtml(when)}</td>
+                    <td class="px-4 py-3">${escapeHtml(kaynak)}</td>
+                    <td class="px-4 py-3">${escapeHtml(x.area)}</td>
+                    <td class="px-4 py-3"><span class="font-bold ${sevClass}">${escapeHtml(olay)}</span><div class="text-[11px] text-stone-500">${escapeHtml(seviye)}</div></td>
+                    <td class="px-4 py-3">${escapeHtml(x.message)} <div class="text-[11px] text-stone-500 font-mono">${escapeHtml(x.method)} ${escapeHtml(x.path)}</div></td>
+                    <td class="px-4 py-3">${escapeHtml(x.user)}</td>
+                    <td class="px-4 py-3 text-[12px] text-stone-500">${escapeHtml(x.meta)}</td>
+                </tr>`;
+        }).join('');
     }
-    updatePdfLinks();
+
+    loadLogs();
 </script>
 

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Hosting;
 
 using Microsoft.AspNetCore.Authorization;
 using QRMenu.Web.Models;
+using System.Security.Claims;
 
 namespace QRMenu.Web.Controllers
 {
@@ -61,11 +62,11 @@ namespace QRMenu.Web.Controllers
 
             var masalar = await _context.Masalar
                 .Where(m => m.AktifMi)
+                .AsNoTracking()
                 .Include(m => m.Bolge)
                 .Include(m => m.Siparisler.Where(s => s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal
                     && s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi
                     && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade))
-                    .ThenInclude(s => s.SiparisDetaylar)
                 .AsSplitQuery()
                 .OrderBy(m => m.MasaNo)
                 .ToListAsync();
@@ -92,6 +93,7 @@ namespace QRMenu.Web.Controllers
             var gecmisDurumlar = new[] { SiparisDurum.KismiOdendi, SiparisDurum.TamOdendi, SiparisDurum.Iade, SiparisDurum.Iptal };
 
             var masa = await _context.Masalar
+                .AsNoTracking()
                 .Include(m => m.Bolge)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (masa == null)
@@ -101,6 +103,7 @@ namespace QRMenu.Web.Controllers
             ViewData["PageTitle"] = $"Masa {masa.MasaNo} Detayı";
 
             var aktifSiparisler = await _context.Siparisler
+                .AsNoTracking()
                 .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
                 .AsSplitQuery()
@@ -110,6 +113,7 @@ namespace QRMenu.Web.Controllers
                 .ToListAsync();
 
             var gecmisSiparisler = await _context.Siparisler
+                .AsNoTracking()
                 .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
                 .AsSplitQuery()
@@ -125,6 +129,7 @@ namespace QRMenu.Web.Controllers
 
             // Offcanvas için kategorileri alalım
             var kategoriler = await _context.Kategoriler
+                .AsNoTracking()
                 .Include(k => k.Urunler.Where(u => u.AktifMi))
                     .ThenInclude(u => u.UrunOpsiyonlar)
                         .ThenInclude(uo => uo.Opsiyon)
@@ -143,6 +148,7 @@ namespace QRMenu.Web.Controllers
         public async Task<IActionResult> YeniSiparis(int id)
         {
             var masa = await _context.Masalar
+                .AsNoTracking()
                 .Include(m => m.Bolge)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (masa == null)
@@ -152,6 +158,7 @@ namespace QRMenu.Web.Controllers
             ViewData["PageTitle"] = $"Masa {masa.MasaNo} - Yeni Sipariş";
 
             var aktifSiparisler = await _context.Siparisler
+                .AsNoTracking()
                 .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
                 .AsSplitQuery()
@@ -163,6 +170,7 @@ namespace QRMenu.Web.Controllers
                 .ToListAsync();
 
             var kategoriler = await _context.Kategoriler
+                .AsNoTracking()
                 .Include(k => k.Urunler.Where(u => u.AktifMi))
                     .ThenInclude(u => u.UrunOpsiyonlar)
                         .ThenInclude(uo => uo.Opsiyon)
@@ -426,7 +434,33 @@ namespace QRMenu.Web.Controllers
                     }
                 }
 
+                var eskiDurum = await _context.Siparisler
+                    .Where(s => s.Id == id)
+                    .Select(s => (SiparisDurum?)s.Durum)
+                    .FirstOrDefaultAsync();
+
                 var siparis = await _siparisService.DurumGuncelleAsync(id, enumDurum);
+
+                if (enumDurum == SiparisDurum.TeslimEdildi)
+                {
+                    var masaNoLog = await _context.Masalar
+                        .Where(m => m.Id == siparis.MasaId)
+                        .Select(m => m.MasaNo)
+                        .FirstOrDefaultAsync();
+
+                    _context.SecurityLogs.Add(new SecurityLog
+                    {
+                        EventType = "GarsonSiparisTeslim",
+                        Message = $"Garson sipariş teslim etti: Sipariş #{id}, Masa {masaNoLog}, Durum {(eskiDurum?.ToString() ?? "-")} -> {enumDurum}",
+                        Path = "/Garson/DurumGuncelle",
+                        Method = "POST",
+                        UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub") ?? User?.Identity?.Name,
+                        Severity = "Info",
+                        TableId = masaNoLog > 0 ? masaNoLog.ToString() : null,
+                        Timestamp = DateTime.UtcNow
+                    });
+                    await _context.SaveChangesAsync();
+                }
                 
                 await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
                 await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
@@ -475,6 +509,24 @@ namespace QRMenu.Web.Controllers
                     await _siparisService.DurumGuncelleAsync(siparisId, SiparisDurum.TeslimEdildi);
                 }
 
+                var masaNo = await _context.Masalar
+                    .Where(m => m.Id == id)
+                    .Select(m => m.MasaNo)
+                    .FirstOrDefaultAsync();
+
+                _context.SecurityLogs.Add(new SecurityLog
+                {
+                    EventType = "GarsonSiparisTeslim",
+                    Message = $"Garson toplu teslim yaptı: Masa {masaNo}, SiparişSayısı={hazirSiparisIds.Count}, Siparişler=[{string.Join(',', hazirSiparisIds)}]",
+                    Path = "/Garson/TopluTeslimEt",
+                    Method = "POST",
+                    UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub") ?? User?.Identity?.Name,
+                    Severity = "Info",
+                    TableId = masaNo > 0 ? masaNo.ToString() : null,
+                    Timestamp = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+
                 await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
                 await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
                 await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
@@ -508,3 +560,5 @@ namespace QRMenu.Web.Controllers
         public List<int>? OpsiyonIds { get; set; }
     }
 }
+
+

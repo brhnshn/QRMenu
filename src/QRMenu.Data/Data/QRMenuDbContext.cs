@@ -256,6 +256,10 @@ namespace QRMenu.Data.Data
                       .WithMany()
                       .HasForeignKey(e => e.UrunVaryasyonId)
                       .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasIndex(e => e.SiparisId).HasDatabaseName("IX_SiparisDetaylar_SiparisId");
+                entity.HasIndex(e => new { e.SiparisId, e.Durum }).HasDatabaseName("IX_SiparisDetaylar_SiparisId_Durum");
+                entity.HasIndex(e => e.UrunId).HasDatabaseName("IX_SiparisDetaylar_UrunId");
             });
 
             // ===== ÖDEME =====

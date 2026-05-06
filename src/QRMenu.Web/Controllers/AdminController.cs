@@ -107,12 +107,13 @@ namespace QRMenu.Web.Controllers
             var endDateUtc = TimeZoneInfo.ConvertTimeToUtc(endDate.AddDays(1), _turkeyTz);
 
             // Stats
-            var bugunSiparisler = await _context.Siparisler
+            var bugunSiparisQuery = _context.Siparisler
                 .Where(s => s.OlusturmaTarihi >= startDateUtc && s.OlusturmaTarihi < endDateUtc)
                 .Where(s => s.Durum != SiparisDurum.Iptal && s.Durum != SiparisDurum.Iade)
-                .ToListAsync();
+                .AsNoTracking();
 
-            var bugunCiro = bugunSiparisler.Sum(s => s.ToplamTutar);
+            var bugunCiro = await bugunSiparisQuery.SumAsync(s => (decimal?)s.ToplamTutar) ?? 0m;
+            var zSiparisSayisi = await bugunSiparisQuery.CountAsync();
 
             var dunStartDateUtc = TimeZoneInfo.ConvertTimeToUtc(startDate.AddDays(-1), _turkeyTz);
             var dunEndDateUtc = TimeZoneInfo.ConvertTimeToUtc(endDate.AddDays(-1).AddDays(1), _turkeyTz);
@@ -130,21 +131,26 @@ namespace QRMenu.Web.Controllers
             var dolulukOrani = toplamMasaCount > 0 ? (int)((double)aktifMasalarCount / toplamMasaCount * 100) : 0;
 
             // Ort. Servis Süresi (Onaylandı -> TeslimEdildi arası fark)
-            var teslimEdilenler = bugunSiparisler.Where(s => s.Durum == SiparisDurum.TeslimEdildi || s.Durum == SiparisDurum.TamOdendi).ToList();
-            var ortServisSuresi = teslimEdilenler.Any() 
-                ? teslimEdilenler.Average(s => (s.GuncellemeTarihi ?? s.OlusturmaTarihi).Subtract(s.OlusturmaTarihi).TotalMinutes)
-                : 0;
+            var ortServisSuresi = await bugunSiparisQuery
+                .Where(s => s.Durum == SiparisDurum.TeslimEdildi || s.Durum == SiparisDurum.TamOdendi)
+                .AverageAsync(s => (double?)((s.GuncellemeTarihi ?? s.OlusturmaTarihi) - s.OlusturmaTarihi).TotalMinutes) ?? 0;
 
             // Saatlik Trafik Analizi
-            var saatlikData = bugunSiparisler
-                .GroupBy(s => TimeZoneInfo.ConvertTimeFromUtc(s.OlusturmaTarihi, _turkeyTz).Hour)
-                .Select(g => new { Saat = g.Key, Ciro = g.Sum(s => s.ToplamTutar) })
-                .OrderBy(x => x.Saat)
-                .ToList();
+            var saatlikData = await _context.Database
+                .SqlQuery<SaatlikCiroRow>($"""
+                    SELECT date_part('hour', s."OlusturmaTarihi" AT TIME ZONE 'Europe/Istanbul')::int AS "Saat",
+                           COALESCE(sum(s."ToplamTutar"), 0.0)::numeric AS "Ciro"
+                    FROM "Siparisler" AS s
+                    WHERE s."OlusturmaTarihi" >= {startDateUtc}
+                      AND s."OlusturmaTarihi" < {endDateUtc}
+                      AND s."Durum" NOT IN ({(int)SiparisDurum.Iptal}, {(int)SiparisDurum.Iade})
+                    GROUP BY 1
+                    ORDER BY 1
+                    """)
+                .ToListAsync();
 
-            // En Ã‡ok Satanlar (yeni verilerle)
+            // En Çok Satanlar (yeni verilerle)
             var enCokSatanlar = await _context.SiparisDetaylar
-                .Include(sd => sd.Urun)
                 .Where(sd => sd.Siparis.OlusturmaTarihi >= startDateUtc && sd.Siparis.OlusturmaTarihi < endDateUtc)
                 .Where(sd => sd.Siparis.Durum != SiparisDurum.Iptal && sd.Siparis.Durum != SiparisDurum.Iade)
                 .GroupBy(sd => new { sd.Urun.Ad, sd.Urun.GorselUrl, sd.BirimFiyat })
@@ -154,7 +160,6 @@ namespace QRMenu.Web.Controllers
                 .ToListAsync();
 
             var bugunEnCokSatanlarTum = await _context.SiparisDetaylar
-                .Include(sd => sd.Urun)
                 .Where(sd => sd.Siparis.OlusturmaTarihi >= startDateUtc && sd.Siparis.OlusturmaTarihi < endDateUtc)
                 .Where(sd => sd.Siparis.Durum != SiparisDurum.Iptal && sd.Siparis.Durum != SiparisDurum.Iade)
                 .GroupBy(sd => new { sd.Urun.Ad, sd.Urun.GorselUrl, sd.BirimFiyat })
@@ -165,6 +170,7 @@ namespace QRMenu.Web.Controllers
 
             // Canlı Siparişler (Yeni & Hazırlanıyor)
             var canliSiparisler = await _context.Siparisler
+                .AsNoTracking()
                 .Include(s => s.Masa)
                 .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
@@ -197,8 +203,6 @@ namespace QRMenu.Web.Controllers
                 .FirstOrDefaultAsync(r => r.Tarih == zRaporTarihi);
 
             var zToplamCiro = odemeTipleri.Sum(x => x.Tutar);
-            var zSiparisSayisi = bugunSiparisler.Count;
-
             ViewBag.BugunCiro = bugunCiro;
             ViewBag.DunCiro = dunCiro;
             ViewBag.CiroDegisim = ciroDegisim;
@@ -714,7 +718,7 @@ namespace QRMenu.Web.Controllers
             if (b == null) return Json(new { success = false });
 
             if (await _context.Masalar.AnyAsync(m => m.BolgeId == id))
-                return Json(new { success = false, message = "Bu bölgeye baÄŸlı masalar var. Ã–nce masaları kaldırın/taşıyın." });
+                return Json(new { success = false, message = "Bu bölgeye bağlı masalar var. Önce masaları kaldırın/taşıyın." });
 
             _context.Bolgeler.Remove(b);
             await _context.SaveChangesAsync();
@@ -736,7 +740,7 @@ namespace QRMenu.Web.Controllers
                 // Soft delete and warn the user
                 masa.AktifMi = false;
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("Masa pasife alındı (baÄŸlı kayıt var). MasaNo={MasaNo}", masaNo);
+                _logger.LogInformation("Masa pasife alındı (bağlı kayıt var). MasaNo={MasaNo}", masaNo);
                 return Json(new { success = true, hasRecords = true, masaId = masa.Id });
             }
 
@@ -748,7 +752,7 @@ namespace QRMenu.Web.Controllers
                     var kilitliRaporTarihleri = siparisler.Select(s => RaporTarihi(s.OlusturmaTarihi)).Distinct().ToList();
                     var kilitliKayitVar = await _context.GunSonuRaporlari.AnyAsync(r => kilitliRaporTarihleri.Contains(r.Tarih));
                     if (kilitliKayitVar)
-                        return Json(new { success = false, message = "Bu masada kapatılmış gün sonu kayıtları var; baÄŸlı siparişler silinemez." });
+                        return Json(new { success = false, message = "Bu masada kapatılmış gün sonu kayıtları var; bağlı siparişler silinemez." });
 
                     var sipIds = siparisler.Select(s => s.Id).ToList();
                     var detaylar = await _context.SiparisDetaylar.Where(sd => sipIds.Contains(sd.SiparisId)).ToListAsync();
@@ -807,7 +811,7 @@ namespace QRMenu.Web.Controllers
         }
 
         // ============================================================
-        // SİPARİŞ YÃ–NETİMİ
+        // SİPARİŞ YÖNETİMİ
         // ============================================================
 
         // Sipariş Arşivi
@@ -2202,6 +2206,12 @@ namespace QRMenu.Web.Controllers
     public class UrunStokGuncelleRequest
     {
         public int StokAdet { get; set; }
+    }
+
+    public class SaatlikCiroRow
+    {
+        public int Saat { get; set; }
+        public decimal Ciro { get; set; }
     }
 }
 

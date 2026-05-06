@@ -8,6 +8,7 @@ using QRMenu.Web.Hubs;
 
 using Microsoft.AspNetCore.Authorization;
 using QRMenu.Web.Models;
+using System.Security.Claims;
 
 namespace QRMenu.Web.Controllers
 {
@@ -41,6 +42,7 @@ namespace QRMenu.Web.Controllers
                 // Tahsilat Bekleyen Masalar (Siparişi olanlar)
                 var masalar = await _context.Masalar
                     .Where(m => m.AktifMi)
+                    .AsNoTracking()
                     .Include(m => m.Bolge)
                     .Include(m => m.Siparisler.Where(s => 
                         s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && 
@@ -75,11 +77,10 @@ namespace QRMenu.Web.Controllers
             try
             {
                 var siparisler = await _context.Siparisler
+                    .AsNoTracking()
                     .Include(s => s.Masa)
                         .ThenInclude(m => m.Bolge)
                     .Include(s => s.Odemeler)
-                    .Include(s => s.SiparisDetaylar)
-                        .ThenInclude(sd => sd.Urun)
                     .AsSplitQuery()
                     .Where(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.TamOdendi || s.Durum == QRMenu.Core.Enums.SiparisDurum.Iade)
                     .OrderByDescending(s => s.GuncellemeTarihi ?? s.OlusturmaTarihi)
@@ -87,17 +88,19 @@ namespace QRMenu.Web.Controllers
                     .ToListAsync();
 
                 var bugunUtc = DateTime.UtcNow.Date;
-                var bugunKayitlari = siparisler
-                    .Where(s => (s.GuncellemeTarihi ?? s.OlusturmaTarihi).Date == bugunUtc)
-                    .ToList();
+                var bugunKayitQuery = _context.Siparisler
+                    .AsNoTracking()
+                    .Where(s =>
+                        (s.Durum == QRMenu.Core.Enums.SiparisDurum.TamOdendi || s.Durum == QRMenu.Core.Enums.SiparisDurum.Iade) &&
+                        (s.GuncellemeTarihi ?? s.OlusturmaTarihi).Date == bugunUtc);
 
-                ViewBag.GunlukCiro = bugunKayitlari
+                ViewBag.GunlukCiro = await bugunKayitQuery
                     .Where(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.TamOdendi)
-                    .Sum(s => s.ToplamTutar);
-                ViewBag.IslemSayisi = bugunKayitlari.Count;
-                ViewBag.OrtalamaMasaTutari = bugunKayitlari.Count > 0
-                    ? bugunKayitlari.Average(s => s.ToplamTutar)
-                    : 0m;
+                    .SumAsync(s => (decimal?)s.ToplamTutar) ?? 0m;
+
+                ViewBag.IslemSayisi = await bugunKayitQuery.CountAsync();
+                ViewBag.OrtalamaMasaTutari = await bugunKayitQuery
+                    .AverageAsync(s => (decimal?)s.ToplamTutar) ?? 0m;
 
                 return View(siparisler);
             }
@@ -126,7 +129,9 @@ namespace QRMenu.Web.Controllers
         [HttpGet("/Kasa/Odeme/{id:int}")]
         public async Task<IActionResult> Odeme(int id)
         {
-            var masa = await _context.Masalar.FirstOrDefaultAsync(m => m.Id == id);
+            var masa = await _context.Masalar
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Id == id);
             if (masa == null)
                 return NotFound();
 
@@ -134,15 +139,17 @@ namespace QRMenu.Web.Controllers
             ViewData["PageTitle"] = $"Masa {masa.MasaNo} Tahsilat Ekranı";
 
             var aktifSiparisler = await _context.Siparisler
-                .Include(s => s.SiparisDetaylar.Where(sd => sd.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi || sd.Durum == QRMenu.Core.Enums.SiparisDurum.KismiOdendi))
+                .AsNoTracking()
+                .Include(s => s.SiparisDetaylar)
                     .ThenInclude(sd => sd.Urun)
                 .AsSplitQuery()
-                .Where(s => s.MasaId == id && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
+                .Where(s => s.MasaId == id
+                    && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal
+                    && s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi
+                    && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade
+                    && s.SiparisDetaylar.Any(sd => sd.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi || sd.Durum == QRMenu.Core.Enums.SiparisDurum.KismiOdendi))
                 .OrderBy(s => s.OlusturmaTarihi)
                 .ToListAsync();
-
-            // Sadece içinde ürün (Detay) kalan siparişleri filtrele
-            aktifSiparisler = aktifSiparisler.Where(s => s.SiparisDetaylar.Any()).ToList();
 
             ViewBag.AktifSiparisler = aktifSiparisler;
             return View(masa);
@@ -154,6 +161,33 @@ namespace QRMenu.Web.Controllers
         {
             try
             {
+                var secilenDetaylar = await _context.SiparisDetaylar
+                    .AsNoTracking()
+                    .Where(sd => request.SiparisDetayIds.Contains(sd.Id) && sd.Siparis.MasaId == request.MasaId)
+                    .Select(sd => new { sd.Id, sd.SiparisId, sd.BirimFiyat, sd.Adet, SiparisToplam = sd.Siparis.ToplamTutar })
+                    .ToListAsync();
+
+                var seciliSiparisIds = secilenDetaylar.Select(x => x.SiparisId).Distinct().ToList();
+                var siparisBazToplamlar = await _context.SiparisDetaylar
+                    .AsNoTracking()
+                    .Where(sd => seciliSiparisIds.Contains(sd.SiparisId) && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
+                    .GroupBy(sd => sd.SiparisId)
+                    .Select(g => new { SiparisId = g.Key, BazToplam = g.Sum(x => x.BirimFiyat * x.Adet) })
+                    .ToDictionaryAsync(x => x.SiparisId, x => x.BazToplam);
+
+                var siparisToplamMap = secilenDetaylar
+                    .GroupBy(x => x.SiparisId)
+                    .ToDictionary(g => g.Key, g => g.First().SiparisToplam);
+
+                decimal hesaplananTutar = 0;
+                foreach (var detay in secilenDetaylar)
+                {
+                    var bazToplam = siparisBazToplamlar.TryGetValue(detay.SiparisId, out var bt) ? bt : 0m;
+                    var siparisToplam = siparisToplamMap.TryGetValue(detay.SiparisId, out var st) ? st : 0m;
+                    var oran = bazToplam > 0 ? (siparisToplam / bazToplam) : 1m;
+                    hesaplananTutar += (detay.BirimFiyat * detay.Adet) * oran;
+                }
+
                 var success = await _odemeService.ParcaliOdemeAsync(request.MasaId, request.SiparisDetayIds, request.OdemeTipi);
                 if (success)
                 {
@@ -170,6 +204,19 @@ namespace QRMenu.Web.Controllers
                         .Where(m => m.Id == request.MasaId)
                         .Select(m => m.MasaNo)
                         .FirstOrDefaultAsync();
+
+                    _context.SecurityLogs.Add(new SecurityLog
+                    {
+                        EventType = "KasaTahsilat",
+                        Message = $"Kasa tahsilat yaptı: Masa {masaNo}, Tutar={hesaplananTutar:N2}, Tip={request.OdemeTipi}, KalemSayısı={secilenDetaylar.Count}, Siparişler=[{string.Join(',', secilenDetaylar.Select(x => x.SiparisId).Distinct())}]",
+                        Path = "/Kasa/TahsilatYap",
+                        Method = "POST",
+                        UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub") ?? User?.Identity?.Name,
+                        Severity = "Info",
+                        TableId = masaNo > 0 ? masaNo.ToString() : null,
+                        Timestamp = DateTime.UtcNow
+                    });
+                    await _context.SaveChangesAsync();
 
                     await _orderHub.Clients.Group(SignalRGroups.Cashier).SendAsync("OdemeYapildi", request.MasaId, masaNo, request.OdemeTipi);
                     await _orderHub.Clients.Group(SignalRGroups.Waiter).SendAsync("OdemeYapildi", request.MasaId, masaNo, request.OdemeTipi);
@@ -260,3 +307,4 @@ namespace QRMenu.Web.Controllers
         public string OdemeTipi { get; set; } = "Nakit"; // Nakit, Kredi Karti vb.
     }
 }
+
