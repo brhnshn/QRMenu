@@ -23,6 +23,12 @@ namespace QRMenu.Web.Middleware
 
             var statusCode = context.Response.StatusCode;
 
+            // Eğer Cookie Auth bizi login sayfasına yönlendirdiyse (302) asıl statü kodunu Items'dan al
+            if (context.Items.TryGetValue("SecurityStatusCode", out var forcedStatus) && forcedStatus is int fs)
+            {
+                statusCode = fs;
+            }
+
             // Sadece güvenlik ile ilgili hataları logla (401, 403, 429)
             if (statusCode == 401 || statusCode == 403 || statusCode == 429)
             {
@@ -65,8 +71,8 @@ namespace QRMenu.Web.Middleware
                     _ => "Info"
                 };
 
-                // Masa ID veya Personel bilgisini çekmeye çalış
-                var tableId = context.Session.GetString("MasaId") ?? context.Request.Cookies["MasaId"];
+                // Masa ID veya Personel bilgisini çekmeye çalış (Session yapılandırılmadığı için sadece Cookie'den alıyoruz)
+                var tableId = context.Request.Cookies["MasaId"];
 
                 var log = new SecurityLog
                 {

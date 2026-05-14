@@ -402,44 +402,176 @@ namespace QRMenu.Web.Controllers
         }
 
         [HttpGet("/admin/loglar")]
-        public async Task<IActionResult> Loglar(string? eventType, string? sortOrder, string? range, string? search)
+        public IActionResult Loglar()
         {
             ViewData["ActivePage"] = "Loglar";
             ViewData["PageTitle"] = "Güvenlik Logları";
+            return View();
+        }
 
-            var query = _context.SecurityLogs.AsQueryable();
-
-            if (!string.IsNullOrEmpty(eventType))
-                query = query.Where(l => l.EventType == eventType);
-
-            if (!string.IsNullOrEmpty(search))
+        [HttpGet("/admin/loglar/data")]
+        public async Task<IActionResult> LoglarData(string? search, string? area, string? range, int? take)
+        {
+            try
             {
-                query = query.Where(l => (l.IpAddress != null && l.IpAddress.Contains(search)) || 
-                                         (l.Message != null && l.Message.Contains(search)) || 
-                                         (l.Path != null && l.Path.Contains(search)));
-            }
+                var cutoff = ResolveLogCutoff(range);
+                var maxTake = Math.Clamp(take ?? 700, 1, 2000);
 
-            if (!string.IsNullOrEmpty(range))
-            {
-                var cutoff = range switch
+                var items = new List<LogListItem>(maxTake * 2);
+
+                // === Sadece SecurityLogs (Operasyon ve Güvenlik İşlemleri) ===
+                var securityQuery = _context.SecurityLogs.AsNoTracking();
+
+                if (cutoff.HasValue)
+                    securityQuery = securityQuery.Where(l => l.Timestamp >= cutoff.Value);
+
+                // Alan (Area) veritabanı filtrelemesi
+                if (!string.IsNullOrWhiteSpace(area))
                 {
-                    "15m" => DateTime.UtcNow.AddMinutes(-15),
-                    "1h" => DateTime.UtcNow.AddHours(-1),
-                    "24h" => DateTime.UtcNow.AddHours(-24),
-                    _ => DateTime.MinValue
-                };
-                query = query.Where(l => l.Timestamp >= cutoff);
+                    if (area.Equals("Kasa", StringComparison.OrdinalIgnoreCase))
+                        securityQuery = securityQuery.Where(l => (l.EventType != null && l.EventType.Contains("Kasa")) || (l.Path != null && l.Path.Contains("/Kasa")));
+                    else if (area.Equals("Mutfak", StringComparison.OrdinalIgnoreCase))
+                        securityQuery = securityQuery.Where(l => (l.EventType != null && l.EventType.Contains("Mutfak")) || (l.Path != null && l.Path.Contains("/Mutfak")));
+                    else if (area.Equals("Garson", StringComparison.OrdinalIgnoreCase))
+                        securityQuery = securityQuery.Where(l => (l.EventType != null && l.EventType.Contains("Garson")) || (l.Path != null && l.Path.Contains("/Garson")));
+                    else if (area.Equals("Güvenlik", StringComparison.OrdinalIgnoreCase))
+                        securityQuery = securityQuery.Where(l => (l.EventType == null || !l.EventType.Contains("Kasa")) && (l.Path == null || !l.Path.Contains("/Kasa")) && 
+                                                                 (l.EventType == null || !l.EventType.Contains("Mutfak")) && (l.Path == null || !l.Path.Contains("/Mutfak")) && 
+                                                                 (l.EventType == null || !l.EventType.Contains("Garson")) && (l.Path == null || !l.Path.Contains("/Garson")));
+                }
+
+                var securityLogs = await securityQuery
+                    .OrderByDescending(l => l.Timestamp)
+                    .Take(maxTake)
+                    .ToListAsync();
+
+                items.AddRange(securityLogs.Select(l => new LogListItem
+                {
+                    Timestamp = l.Timestamp,
+                    SourceType = "Security",
+                    Area = ResolveSecurityArea(l),
+                    EventType = l.EventType,
+                    Severity = l.Severity,
+                    Message = l.Message,
+                    Method = l.Method,
+                    Path = l.Path,
+                    User = l.UserId, // Geçici olarak ID atıyoruz
+                    Meta = BuildSecurityMeta(l)
+                }));
+
+                // Olası TabloAdi istisnaları için bellek üzerinde Alan filtresini tekrar uygulayalım
+                if (!string.IsNullOrWhiteSpace(area))
+                {
+                    items = items
+                        .Where(l => string.Equals(l.Area, area, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                }
+
+                // Arama Filtresi (Message, Event vb. birleştirilmiş metinlerde arama)
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var needle = search.Trim();
+                    items = items
+                        .Where(l =>
+                            ContainsIgnoreCase(l.Message, needle) ||
+                            ContainsIgnoreCase(l.EventType, needle) ||
+                            ContainsIgnoreCase(l.User, needle) ||
+                            ContainsIgnoreCase(l.Meta, needle) ||
+                            ContainsIgnoreCase(l.Path, needle))
+                        .ToList();
+                }
+
+                // === Kullanıcı İsimlerini Topluca Çözümleme ===
+                var allUserIds = items.Where(i => !string.IsNullOrWhiteSpace(i.User)).Select(i => i.User!).Distinct().ToList();
+                var userNames = await BuildUserNameMapFromIdsAsync(allUserIds);
+
+                foreach (var item in items)
+                {
+                    item.User = ResolveUserName(userNames, item.User);
+                }
+
+                var ordered = items
+                    .OrderByDescending(l => l.Timestamp)
+                    .Take(maxTake)
+                    .ToList();
+
+                return Json(new { total = ordered.Count, logs = ordered });
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Loglar data yükleme hatası.");
+                return Json(new { total = 0, logs = Array.Empty<object>(), error = "Loglar yüklenemedi." });
+            }
+        }
 
-            if (sortOrder == "asc")
-                query = query.OrderBy(l => l.Timestamp);
-            else
-                query = query.OrderByDescending(l => l.Timestamp);
+        private static DateTime? ResolveLogCutoff(string? range)
+        {
+            if (string.IsNullOrWhiteSpace(range))
+                return null;
 
-            var logs = await query.Take(1000).ToListAsync();
+            return range switch
+            {
+                "15m" => DateTime.UtcNow.AddMinutes(-15),
+                "1h" => DateTime.UtcNow.AddHours(-1),
+                "24h" => DateTime.UtcNow.AddHours(-24),
+                "7d" => DateTime.UtcNow.AddDays(-7),
+                _ => null
+            };
+        }
 
-            // Kullanıcı adlarını çek (ID -> Ad Soyad)
-            var users = await _userManager.Users.ToListAsync();
+        // Eski ResolveAuditUserName silindi, artık ortak ResolveUserName kullanılacak.
+
+        private static string ResolveSecurityArea(SecurityLog log)
+        {
+            var eventType = log.EventType ?? "";
+            var path = log.Path ?? "";
+
+            if (eventType.Contains("Kasa", StringComparison.OrdinalIgnoreCase) || path.Contains("/Kasa", StringComparison.OrdinalIgnoreCase))
+                return "Kasa";
+            if (eventType.Contains("Garson", StringComparison.OrdinalIgnoreCase) || path.Contains("/Garson", StringComparison.OrdinalIgnoreCase))
+                return "Garson";
+            if (eventType.Contains("Mutfak", StringComparison.OrdinalIgnoreCase) || path.Contains("/Mutfak", StringComparison.OrdinalIgnoreCase))
+                return "Mutfak";
+
+            return "Güvenlik";
+        }
+
+        private static string? BuildSecurityMeta(SecurityLog log)
+        {
+            if (!string.IsNullOrWhiteSpace(log.TableId))
+                return $"Masa {log.TableId}";
+
+            if (!string.IsNullOrWhiteSpace(log.IpAddress))
+                return $"IP {log.IpAddress}";
+
+            return null;
+        }
+
+        private static string? ResolveUserName(Dictionary<string, string> userNames, string? userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return "Anonim";
+
+            return userNames.TryGetValue(userId, out var name) ? name : userId;
+        }
+
+        private static bool ContainsIgnoreCase(string? value, string needle)
+        {
+            return !string.IsNullOrWhiteSpace(value) &&
+                   value.Contains(needle, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private async Task<Dictionary<string, string>> BuildUserNameMapFromIdsAsync(IEnumerable<string> userIds)
+        {
+            var distinctIds = userIds.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList();
+
+            if (distinctIds.Count == 0)
+                return new Dictionary<string, string>();
+
+            var users = await _userManager.Users
+                .Where(u => distinctIds.Contains(u.Id))
+                .ToListAsync();
+
             var userNames = new Dictionary<string, string>();
             foreach (var user in users)
             {
@@ -449,42 +581,22 @@ namespace QRMenu.Web.Controllers
                     : (user.AdSoyad ?? user.UserName ?? "Bilinmeyen Kullanıcı");
                 userNames[user.Id] = displayName;
             }
-            ViewBag.UserNames = userNames;
 
-            // İstatistikler (Yeni Tasarım İçin)
-            var now = DateTime.UtcNow;
-            var today = now.Date;
-            var last24h = now.AddHours(-24);
-            
-            ViewBag.TotalLogCount = await _context.SecurityLogs.CountAsync();
-            ViewBag.CriticalEventCount = await _context.SecurityLogs.CountAsync(l => l.EventType == "Forbidden" || l.EventType == "Unauthorized");
-            ViewBag.TodaySpamCount = await _context.SecurityLogs.CountAsync(l => l.EventType == "RateLimit" && l.Timestamp >= today);
-            ViewBag.LastCheckTime = TimeZoneInfo.ConvertTimeFromUtc(now, _turkeyTz).ToString("HH:mm");
+            return userNames;
+        }
 
-            // Son 24 saatlik saatlik dağılım (Chart.js için)
-            var last24hLogs = await _context.SecurityLogs
-                .Where(l => l.Timestamp >= last24h)
-                .Select(l => new { l.Timestamp, l.EventType })
-                .ToListAsync();
-
-            var hourlyData = Enumerable.Range(0, 24).Select(i =>
-            {
-                var hourStart = last24h.AddHours(i);
-                var hourEnd = hourStart.AddHours(1);
-                return last24hLogs.Count(l => l.Timestamp >= hourStart && l.Timestamp < hourEnd);
-            }).ToList();
-
-            var hourlyLabels = Enumerable.Range(0, 24).Select(i =>
-                TimeZoneInfo.ConvertTimeFromUtc(last24h.AddHours(i), _turkeyTz).ToString("HH:00")
-            ).ToList();
-
-            ViewBag.HourlyData = System.Text.Json.JsonSerializer.Serialize(hourlyData);
-            ViewBag.HourlyLabels = System.Text.Json.JsonSerializer.Serialize(hourlyLabels);
-
-            ViewBag.CurrentFilter = eventType;
-            ViewBag.CurrentSort = sortOrder;
-            
-            return View(logs);
+        private sealed class LogListItem
+        {
+            public DateTime Timestamp { get; init; }
+            public string SourceType { get; init; } = string.Empty;
+            public string Area { get; init; } = string.Empty;
+            public string EventType { get; init; } = string.Empty;
+            public string Severity { get; init; } = "Info";
+            public string Message { get; init; } = string.Empty;
+            public string? Method { get; init; }
+            public string? Path { get; init; }
+            public string? User { get; set; }
+            public string? Meta { get; init; }
         }
 
         [HttpGet("/admin/loglar-pdf")]

@@ -123,6 +123,26 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SameSite = SameSiteMode.Strict;
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
+
+    options.Events = new Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationEvents
+    {
+        OnRedirectToLogin = context =>
+        {
+            // Eğer AJAX isteği değilse ve auth hatasıysa, middleware'in yakalaması için asıl statüyü Items'a at
+            if (!context.Request.Path.StartsWithSegments("/Auth/Login"))
+            {
+                context.HttpContext.Items["SecurityStatusCode"] = 401;
+            }
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        },
+        OnRedirectToAccessDenied = context =>
+        {
+            context.HttpContext.Items["SecurityStatusCode"] = 403;
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        }
+    };
 });
 
 // Güvenlik damgası (SecurityStamp) doğrulamasını her istekte yap

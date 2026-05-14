@@ -1,4 +1,4 @@
-﻿@{
+@{
     Layout = "_AdminLayout";
     ViewData["ActivePage"] = "Loglar";
     ViewData["PageTitle"] = "Log Kayıtları";
@@ -24,25 +24,14 @@
         <div class="mb-3 text-xs font-semibold text-stone-500">
             Log kayıtları güvenlik politikası gereği en fazla 1 ay saklanır, daha eski kayıtlar otomatik silinir.
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
-            <input id="search" class="log-input md:col-span-2 px-4 py-2 rounded-xl" placeholder="Mesaj, olay, kullanıcı veya not ara..." />
-            <select id="source" class="log-input px-4 py-2 rounded-xl">
-                <option value="">Kaynak: Tümü</option>
-                <option value="Security">Güvenlik</option>
-                <option value="Audit">Sistem Kaydı</option>
-            </select>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <input id="search" class="log-input px-4 py-2 rounded-xl" placeholder="Mesaj, olay, kullanıcı veya not ara..." />
             <select id="area" class="log-input px-4 py-2 rounded-xl">
                 <option value="">Alan: Tümü</option>
                 <option value="Güvenlik">Güvenlik</option>
                 <option value="Mutfak">Mutfak</option>
                 <option value="Garson">Garson</option>
                 <option value="Kasa">Kasa</option>
-            </select>
-            <select id="severity" class="log-input px-4 py-2 rounded-xl">
-                <option value="">Seviye: Tümü</option>
-                <option value="Critical">Kritik</option>
-                <option value="Warning">Uyarı</option>
-                <option value="Info">Bilgi</option>
             </select>
             <select id="range" class="log-input px-4 py-2 rounded-xl">
                 <option value="">Tüm Zaman</option>
@@ -61,7 +50,6 @@
                 <thead class="bg-stone-50 text-stone-500 uppercase text-[11px]">
                     <tr>
                         <th class="text-left px-4 py-3">Zaman</th>
-                        <th class="text-left px-4 py-3">Kaynak</th>
                         <th class="text-left px-4 py-3">Alan</th>
                         <th class="text-left px-4 py-3">Olay</th>
                         <th class="text-left px-4 py-3">Mesaj</th>
@@ -87,9 +75,7 @@
 <script>
     const filters = {
         search: document.getElementById('search'),
-        source: document.getElementById('source'),
         area: document.getElementById('area'),
-        severity: document.getElementById('severity'),
         range: document.getElementById('range')
     };
 
@@ -103,16 +89,32 @@
     let timer;
     let currentLogs = [];
 
+    // URL'den filtreleri oku (sayfa yenilemede korunması için)
+    function restoreFiltersFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        for (const key in filters) {
+            const val = params.get(key);
+            if (val) filters[key].value = val;
+        }
+    }
+
+    // Filtreleri URL'ye yaz (history'yi değiştir, sayfa yenileme yok)
+    function syncFiltersToUrl() {
+        const params = new URLSearchParams();
+        for (const key in filters) {
+            if (filters[key].value) params.set(key, filters[key].value);
+        }
+        const qs = params.toString();
+        const newUrl = window.location.pathname + (qs ? '?' + qs : '');
+        window.history.replaceState(null, '', newUrl);
+    }
+
     for (const key in filters) {
         filters[key].addEventListener('input', () => {
             clearTimeout(timer);
             timer = setTimeout(loadLogs, 250);
         });
         filters[key].addEventListener('change', loadLogs);
-    }
-
-    function kaynakCevir(value) {
-        return value === 'Security' ? 'Güvenlik' : 'Sistem Kaydı';
     }
 
     function seviyeCevir(value) {
@@ -125,6 +127,9 @@
         if (value === 'Unauthorized') return 'Yetkisiz Erişim';
         if (value === 'Forbidden') return 'Erişim Engellendi';
         if (value === 'RateLimit') return 'Aşırı İstek';
+        if (value === 'INSERT') return 'Yeni Kayıt Eklendi';
+        if (value === 'UPDATE') return 'Kayıt Güncellendi';
+        if (value === 'DELETE') return 'Kayıt Silindi';
         return value || '-';
     }
 
@@ -139,10 +144,8 @@
         const when = new Date(x.timestamp).toLocaleString('tr-TR');
         detailContent.innerHTML = `
             <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Zaman</div><div class="font-semibold">${escapeHtml(when)}</div></div>
-            <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Kaynak</div><div class="font-semibold">${escapeHtml(kaynakCevir(x.sourceType))}</div></div>
             <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Alan</div><div class="font-semibold">${escapeHtml(x.area)}</div></div>
             <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Olay</div><div class="font-semibold text-primary">${escapeHtml(olayCevir(x.eventType))}</div></div>
-            <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Seviye</div><div class="font-semibold">${escapeHtml(seviyeCevir(x.severity))}</div></div>
             <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Mesaj</div><div class="font-semibold">${escapeHtml(x.message)}</div></div>
             <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Yol</div><div class="font-mono text-xs">${escapeHtml(x.method)} ${escapeHtml(x.path)}</div></div>
             <div class="p-3 rounded-xl bg-stone-50 border border-stone-200"><div class="text-stone-500 text-xs">Kullanıcı</div><div class="font-semibold">${escapeHtml(x.user)}</div></div>
@@ -165,11 +168,12 @@
     });
 
     async function loadLogs() {
+        // Filtreleri URL'ye yaz
+        syncFiltersToUrl();
+
         const p = new URLSearchParams({ take: '700' });
         if (filters.search.value) p.set('search', filters.search.value);
-        if (filters.source.value) p.set('source', filters.source.value);
         if (filters.area.value) p.set('area', filters.area.value);
-        if (filters.severity.value) p.set('severity', filters.severity.value);
         if (filters.range.value) p.set('range', filters.range.value);
 
         const resp = await fetch('/admin/loglar/data?' + p.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
@@ -180,30 +184,34 @@
         currentLogs = data.logs || [];
 
         if (currentLogs.length === 0) {
-            logBody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-stone-500">Kayıt bulunamadı.</td></tr>';
+            logBody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-stone-500">Kayıt bulunamadı.</td></tr>';
             return;
         }
 
         logBody.innerHTML = currentLogs.map((x, index) => {
             const when = new Date(x.timestamp).toLocaleString('tr-TR');
             const sevClass = x.severity === 'Critical' ? 'text-primary' : x.severity === 'Warning' ? 'text-amber-700' : 'text-stone-500';
-            const kaynak = kaynakCevir(x.sourceType);
             const olay = olayCevir(x.eventType);
-            const seviye = seviyeCevir(x.severity);
+
+            let icon = '';
+            if (x.area === 'Güvenlik') icon = `<svg class="w-4 h-4 text-primary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>`;
+            else if (x.area === 'Mutfak') icon = `<svg class="w-4 h-4 text-amber-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>`;
+            else if (x.area === 'Garson') icon = `<svg class="w-4 h-4 text-emerald-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>`;
+            else if (x.area === 'Kasa') icon = `<svg class="w-4 h-4 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>`;
 
             return `
                 <tr class="row-hover border-t border-stone-200 cursor-pointer" onclick="openDetails(${index})">
                     <td class="px-4 py-3 whitespace-nowrap font-semibold">${escapeHtml(when)}</td>
-                    <td class="px-4 py-3">${escapeHtml(kaynak)}</td>
-                    <td class="px-4 py-3">${escapeHtml(x.area)}</td>
-                    <td class="px-4 py-3"><span class="font-bold ${sevClass}">${escapeHtml(olay)}</span><div class="text-[11px] text-stone-500">${escapeHtml(seviye)}</div></td>
+                    <td class="px-4 py-3 flex items-center h-full pt-4">${icon} <span class="font-semibold">${escapeHtml(x.area)}</span></td>
+                    <td class="px-4 py-3"><span class="font-bold ${sevClass}">${escapeHtml(olay)}</span></td>
                     <td class="px-4 py-3">${escapeHtml(x.message)} <div class="text-[11px] text-stone-500 font-mono">${escapeHtml(x.method)} ${escapeHtml(x.path)}</div></td>
-                    <td class="px-4 py-3">${escapeHtml(x.user)}</td>
+                    <td class="px-4 py-3 font-semibold">${escapeHtml(x.user)}</td>
                     <td class="px-4 py-3 text-[12px] text-stone-500">${escapeHtml(x.meta)}</td>
                 </tr>`;
         }).join('');
     }
 
+    // Başlangıçta URL'den filtreleri oku, sonra yükle
+    restoreFiltersFromUrl();
     loadLogs();
 </script>
-
