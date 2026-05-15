@@ -36,3 +36,8 @@ docs/Sunum_Rehberi.html
 # Ekran Görüntüleri
 Proje Ekran Görüntüleri/
 docs/Html/
+
+# Build and Config
+.codex-build/
+.config/
+.github/workflows/
