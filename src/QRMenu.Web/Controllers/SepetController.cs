@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using QRMenu.Core.Interfaces;
 using QRMenu.Data.Data;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 namespace QRMenu.Web.Controllers
 {
@@ -94,6 +95,9 @@ namespace QRMenu.Web.Controllers
         [HttpPost("/sepet/ekle")]
         public async Task<IActionResult> Ekle([FromBody] SepeteEkleRequest request)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(new { success = false, message = "Gecersiz istek." });
+
             var oturumId = GetOturumId();
             if (oturumId == null) return Unauthorized();
 
@@ -135,7 +139,7 @@ namespace QRMenu.Web.Controllers
             var oturumId = GetOturumId();
             if (oturumId == null) return Unauthorized();
 
-            var result = await _sepetService.RemoveItemAsync(detayId);
+            var result = await _sepetService.RemoveItemAsync(detayId, oturumId.Value);
             if (!result) return Json(new { success = false, message = "Ürün bulunamadı" });
 
             var sepet = await _sepetService.GetSepetByOturumAsync(oturumId.Value);
@@ -153,13 +157,16 @@ namespace QRMenu.Web.Controllers
         [HttpPost("/sepet/guncelle/{detayId:int}")]
         public async Task<IActionResult> Guncelle(int detayId, [FromBody] AdetGuncelleRequest request)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(new { success = false, message = "Gecersiz istek." });
+
             var oturumId = GetOturumId();
             if (oturumId == null) return Unauthorized();
 
             bool result;
             try
             {
-                result = await _sepetService.UpdateQuantityAsync(detayId, request.Adet);
+                result = await _sepetService.UpdateQuantityAsync(detayId, request.Adet, oturumId.Value);
             }
             catch (InvalidOperationException ex)
             {
@@ -245,14 +252,18 @@ namespace QRMenu.Web.Controllers
     // ===== Request DTO'lar =====
     public class SepeteEkleRequest
     {
+        [Range(1, int.MaxValue)]
         public int UrunId { get; set; }
+        [Range(1, int.MaxValue)]
         public int? UrunVaryasyonId { get; set; }
+        [Range(1, 50)]
         public int Adet { get; set; } = 1;
         public List<int>? OpsiyonIds { get; set; }
     }
 
     public class AdetGuncelleRequest
     {
+        [Range(0, 50)]
         public int Adet { get; set; }
     }
 }

@@ -47,6 +47,8 @@
     </style>
 </head>
 <body class="bg-surface font-body text-on-surface selection:bg-primary-container selection:text-on-primary-container">
+    @Html.AntiForgeryToken()
+    <script src="~/js/site.js" asp-append-version="true"></script>
 
     <!-- Top Navigation (Stitch Cart) -->
     <header class="fixed top-0 w-full z-[60] bg-white/80 backdrop-blur-md">

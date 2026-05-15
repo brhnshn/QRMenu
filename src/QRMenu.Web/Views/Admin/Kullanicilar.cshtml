@@ -246,6 +246,12 @@
         Mutfak: 'bg-stone-100 text-stone-600'
     };
 
+    function escapeHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = value == null ? '' : String(value);
+        return div.innerHTML;
+    }
+
     async function veriYukle() {
         try {
             const r = await fetch('/admin/kullanici-listesi');
@@ -283,18 +289,21 @@
 
         // Table Rendering
         tbody.innerHTML = filteredData.map(function(k) {
-            const init = k.adSoyad ? k.adSoyad.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase() : '??';
+            const init = k.adSoyad ? escapeHtml(k.adSoyad.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase()) : '??';
+            const kullaniciAdi = escapeHtml(k.kullaniciAdi);
+            const adSoyad = escapeHtml(k.adSoyad || '');
+            const rol = escapeHtml(k.rol);
             const rolStili = rolRenkler[k.rol] || 'bg-stone-100 text-stone-600';
             return `
                 <tr class="group hover:bg-stone-50 transition-colors">
-                    <td class="px-8 py-6 font-medium text-on-surface">@@${k.kullaniciAdi}</td>
+                    <td class="px-8 py-6 font-medium text-on-surface">@@${kullaniciAdi}</td>
                     <td class="px-8 py-6">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">${init}</div>
-                            <span class="font-headline font-semibold text-on-surface">${k.adSoyad || ''}</span>
+                            <span class="font-headline font-semibold text-on-surface">${adSoyad}</span>
                         </div>
                     </td>
-                    <td class="px-8 py-6"><span class="px-3 py-1.5 rounded-lg ${rolStili} text-xs font-bold uppercase tracking-wider">${k.rol}</span></td>
+                    <td class="px-8 py-6"><span class="px-3 py-1.5 rounded-lg ${rolStili} text-xs font-bold uppercase tracking-wider">${rol}</span></td>
                     <td class="px-8 py-6">
                         <div class="flex items-center gap-2 ${k.aktifMi ? '' : 'opacity-50'}">
                             <span class="w-2 h-2 rounded-full ${k.aktifMi ? 'bg-emerald-500' : 'bg-stone-300'}"></span>

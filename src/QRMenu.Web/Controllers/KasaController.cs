@@ -9,6 +9,7 @@ using QRMenu.Web.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using QRMenu.Web.Models;
 using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 
 namespace QRMenu.Web.Controllers
 {
@@ -159,6 +160,9 @@ namespace QRMenu.Web.Controllers
         [HttpPost("/Kasa/TahsilatYap")]
         public async Task<IActionResult> TahsilatYap([FromBody] TahsilatRequest request)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(new { success = false, message = "Gecersiz istek." });
+
             try
             {
                 var secilenDetaylar = await _context.SiparisDetaylar
@@ -235,7 +239,7 @@ namespace QRMenu.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Tahsilat işlemi sırasında hata oluştu");
-                return Json(new { success = false, message = ex.Message });
+                return StatusCode(500, new { success = false, message = "Islem sirasinda hata olustu." });
             }
         }
 
@@ -295,15 +299,20 @@ namespace QRMenu.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Kasa seçili kalem iptal işlemi sırasında hata oluştu");
-                return Json(new { success = false, message = ex.Message });
+                return StatusCode(500, new { success = false, message = "Islem sirasinda hata olustu." });
             }
         }
     }
 
     public class TahsilatRequest
     {
+        [Range(1, int.MaxValue)]
         public int MasaId { get; set; }
+        [Required]
+        [MinLength(1)]
         public List<int> SiparisDetayIds { get; set; } = new();
+        [Required]
+        [MaxLength(30)]
         public string OdemeTipi { get; set; } = "Nakit"; // Nakit, Kredi Karti vb.
     }
 }

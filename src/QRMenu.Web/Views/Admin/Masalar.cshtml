@@ -331,7 +331,7 @@
             cancelButtonText: 'İptal'
         });
         if (!result.isConfirmed) return;
-        var r = await fetch('/admin/masa-sil/' + masaNo);
+        var r = await fetch('/admin/masa-sil/' + masaNo, { method: 'POST' });
         var data = await r.json();
         
         if (data.success) {

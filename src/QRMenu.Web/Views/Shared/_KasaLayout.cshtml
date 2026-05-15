@@ -194,6 +194,7 @@
     @RenderSection("Styles", required: false)
 </head>
 <body class="bg-surface text-on-surface">
+    @Html.AntiForgeryToken()
     <aside id="kasaSidebar" class="fixed left-0 top-0 h-full flex flex-col p-6 h-screen w-64 border-r-0 bg-[#f8f6f5] font-['Plus_Jakarta_Sans'] antialiased z-50">
         <div class="flex items-center gap-3 mb-10">
             <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
@@ -251,6 +252,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
     <script>
         const kasaSidebarStorageKey = 'kasaSidebarCollapsed';
 

@@ -442,6 +442,18 @@ namespace QRMenu.Data.Services
                 .FirstOrDefaultAsync(s => s.Id == siparisId);
         }
 
+        public async Task<Siparis?> GetSiparisByOturumAsync(int siparisId, int oturumId)
+        {
+            return await _context.Siparisler
+                .Include(s => s.SiparisDetaylar)
+                    .ThenInclude(sd => sd.Urun)
+                .Include(s => s.SiparisDetaylar)
+                    .ThenInclude(sd => sd.UrunVaryasyon)
+                .Include(s => s.Masa)
+                .AsSplitQuery()
+                .FirstOrDefaultAsync(s => s.Id == siparisId && s.OturumId == oturumId);
+        }
+
         /// <summary>
         /// Masanın aktif (iptal/iade dışı) siparişlerini getirir
         /// </summary>

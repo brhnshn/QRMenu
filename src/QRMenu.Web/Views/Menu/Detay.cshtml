@@ -54,6 +54,8 @@
     </style>
 </head>
 <body class="bg-surface text-on-surface font-body selection:bg-primary/20">
+    @Html.AntiForgeryToken()
+    <script src="~/js/site.js" asp-append-version="true"></script>
 
     <!-- Top Navigation (Stitch — z-[60]) -->
     <header class="fixed top-0 w-full z-[60] bg-white/80 backdrop-blur-md">

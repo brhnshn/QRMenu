@@ -1,4 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
@@ -129,7 +130,7 @@ namespace QRMenu.Web.Controllers
         }
 
         /// <summary>
-        /// Siparişlerim sayfası: GET /siparislerim
+        /// SipariÅŸlerim sayfasÄ±: GET /siparislerim
         /// </summary>
         [HttpGet("/siparislerim")]
         public IActionResult SiparislerimSayfa()
@@ -145,7 +146,7 @@ namespace QRMenu.Web.Controllers
         }
 
         /// <summary>
-        /// Garson çağır: POST /siparis/garson-cagir (AJAX)
+        /// Garson Ã§aÄŸÄ±r: POST /siparis/garson-cagir (AJAX)
         /// </summary>
         [HttpPost("/siparis/garson-cagir")]
         [EnableRateLimiting("GarsonCagirPolicy")]
@@ -155,15 +156,15 @@ namespace QRMenu.Web.Controllers
             if (bilgi == null) return Unauthorized();
 
             var masaNo = bilgi.Value.masaNo;
-            _logger.LogInformation("Garson çağrıldı! Masa={MasaNo}", masaNo);
+            _logger.LogInformation("Garson Ã§aÄŸrÄ±ldÄ±! Masa={MasaNo}", masaNo);
 
             await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("GarsonCagrisi", masaNo);
 
-            return Json(new { success = true, message = "Garson çağrıldı!" });
+            return Json(new { success = true, message = "Garson Ã§aÄŸrÄ±ldÄ±!" });
         }
 
         /// <summary>
-        /// Sepetten sipariş oluştur: POST /siparis/olustur (AJAX)
+        /// Sepetten sipariÅŸ oluÅŸtur: POST /siparis/olustur (AJAX)
         /// </summary>
         [EnableRateLimiting("SiparisLimiti")]
         [HttpPost("/siparis/olustur")]
@@ -176,7 +177,7 @@ namespace QRMenu.Web.Controllers
             {
                 var sepet = await _sepetService.GetSepetByOturumAsync(oturumId.Value);
                 if (sepet == null)
-                    return Json(new { success = false, message = "Sepet bulunamadı." });
+                    return Json(new { success = false, message = "Sepet bulunamadÄ±." });
 
                 var normalizeNot = request?.Notlar?.Trim();
                 if (string.IsNullOrWhiteSpace(normalizeNot))
@@ -187,7 +188,7 @@ namespace QRMenu.Web.Controllers
                     return Json(new
                     {
                         success = false,
-                        message = $"Sipariş notu en fazla {SiparisNotMaxLength} karakter olabilir."
+                        message = $"SipariÅŸ notu en fazla {SiparisNotMaxLength} karakter olabilir."
                     });
                 }
 
@@ -210,7 +211,7 @@ namespace QRMenu.Web.Controllers
                 return Json(new
                 {
                     success = true,
-                    message = "Siparişiniz alındı!",
+                    message = "SipariÅŸiniz alÄ±ndÄ±!",
                     siparisId = siparis.Id,
                     gunlukSiparisNo = siparis.GunlukSiparisNo,
                     toplamTutar = siparis.ToplamTutar,
@@ -224,14 +225,17 @@ namespace QRMenu.Web.Controllers
         }
 
         /// <summary>
-        /// Sipariş detayı: GET /siparis/{id} (AJAX)
+        /// SipariÅŸ detayÄ±: GET /siparis/{id} (AJAX)
         /// </summary>
         [HttpGet("/siparis/{id:int}")]
         public async Task<IActionResult> Detay(int id)
         {
-            var siparis = await _siparisService.GetSiparisAsync(id);
+            var oturumId = GetOturumId();
+            if (oturumId == null) return Unauthorized();
+
+            var siparis = await _siparisService.GetSiparisByOturumAsync(id, oturumId.Value);
             if (siparis == null)
-                return Json(new { success = false, message = "Sipariş bulunamadı." });
+                return Json(new { success = false, message = "SipariÅŸ bulunamadÄ±." });
 
             return Json(new
             {
@@ -254,8 +258,9 @@ namespace QRMenu.Web.Controllers
         }
 
         /// <summary>
-        /// Sipariş durumu güncelle: POST /siparis/durum-guncelle (AJAX)
+        /// SipariÅŸ durumu gÃ¼ncelle: POST /siparis/durum-guncelle (AJAX)
         /// </summary>
+        [Authorize(Policy = "RequireStaff")]
         [HttpPost("/siparis/durum-guncelle")]
         public async Task<IActionResult> DurumGuncelle([FromBody] DurumGuncelleRequest request)
         {
@@ -267,7 +272,7 @@ namespace QRMenu.Web.Controllers
                     success = true,
                     siparisId = siparis.Id,
                     durum = siparis.Durum.ToString(),
-                    message = $"Sipariş durumu güncellendi: {siparis.Durum}"
+                    message = $"SipariÅŸ durumu gÃ¼ncellendi: {siparis.Durum}"
                 });
             }
             catch (InvalidOperationException ex)
@@ -277,7 +282,7 @@ namespace QRMenu.Web.Controllers
         }
 
         /// <summary>
-        /// Aktif oturumun siparişleri: GET /siparis/siparislerim (AJAX)
+        /// Aktif oturumun sipariÅŸleri: GET /siparis/siparislerim (AJAX)
         /// </summary>
         [HttpGet("/siparis/siparislerim")]
         public async Task<IActionResult> Siparislerim()
@@ -309,7 +314,7 @@ namespace QRMenu.Web.Controllers
         }
 
         /// <summary>
-        /// Oyun seçim verisi: GET /siparis/oyun-secimleri/{id}
+        /// Oyun seÃ§im verisi: GET /siparis/oyun-secimleri/{id}
         /// </summary>
         [HttpGet("/siparis/oyun-secimleri/{id:int}")]
         public async Task<IActionResult> OyunSecimleri(int id)
@@ -323,13 +328,13 @@ namespace QRMenu.Web.Controllers
                     .FirstOrDefaultAsync(s => s.Id == id && s.OturumId == oturumId.Value);
 
                 if (siparis == null)
-                    return Json(new { success = false, message = "Sipariş bulunamadı." });
+                    return Json(new { success = false, message = "SipariÅŸ bulunamadÄ±." });
 
                 if (siparis.Durum == SiparisDurum.Iptal || siparis.Durum == SiparisDurum.Iade || siparis.Durum == SiparisDurum.TamOdendi)
-                    return Json(new { success = false, message = "Oyun bu sipariş durumunda oynanamaz." });
+                    return Json(new { success = false, message = "Oyun bu sipariÅŸ durumunda oynanamaz." });
 
                 if (siparis.OyunOynandiMi)
-                    return Json(new { success = false, message = "Bu sipariş için daha önce şansınızı denediniz." });
+                    return Json(new { success = false, message = "Bu sipariÅŸ iÃ§in daha Ã¶nce ÅŸansÄ±nÄ±zÄ± denediniz." });
 
                 var aktifOyunlar = await _db.OyunAyarlar
                     .Include(o => o.Oduller)
@@ -338,7 +343,7 @@ namespace QRMenu.Web.Controllers
 
                 if (!aktifOyunlar.Any())
                 {
-                    return Json(new { success = false, message = "Şu an aktif oyun bulunmuyor." });
+                    return Json(new { success = false, message = "Åu an aktif oyun bulunmuyor." });
                 }
 
                 var memoryUrunler = await _db.Urunler
@@ -423,8 +428,8 @@ namespace QRMenu.Web.Controllers
                         new
                         {
                             tip = "CARKIFELEK",
-                            ad = "Çarkıfelek",
-                            aciklama = "Çarkı döndür, çıkan ödülü anında kazan.",
+                            ad = "Ã‡arkÄ±felek",
+                            aciklama = "Ã‡arkÄ± dÃ¶ndÃ¼r, Ã§Ä±kan Ã¶dÃ¼lÃ¼ anÄ±nda kazan.",
                             oyunToken = carkToken,
                             aktif = aktifOyunlar.Any(o => o.Tip == "CARKIFELEK" && o.Oduller.Any()),
                             oduller = aktifOyunlar
@@ -436,8 +441,8 @@ namespace QRMenu.Web.Controllers
                                     odulTanim = !string.IsNullOrWhiteSpace(od.OdulTanim)
                                         ? od.OdulTanim
                                         : (od.IndirimYuzdesi > 0
-                                            ? $"%{od.IndirimYuzdesi} İndirim"
-                                            : $"{od.IndirimTutari} TL İndirim"),
+                                            ? $"%{od.IndirimYuzdesi} Ä°ndirim"
+                                            : $"{od.IndirimTutari} TL Ä°ndirim"),
                                     ihtimal = od.IhtimalYuzdesi
                                 }),
                             hafizaKartlari = Array.Empty<object>()
@@ -445,8 +450,8 @@ namespace QRMenu.Web.Controllers
                         new
                         {
                             tip = "HAFIZA",
-                            ad = "Hafıza Kartı",
-                            aciklama = "16 kartı 45 saniyede eşleştir, başarırsan ödülü kap.",
+                            ad = "HafÄ±za KartÄ±",
+                            aciklama = "16 kartÄ± 45 saniyede eÅŸleÅŸtir, baÅŸarÄ±rsan Ã¶dÃ¼lÃ¼ kap.",
                             oyunToken = hafizaToken,
                             aktif = aktifOyunlar.Any(o => o.Tip == "HAFIZA" && o.Oduller.Any()) && memoryCards.Count == 16,
                             oduller = aktifOyunlar
@@ -458,8 +463,8 @@ namespace QRMenu.Web.Controllers
                                     odulTanim = !string.IsNullOrWhiteSpace(od.OdulTanim)
                                         ? od.OdulTanim
                                         : (od.IndirimYuzdesi > 0
-                                            ? $"%{od.IndirimYuzdesi} İndirim"
-                                            : $"{od.IndirimTutari} TL İndirim"),
+                                            ? $"%{od.IndirimYuzdesi} Ä°ndirim"
+                                            : $"{od.IndirimTutari} TL Ä°ndirim"),
                                     ihtimal = od.IhtimalYuzdesi
                                 }),
                             hafizaKartlari = memoryCards
@@ -467,8 +472,8 @@ namespace QRMenu.Web.Controllers
                         new
                         {
                             tip = "KAZIKAZAN",
-                            ad = "Kazı Kazan",
-                            aciklama = "Kazı alanını aç, şansın varsa sürpriz ödülü al.",
+                            ad = "KazÄ± Kazan",
+                            aciklama = "KazÄ± alanÄ±nÄ± aÃ§, ÅŸansÄ±n varsa sÃ¼rpriz Ã¶dÃ¼lÃ¼ al.",
                             oyunToken = kaziToken,
                             aktif = aktifOyunlar.Any(o => o.Tip == "KAZIKAZAN" && o.Oduller.Any()),
                             oduller = aktifOyunlar
@@ -480,8 +485,8 @@ namespace QRMenu.Web.Controllers
                                     odulTanim = !string.IsNullOrWhiteSpace(od.OdulTanim)
                                         ? od.OdulTanim
                                         : (od.IndirimYuzdesi > 0
-                                            ? $"%{od.IndirimYuzdesi} İndirim"
-                                            : $"{od.IndirimTutari} TL İndirim"),
+                                            ? $"%{od.IndirimYuzdesi} Ä°ndirim"
+                                            : $"{od.IndirimTutari} TL Ä°ndirim"),
                                     ihtimal = od.IhtimalYuzdesi
                                 }),
                             hafizaKartlari = Array.Empty<object>()
@@ -496,7 +501,7 @@ namespace QRMenu.Web.Controllers
         }
 
         /// <summary>
-        /// Seçilen oyun sonucu: POST /siparis/oyun-sonuclandir/{id}
+        /// SeÃ§ilen oyun sonucu: POST /siparis/oyun-sonuclandir/{id}
         /// </summary>
         [HttpPost("/siparis/oyun-sonuclandir/{id:int}")]
         public async Task<IActionResult> OyunSonuclandir(int id, [FromBody] OyunSonucRequest request)
@@ -510,22 +515,22 @@ namespace QRMenu.Web.Controllers
                     .FirstOrDefaultAsync(s => s.Id == id && s.OturumId == oturumId.Value);
 
                 if (siparis == null)
-                    return Json(new { success = false, message = "Sipariş bulunamadı." });
+                    return Json(new { success = false, message = "SipariÅŸ bulunamadÄ±." });
 
                 if (siparis.Durum == SiparisDurum.Iptal || siparis.Durum == SiparisDurum.Iade || siparis.Durum == SiparisDurum.TamOdendi)
-                    return Json(new { success = false, message = "Oyun bu sipariş durumunda oynanamaz." });
+                    return Json(new { success = false, message = "Oyun bu sipariÅŸ durumunda oynanamaz." });
 
                 if (siparis.OyunOynandiMi)
-                    return Json(new { success = false, message = "Bu sipariş için daha önce şansınızı denediniz." });
+                    return Json(new { success = false, message = "Bu sipariÅŸ iÃ§in daha Ã¶nce ÅŸansÄ±nÄ±zÄ± denediniz." });
 
                 if (!TryReadGameToken(request.OyunToken, out var tokenPayload) || tokenPayload == null)
-                    return Json(new { success = false, message = "Geçersiz oyun oturumu. Lütfen oyunu tekrar açın." });
+                    return Json(new { success = false, message = "GeÃ§ersiz oyun oturumu. LÃ¼tfen oyunu tekrar aÃ§Ä±n." });
 
                 if (tokenPayload.SiparisId != siparis.Id || tokenPayload.OturumId != oturumId.Value)
-                    return Json(new { success = false, message = "Oyun oturumu bu siparişe ait değil." });
+                    return Json(new { success = false, message = "Oyun oturumu bu sipariÅŸe ait deÄŸil." });
 
                 if (tokenPayload.ExpiresAtUtc < DateTime.UtcNow)
-                    return Json(new { success = false, message = "Oyun süresi doldu. Lütfen tekrar deneyin." });
+                    return Json(new { success = false, message = "Oyun sÃ¼resi doldu. LÃ¼tfen tekrar deneyin." });
 
                 var secilenTip = tokenPayload.OyunTipi;
                 var oyun = await _db.OyunAyarlar
@@ -537,13 +542,13 @@ namespace QRMenu.Web.Controllers
                 if (oyun == null || !oyun.Oduller.Any())
                 {
                     await _db.SaveChangesAsync();
-                    return Json(new { success = true, kazandiMi = false, message = "Seçtiğiniz oyunda şu an ödül havuzu yok." });
+                    return Json(new { success = true, kazandiMi = false, message = "SeÃ§tiÄŸiniz oyunda ÅŸu an Ã¶dÃ¼l havuzu yok." });
                 }
 
                 if (!request.BasariliMi)
                 {
                     await _db.SaveChangesAsync();
-                    return Json(new { success = true, kazandiMi = false, message = "Bu turda kazanamadınız. Bir dahaki sefere bol şans!" });
+                    return Json(new { success = true, kazandiMi = false, message = "Bu turda kazanamadÄ±nÄ±z. Bir dahaki sefere bol ÅŸans!" });
                 }
 
                 if (secilenTip == "HAFIZA")
@@ -552,7 +557,7 @@ namespace QRMenu.Web.Controllers
                     if (!validMoves)
                     {
                         await _db.SaveChangesAsync();
-                        return Json(new { success = true, kazandiMi = false, message = "Hafıza oyunu doğrulanamadı. Ödül verilemedi." });
+                        return Json(new { success = true, kazandiMi = false, message = "HafÄ±za oyunu doÄŸrulanamadÄ±. Ã–dÃ¼l verilemedi." });
                     }
                 }
 
@@ -584,10 +589,10 @@ namespace QRMenu.Web.Controllers
                     var bosIndex = oduller.FindIndex(o => o.IndirimYuzdesi <= 0 && o.IndirimTutari <= 0);
                     if (bosIndex >= 0)
                     {
-                        var bosEtiket = secilenTip == "CARKIFELEK" ? "Boş Dilim" : "Boş Sonuç";
+                        var bosEtiket = secilenTip == "CARKIFELEK" ? "BoÅŸ Dilim" : "BoÅŸ SonuÃ§";
                         var bosMesaj = secilenTip == "CARKIFELEK"
-                            ? "Bu tur boş dilim geldi. Bu siparişte ekstra indirim uygulanmadı."
-                            : "Bu tur boş sonuç geldi. Bu siparişte ekstra indirim uygulanmadı.";
+                            ? "Bu tur boÅŸ dilim geldi. Bu sipariÅŸte ekstra indirim uygulanmadÄ±."
+                            : "Bu tur boÅŸ sonuÃ§ geldi. Bu sipariÅŸte ekstra indirim uygulanmadÄ±.";
 
                         await _db.SaveChangesAsync();
                         return Json(new
@@ -602,16 +607,16 @@ namespace QRMenu.Web.Controllers
                     }
 
                     await _db.SaveChangesAsync();
-                    return Json(new { success = true, kazandiMi = false, message = "Bu turda ödül çıkmadı." });
+                    return Json(new { success = true, kazandiMi = false, message = "Bu turda Ã¶dÃ¼l Ã§Ä±kmadÄ±." });
                 }
 
-                // Oyunlarda tanımlanan boş sonuç: indirim alanları 0 ise ödül verilmez.
+                // Oyunlarda tanÄ±mlanan boÅŸ sonuÃ§: indirim alanlarÄ± 0 ise Ã¶dÃ¼l verilmez.
                 if (kazanilanOdul.IndirimYuzdesi <= 0 && kazanilanOdul.IndirimTutari <= 0)
                 {
-                    var bosEtiket = secilenTip == "CARKIFELEK" ? "Boş Dilim" : "Boş Sonuç";
+                    var bosEtiket = secilenTip == "CARKIFELEK" ? "BoÅŸ Dilim" : "BoÅŸ SonuÃ§";
                     var bosMesaj = secilenTip == "CARKIFELEK"
-                        ? "Bu tur boş dilim geldi. Bu siparişte ekstra indirim uygulanmadı."
-                        : "Bu tur boş sonuç geldi. Bu siparişte ekstra indirim uygulanmadı.";
+                        ? "Bu tur boÅŸ dilim geldi. Bu sipariÅŸte ekstra indirim uygulanmadÄ±."
+                        : "Bu tur boÅŸ sonuÃ§ geldi. Bu sipariÅŸte ekstra indirim uygulanmadÄ±.";
 
                     await _db.SaveChangesAsync();
                     return Json(new
@@ -658,7 +663,7 @@ namespace QRMenu.Web.Controllers
                     kazandiMi = true,
                     oyunTipi = secilenTip,
                     hedefIndex,
-                    message = $"Tebrikler! {kazanilanOdul.OdulTanim} kazandınız!",
+                    message = $"Tebrikler! {kazanilanOdul.OdulTanim} kazandÄ±nÄ±z!",
                     odulTanim = kazanilanOdul.OdulTanim,
                     indirimTutari = kazanilanIndirimTutari,
                     yeniTutar = siparis.ToplamTutar
@@ -670,42 +675,6 @@ namespace QRMenu.Web.Controllers
             }
         }
 
-        /// <summary>
-        /// Sipariş iptal: POST /siparis/iptal/{id} (AJAX)
-        /// </summary>
-        [HttpPost("/siparis/iptal/{id:int}")]
-        public async Task<IActionResult> Iptal(int id)
-        {
-            try
-            {
-                var siparis = await _siparisService.IptalEtAsync(id);
-
-                var masaNo = await _db.Masalar
-                    .Where(m => m.Id == siparis.MasaId)
-                    .Select(m => m.MasaNo)
-                    .FirstOrDefaultAsync();
-
-                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisIptal", masaNo);
-                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisIptal", masaNo);
-                await _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisIptal", masaNo);
-
-                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
-                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
-                await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
-                await _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisGuncellendi");
-
-                return Json(new
-                {
-                    success = true,
-                    message = "Sipariş iptal edildi.",
-                    durum = siparis.Durum.ToString()
-                });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Json(new { success = false, message = ex.Message });
-            }
-        }
     }
 
     // ===== Request DTO'lar =====

@@ -345,6 +345,28 @@ namespace QRMenu.Tests
             Assert.Equal(2, liste.Count);
         }
 
+        [Fact]
+        public async Task Oturum_Scoped_Siparis_Methods_Should_Reject_Other_Oturum()
+        {
+            var context = CreateInMemoryContext();
+            var service = CreateService(context);
+            var (sepetId, _, oturumId) = await SeedSepetDataAsync(context, 1);
+
+            var siparis = await service.SiparisOlusturAsync(sepetId);
+
+            var otherMasa = new Masa { MasaNo = 2, AktifMi = true };
+            context.Masalar.Add(otherMasa);
+            await context.SaveChangesAsync();
+            var otherOturum = new Oturum { MasaId = otherMasa.Id, TokenHash = "other", AktifMi = true };
+            context.Oturumlar.Add(otherOturum);
+            await context.SaveChangesAsync();
+
+            var loaded = await service.GetSiparisByOturumAsync(siparis.Id, otherOturum.Id);
+
+            Assert.Null(loaded);
+            Assert.NotEqual(oturumId, otherOturum.Id);
+        }
+
         // ============================
         // GEÇERLİ GEÇİŞ KURALLAR TESTİ
         // ============================

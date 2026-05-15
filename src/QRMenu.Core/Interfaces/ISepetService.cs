@@ -20,10 +20,14 @@ namespace QRMenu.Core.Interfaces
         /// </summary>
         Task<bool> RemoveItemAsync(int sepetDetayId);
 
+        Task<bool> RemoveItemAsync(int sepetDetayId, int oturumId);
+
         /// <summary>
         /// Sepetteki ürünün adedini güncelle
         /// </summary>
         Task<bool> UpdateQuantityAsync(int sepetDetayId, int yeniAdet);
+
+        Task<bool> UpdateQuantityAsync(int sepetDetayId, int yeniAdet, int oturumId);
 
         /// <summary>
         /// Sepeti tamamen temizle

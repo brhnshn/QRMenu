@@ -259,7 +259,16 @@
                 transition:opacity 0.25s,transform 0.25s;
                 max-width:380px; word-break:break-word;
             `;
-            toast.innerHTML = `<span class="material-symbols-outlined" style="font-size:1.1rem;">${cfg.icon}</span><span>${message}</span>`;
+            const icon = document.createElement('span');
+            icon.className = 'material-symbols-outlined';
+            icon.style.fontSize = '1.1rem';
+            icon.textContent = cfg.icon;
+
+            const text = document.createElement('span');
+            text.textContent = message;
+
+            toast.appendChild(icon);
+            toast.appendChild(text);
             document.getElementById('hhToast').appendChild(toast);
 
             requestAnimationFrame(() => {

@@ -714,7 +714,12 @@
                 const res = await fetch(`/Garson/SiparisDetay/${id}`);
                 const data = await res.json();
                 if (!data.success) {
-                    document.getElementById('fisContent').innerHTML = `<div class="text-center text-red-600 py-8">${data.message}</div>`;
+                    const errorBox = document.createElement('div');
+                    errorBox.className = 'text-center text-red-600 py-8';
+                    errorBox.textContent = data.message || 'Detay yüklenemedi.';
+                    const fisContent = document.getElementById('fisContent');
+                    fisContent.innerHTML = '';
+                    fisContent.appendChild(errorBox);
                     return;
                 }
                 renderFis(data);

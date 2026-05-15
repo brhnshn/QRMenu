@@ -31,6 +31,8 @@ namespace QRMenu.Core.Interfaces
         /// </summary>
         Task<Siparis?> GetSiparisAsync(int siparisId);
 
+        Task<Siparis?> GetSiparisByOturumAsync(int siparisId, int oturumId);
+
         /// <summary>
         /// Belirli bir masanın aktif siparişlerini listeler
         /// </summary>

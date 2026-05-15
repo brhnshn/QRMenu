@@ -319,6 +319,29 @@ namespace QRMenu.Tests
         }
 
         [Fact]
+        public async Task Scoped_Remove_And_Update_Should_Reject_Other_Oturum_Items()
+        {
+            var context = CreateInMemoryContext();
+            await SeedDataAsync(context);
+            var service = CreateService(context);
+
+            context.Masalar.Add(new Masa { Id = 101, MasaNo = 101, AktifMi = true });
+            context.Oturumlar.Add(new Oturum { Id = 101, MasaId = 101, TokenHash = "other" });
+            context.Sepetler.Add(new Sepet { Id = 101, OturumId = 101, ToplamTutar = 20m });
+            context.SepetDetaylar.Add(new SepetDetay { Id = 101, SepetId = 101, UrunId = 100, Adet = 1, BirimFiyat = 20m });
+            await context.SaveChangesAsync();
+
+            var removeResult = await service.RemoveItemAsync(101, 100);
+            var updateResult = await service.UpdateQuantityAsync(101, 5, 100);
+            var detay = await context.SepetDetaylar.FindAsync(101);
+
+            Assert.False(removeResult);
+            Assert.False(updateResult);
+            Assert.NotNull(detay);
+            Assert.Equal(1, detay!.Adet);
+        }
+
+        [Fact]
         public async Task AddMultipleProducts_Should_Calculate_Total_Correctly()
         {
             // Arrange

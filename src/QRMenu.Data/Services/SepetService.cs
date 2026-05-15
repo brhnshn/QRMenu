@@ -215,6 +215,16 @@ namespace QRMenu.Data.Services
         /// <summary>
         /// Adet güncelle (0 veya altı → ürünü sil)
         /// </summary>
+        public async Task<bool> RemoveItemAsync(int sepetDetayId, int oturumId)
+        {
+            var sahipMi = await _context.SepetDetaylar
+                .AnyAsync(sd => sd.Id == sepetDetayId && sd.Sepet.OturumId == oturumId);
+
+            if (!sahipMi) return false;
+
+            return await RemoveItemAsync(sepetDetayId);
+        }
+
         public async Task<bool> UpdateQuantityAsync(int sepetDetayId, int yeniAdet)
         {
             var detay = await _context.SepetDetaylar.FindAsync(sepetDetayId);
@@ -268,6 +278,16 @@ namespace QRMenu.Data.Services
         /// <summary>
         /// Sepeti tamamen temizle
         /// </summary>
+        public async Task<bool> UpdateQuantityAsync(int sepetDetayId, int yeniAdet, int oturumId)
+        {
+            var sahipMi = await _context.SepetDetaylar
+                .AnyAsync(sd => sd.Id == sepetDetayId && sd.Sepet.OturumId == oturumId);
+
+            if (!sahipMi) return false;
+
+            return await UpdateQuantityAsync(sepetDetayId, yeniAdet);
+        }
+
         public async Task ClearSepetAsync(int sepetId)
         {
             var detaylar = await _context.SepetDetaylar

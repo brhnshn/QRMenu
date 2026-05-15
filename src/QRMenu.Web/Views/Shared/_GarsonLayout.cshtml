@@ -178,6 +178,7 @@
     @RenderSection("PageStyles", required: false)
 </head>
 <body class="bg-background text-on-background antialiased overflow-x-hidden">
+    @Html.AntiForgeryToken()
     <aside id="waiterSidebar" class="fixed left-0 top-0 h-screen flex flex-col py-8 bg-[#f8f6f5] h-full w-72 rounded-r-[1.5rem] z-50 border-r border-[#e6e2e2]">
         <div class="px-8 mb-12">
         </div>
@@ -241,6 +242,7 @@
         </div>
     </main>
 
+    <script src="~/js/site.js" asp-append-version="true"></script>
     <script>
         const sidebarStorageKey = 'garsonSidebarCollapsed';
 

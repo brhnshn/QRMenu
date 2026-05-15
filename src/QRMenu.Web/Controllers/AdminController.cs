@@ -837,7 +837,7 @@ namespace QRMenu.Web.Controllers
             return Json(new { success = true });
         }
 
-        [HttpGet("/admin/masa-sil/{masaNo:int}")]
+        [HttpPost("/admin/masa-sil/{masaNo:int}")]
         public async Task<IActionResult> MasaSil(int masaNo, [FromQuery] bool force = false)
         {
             var masa = await _context.Masalar.FirstOrDefaultAsync(m => m.MasaNo == masaNo);
@@ -908,7 +908,7 @@ namespace QRMenu.Web.Controllers
         }
 
         // AJAX: QR sil
-        [HttpGet("/admin/qr-sil/{masaNo:int}")]
+        [HttpPost("/admin/qr-sil/{masaNo:int}")]
         public async Task<IActionResult> QrSil(int masaNo)
         {
             var masa = await _context.Masalar.FirstOrDefaultAsync(m => m.MasaNo == masaNo);
@@ -2288,17 +2288,18 @@ namespace QRMenu.Web.Controllers
             if (!herhangiGuncellendi) return;
 
             // Sepet toplamlarını da güncelle
-            var etkilenenSepetler = sepetDetaylar
-                .Where(sd => sd.Urun != null)
-                .GroupBy(sd => sd.SepetId);
+            var sepetIds = sepetDetaylar.Select(sd => sd.SepetId).Distinct().ToList();
+            var sepetler = await _context.Sepetler
+                .Where(s => sepetIds.Contains(s.Id))
+                .ToListAsync();
 
-            foreach (var grup in etkilenenSepetler)
+            var toplamlar = sepetDetaylar
+                .GroupBy(sd => sd.SepetId)
+                .ToDictionary(g => g.Key, g => g.Sum(sd => sd.BirimFiyat * sd.Adet));
+
+            foreach (var sepet in sepetler)
             {
-                var sepet = await _context.Sepetler
-                    .Include(s => s.SepetDetaylar)
-                    .FirstOrDefaultAsync(s => s.Id == grup.Key);
-                if (sepet != null)
-                    sepet.ToplamTutar = sepet.SepetDetaylar.Sum(sd => sd.BirimFiyat * sd.Adet);
+                sepet.ToplamTutar = toplamlar.TryGetValue(sepet.Id, out var toplam) ? toplam : 0m;
             }
 
             await _context.SaveChangesAsync();

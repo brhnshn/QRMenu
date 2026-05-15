@@ -133,6 +133,8 @@
     </style>
 </head>
 <body class="bg-background font-body text-on-background selection:bg-primary/20">
+    @Html.AntiForgeryToken()
+    <script src="~/js/site.js" asp-append-version="true"></script>
 
     <!-- ═══ TOP APP BAR (Stitch — z-[60]) ═══ -->
     <header class="fixed top-0 w-full z-[60] bg-white/80 backdrop-blur-md">
