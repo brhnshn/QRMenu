@@ -1,4 +1,4 @@
-@model QRMenu.Core.Entities.Sepet
+﻿@model QRMenu.Core.Entities.Sepet
 @{
     ViewData["Title"] = "Sepetim";
     Layout = null;
@@ -349,6 +349,20 @@
             counter.textContent = `${input.value.length}/${SIPARIS_NOTU_MAX_CHARS}`;
         }
 
+                async function softRefreshCart() {
+            try {
+                const res = await fetch(window.location.href);
+                if (!res.ok) throw new Error();
+                const html = await res.text();
+                const parser = new DOMParser();
+                const newDoc = parser.parseFromString(html, 'text/html');
+                document.body.innerHTML = newDoc.body.innerHTML;
+                setupSiparisNotu();
+            } catch(e) {
+                location.reload();
+            }
+        }
+
         function setupSiparisNotu() {
             const input = siparisNotuTextArea();
             if (!input) return;
@@ -386,7 +400,7 @@
             try {
                 const res = await fetch('/sepet/guncelle/' + detayId, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ Adet: newAdet }) });
                 const data = await res.json();
-                if (data.success) location.reload(); else showErrorToast(data.message);
+                if (data.success) await softRefreshCart(); else showErrorToast(data.message);
             } catch(e) { console.error(e); showErrorToast('Bağlantı hatası.'); }
         }
 
@@ -394,7 +408,7 @@
             try {
                 const res = await fetch('/sepet/cikar/' + detayId, { method: 'POST' });
                 const data = await res.json();
-                if (data.success) location.reload(); else showErrorToast(data.message);
+                if (data.success) await softRefreshCart(); else showErrorToast(data.message);
             } catch(e) { console.error(e); showErrorToast('Bağlantı hatası.'); }
         }
 
@@ -403,7 +417,7 @@
                 try {
                     const res = await fetch('/sepet/temizle', { method: 'POST' });
                     const data = await res.json();
-                    if (data.success) location.reload(); else showErrorToast(data.message);
+                    if (data.success) await softRefreshCart(); else showErrorToast(data.message);
                 } catch(e) { console.error(e); showErrorToast('Bağlantı hatası.'); }
             });
         }
@@ -458,3 +472,5 @@
     </script>
 </body>
 </html>
+
+

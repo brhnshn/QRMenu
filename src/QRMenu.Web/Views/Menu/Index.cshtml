@@ -1,4 +1,4 @@
-@model List<QRMenu.Core.Entities.Urun>
+﻿@model List<QRMenu.Core.Entities.Urun>
 @using QRMenu.Web.Helpers
 @{
     ViewData["Title"] = "Menü";
@@ -660,7 +660,7 @@
                     if (btn) {
                         btn.innerHTML = '<span class="material-symbols-outlined text-lg" style="font-variation-settings:\'FILL\' 1;">check</span>';
                         btn.classList.remove('bg-primary'); btn.classList.add('bg-green-600');
-                        setTimeout(() => { btn.innerHTML = origHTML; btn.disabled = false; btn.style.pointerEvents = ''; btn.classList.remove('bg-green-600'); btn.classList.add('bg-primary'); }, 1200);
+                        setTimeout(() => { btn.innerHTML = origHTML; btn.disabled = false; btn.style.pointerEvents = ''; btn.classList.remove('bg-green-600'); btn.classList.add('bg-primary'); }, 250);
                     }
                     showToast(txtAddedToCart);
                 } else {
@@ -799,3 +799,5 @@
     </script>
 </body>
 </html>
+
+

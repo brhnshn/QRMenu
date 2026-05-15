@@ -1,0 +1,142 @@
+﻿@model QRMenu.Web.ViewModels.KasaMasalarPageViewModel
+
+<div id="kasaTabContent" class="kasa-main-scroll">
+    @if (!string.IsNullOrWhiteSpace(Model.ConnectionWarning))
+    {
+        <div class="mb-4 border border-amber-200 bg-amber-50 text-amber-800 rounded-xl px-4 py-3 flex items-center gap-2 text-sm">
+            <i class="bi bi-wifi-off"></i>
+            <span>@Model.ConnectionWarning</span>
+        </div>
+    }
+
+    <header class="mb-1">
+        <div class="flex items-end justify-between mb-2 gap-3 flex-wrap">
+            <div>
+                <span class="text-secondary font-bold tracking-widest text-[10px] uppercase mb-1 block">Operasyon Paneli</span>
+                <h1 class="text-xl sm:text-2xl font-extrabold text-on-surface tracking-tight">Bekleyen Masalar</h1>
+            </div>
+            <div class="bg-primary/5 px-3 sm:px-4 py-2 rounded-xl flex items-center gap-3 w-full sm:w-auto">
+                <div class="w-8 h-8 bg-primary flex items-center justify-center rounded-full text-white">
+                    <span class="material-symbols-outlined text-sm">receipt_long</span>
+                </div>
+                <div>
+                    <p class="text-[10px] text-on-surface-variant font-semibold">Toplam Ödeme Bekleyen</p>
+                    <p class="text-lg font-black text-primary">@Model.ToplamOdemeBekleyen Masa</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap pb-1">
+            <button type="button" class="px-3 sm:px-6 py-2 bg-secondary-container text-on-secondary-container rounded-full text-xs sm:text-sm font-bold shadow-sm whitespace-nowrap kasa-filter-chip active" data-area-chip="all">Tüm Masalar (@Model.MasaKartlari.Count)</button>
+            @foreach (var chip in Model.BolgeChipleri)
+            {
+                <button type="button" class="px-3 sm:px-6 py-2 bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high rounded-full text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap kasa-filter-chip" data-area-chip="@chip.Bolge">@chip.Bolge (@chip.Bekleyen)</button>
+            }
+
+            <div class="ml-0 sm:ml-auto w-full sm:w-auto flex items-center justify-between sm:justify-end gap-2">
+                <span class="text-xs sm:text-sm font-semibold text-on-surface-variant">Sırala:</span>
+                <div class="relative">
+                    <select id="kasaSortSelect" class="appearance-none pl-3 pr-8 py-2 rounded-full bg-surface-container-low hover:bg-surface-container-high text-xs sm:text-sm font-bold border-0 focus:ring-2 focus:ring-primary/20">
+                        <option value="wait-desc">Bekleme Süresi</option>
+                        <option value="amount-desc">Tutar</option>
+                        <option value="table-asc">Masa No</option>
+                    </select>
+                    <span class="material-symbols-outlined text-lg absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">arrow_drop_down</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div id="kasaTableGrid" class="table-bento-grid">
+        @foreach (var kart in Model.MasaKartlari)
+        {
+            var badgeText = kart.DoluMu
+                ? (kart.AcilMi ? $"Acil - {kart.BeklemeDakika} dk." : $"{kart.BolgeAd} - {kart.BeklemeDakika} dk.")
+                : $"{kart.BolgeAd} - Boş";
+
+            var borderClass = "border-outline-variant";
+            var badgeClass = "bg-surface-container-high text-on-surface-variant";
+
+            if (kart.AcilMi)
+            {
+                borderClass = "border-error";
+                badgeClass = "bg-error/10 text-error";
+            }
+            else if (kart.DoluMu && kart.OdemedeMi)
+            {
+                borderClass = "border-secondary";
+                badgeClass = "bg-secondary/10 text-secondary";
+            }
+            else if (kart.DoluMu && kart.MutfaktaMi)
+            {
+                borderClass = "border-blue-500";
+                badgeClass = "bg-blue-100 text-blue-700";
+            }
+            else if (kart.DoluMu && kart.GarsondaMi)
+            {
+                borderClass = "border-emerald-500";
+                badgeClass = "bg-emerald-100 text-emerald-700";
+            }
+
+            var displayAmount = kart.DoluMu ? kart.KalanBakiye : 0m;
+            var searchText = $"masa {kart.MasaNo} {kart.BolgeAd} {kart.DurumMetni}";
+
+            <article class="group bg-surface-container-lowest rounded-xl p-5 border-l-4 @borderClass shadow-sm hover:shadow-md transition-all scale-95 hover:scale-100 flex flex-col justify-between table-card is-clickable"
+                     data-area="@kart.BolgeAd"
+                     data-wait="@kart.BeklemeDakika"
+                     data-amount="@displayAmount"
+                     data-table="@kart.MasaNo"
+                     data-search="@searchText.ToLowerInvariant()"
+                     data-detail-url="/Kasa/Odeme/@kart.MasaId"
+                     role="button"
+                     tabindex="0"
+                     aria-label="Masa @kart.MasaNo detayını aç">
+                <div>
+                    <div class="flex justify-between items-start mb-2 gap-2">
+                        <span class="text-2xl font-black text-on-surface opacity-30">#@kart.MasaNo</span>
+                        <div class="@badgeClass px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider">@badgeText</div>
+                    </div>
+                    <h3 class="text-lg font-bold text-on-surface mb-0.5">Masa @kart.MasaNo</h3>
+                    <p class="text-xs text-on-surface-variant">Durum: @kart.DurumMetni</p>
+                </div>
+                <div class="flex items-center justify-between border-t border-surface-container-high pt-3 gap-2">
+                    <div>
+                        <p class="text-[9px] text-on-surface-variant font-bold uppercase">Tutar</p>
+                        <p class="text-base font-black text-on-surface">@displayAmount.ToString("N2") TL</p>
+                    </div>
+
+                    @if (kart.DoluMu)
+                    {
+                        <a href="/Kasa/Odeme/@kart.MasaId" class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary-dim transition-colors flex items-center gap-2 whitespace-nowrap">
+                            Ödeme Al
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="bg-surface-container-high text-on-surface-variant px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap">Hazır</span>
+                    }
+                </div>
+            </article>
+        }
+
+        <div id="kasaGridEmpty" class="border-2 border-dashed border-outline-variant rounded-xl p-5 flex flex-col items-center justify-center text-center table-card opacity-60" style="display:none;">
+            <span class="material-symbols-outlined text-4xl mb-2">search</span>
+            <p class="text-sm font-bold">Filtreye uygun masa bulunamadı</p>
+            <p class="text-xs text-on-surface-variant">Arama veya filtreyi değiştir</p>
+        </div>
+    </div>
+
+    <footer class="kasa-main-footer flex items-center justify-between border-t border-surface-container-high gap-3 flex-wrap">
+        <p id="kasaFooterInfo" class="text-sm text-on-surface-variant font-medium">Toplam @Model.MasaKartlari.Count masadan @Model.ToplamOdemeBekleyen bekleyen masa gösteriliyor</p>
+        <div class="flex gap-2 items-center" id="kasaPagerControls">
+            <button id="kasaPrevPageBtn" type="button" class="kasa-pager-btn" aria-label="Önceki sayfa" disabled>
+                <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            <div id="kasaPageNumberGroup" class="flex gap-2"></div>
+            <button id="kasaNextPageBtn" type="button" class="kasa-pager-btn" aria-label="Sonraki sayfa" disabled>
+                <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+        </div>
+    </footer>
+</div>
+

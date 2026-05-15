@@ -1,0 +1,101 @@
+@model QRMenu.Web.ViewModels.GarsonMasalarPageViewModel
+@using System.Globalization
+
+@{
+    var trCulture = CultureInfo.GetCultureInfo("tr-TR");
+}
+
+<div id="garsonMasalarContentRoot">
+    <div id="garsonSummaryStats" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-10">
+        <div class="bg-surface-container-lowest p-4 sm:p-6 rounded-xl border-b-4 border-green-500/30">
+            <p class="text-xs sm:text-sm font-label text-on-surface-variant mb-1">Müsait</p>
+            <p class="text-2xl sm:text-3xl font-headline font-bold text-on-surface">@Model.MusaitMasaSayisi</p>
+        </div>
+        <div class="bg-surface-container-lowest p-4 sm:p-6 rounded-xl border-b-4 border-primary/30">
+            <p class="text-xs sm:text-sm font-label text-on-surface-variant mb-1">Dolu</p>
+            <p class="text-2xl sm:text-3xl font-headline font-bold text-on-surface">@Model.DoluMasaSayisi</p>
+        </div>
+        <div class="bg-surface-container-lowest p-4 sm:p-6 rounded-xl border-b-4 border-secondary/30">
+            <p class="text-xs sm:text-sm font-label text-on-surface-variant mb-1">Hesap Bekleyen</p>
+            <p class="text-2xl sm:text-3xl font-headline font-bold text-on-surface">@Model.HesapBekleyenMasaSayisi</p>
+        </div>
+        <div class="bg-surface-container-lowest p-4 sm:p-6 rounded-xl border-b-4 border-tertiary/30">
+            <p class="text-xs sm:text-sm font-label text-on-surface-variant mb-1">Toplam Masa</p>
+            <p class="text-2xl sm:text-3xl font-headline font-bold text-on-surface">@Model.ToplamMasaSayisi</p>
+        </div>
+    </div>
+
+    <div id="garsonMasalarGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 lg:gap-8">
+        @foreach (var masa in Model.Masalar.OrderBy(m => m.MasaNo))
+        {
+            var kartSinif = "table-card-bos";
+            var badgeSinif = "bg-green-100 text-green-700";
+            var badgeYazi = "BOŞ";
+
+            if (masa.HazirBekliyorMu)
+            {
+                kartSinif = "table-card-hazir";
+                badgeSinif = "bg-error/10 text-error";
+                badgeYazi = "SERVİS";
+            }
+            else if (masa.HesapBekliyorMu)
+            {
+                kartSinif = "table-card-hesap";
+                badgeSinif = "bg-secondary/10 text-secondary";
+                badgeYazi = "HESAP";
+            }
+            else if (masa.SiparisVarMi)
+            {
+                kartSinif = "table-card-dolu";
+                badgeSinif = "bg-primary/10 text-primary";
+                badgeYazi = "DOLU";
+            }
+
+            <a href="/Garson/Masa/@masa.MasaId" class="group relative bg-surface-container-lowest rounded-xl p-5 sm:p-6 table-card @kartSinif cursor-pointer text-decoration-none text-on-surface">
+                <div class="flex justify-between items-start mb-8 sm:mb-12">
+                    <div class="w-12 h-12 rounded-lg @(masa.SiparisVarMi ? "bg-primary-container/20 text-primary" : "bg-surface-container") flex items-center justify-center font-headline font-extrabold text-xl">
+                        @masa.MasaNo.ToString("00")
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest @badgeSinif">@badgeYazi</span>
+                </div>
+                <div class="space-y-1">
+                    @if (!masa.SiparisVarMi)
+                    {
+                        <p class="text-on-surface-variant text-sm font-medium">Bekleyen sipariş yok</p>
+                    }
+                    else
+                    {
+                        <p class="text-on-surface font-semibold text-sm">@masa.ToplamTutar.ToString("C2", trCulture)</p>
+                        <div class="flex items-center gap-1.5 text-on-surface-variant text-xs">
+                            <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">schedule</span>
+                            <span>@masa.GecenDakika dk.</span>
+                        </div>
+                        
+                        @if (masa.HazirBekliyorMu)
+                        {
+                            <div class="flex items-center gap-1.5 text-error text-xs font-bold">
+                                <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">room_service</span>
+                                <span>Servis bekliyor</span>
+                            </div>
+                        }
+                        @if (masa.HesapBekliyorMu)
+                        {
+                            <div class="flex items-center gap-1.5 text-secondary text-xs font-bold">
+                                <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">payments</span>
+                                <span>Ödeme bekleniyor</span>
+                            </div>
+                        }
+                    }
+                </div>
+            </a>
+        }
+    </div>
+
+    <div id="garsonNoticeOverlay" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; flex-direction:column; cursor:pointer;" onclick="closeGarsonNotice()">
+        <div style="text-align:center; animation: garsonNoticePulse 0.6s ease-in-out infinite alternate;">
+            <span class="material-symbols-outlined" style="font-size:4.5rem; color:#fcd34d;">notifications_active</span>
+            <h1 style="color:#fff; font-size:2.4rem; margin:1rem 0; font-weight:800;" id="garsonNoticeText">Masa</h1>
+            <p style="color:rgba(255,255,255,0.72); font-size:1.05rem;">Kapatmak için tıklayın</p>
+        </div>
+    </div>
+</div>

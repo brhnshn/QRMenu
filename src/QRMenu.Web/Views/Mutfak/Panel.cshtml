@@ -1132,8 +1132,8 @@
             }
         }
 
-        function scheduleSoftRefresh(delayMs = 500) {
-            const minIntervalMs = 2000;
+        function scheduleSoftRefresh(delayMs = 90) {
+            const minIntervalMs = 150;
             const elapsed = Date.now() - lastRefreshAt;
             const waitMs = Math.max(delayMs, minIntervalMs - elapsed);
 
@@ -1352,16 +1352,16 @@
         function registerConnectionHandlers(conn) {
             conn.on('SiparisGeldi', function () {
                 playBell();
-                scheduleSoftRefresh(900);
+                scheduleSoftRefresh(100);
             });
 
             conn.on('SiparisEklendi', function () {
                 playBell();
-                scheduleSoftRefresh(900);
+                scheduleSoftRefresh(100);
             });
 
             conn.on('SiparisGuncellendi', function () {
-                scheduleSoftRefresh(500);
+                scheduleSoftRefresh(80);
             });
         }
 

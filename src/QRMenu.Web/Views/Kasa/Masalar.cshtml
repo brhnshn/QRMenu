@@ -1,116 +1,10 @@
-@using QRMenu.Core.Enums
-@model List<QRMenu.Core.Entities.Masa>
+﻿@model QRMenu.Web.ViewModels.KasaMasalarPageViewModel
+
 @{
     Layout = "~/Views/Shared/_KasaLayout.cshtml";
     ViewData["Title"] = "Kasa Yönetimi";
     ViewData["ActivePage"] = "KasaMasalar";
     ViewData["PageTitle"] = "Kasa Yönetimi";
-
-    var mutfakZamanEsigi = DateTime.UtcNow.AddHours(-24);
-    var nowUtc = DateTime.UtcNow;
-
-    var masaKartlari = Model
-        .OrderBy(m => m.MasaNo)
-        .Select(masa =>
-        {
-            var siparisler = masa.Siparisler
-                .Where(s => s.Durum != SiparisDurum.TamOdendi && s.Durum != SiparisDurum.Iptal && s.Durum != SiparisDurum.Iade)
-                .ToList();
-
-            var aktifDetayVarmi = siparisler.Any(s => s.SiparisDetaylar.Any(sd =>
-                sd.Durum != SiparisDurum.TamOdendi &&
-                sd.Durum != SiparisDurum.Iptal &&
-                sd.Durum != SiparisDurum.Iade));
-
-            var mutfaktaVarMi = siparisler.Any(s =>
-                s.OlusturmaTarihi >= mutfakZamanEsigi &&
-                (s.Durum == SiparisDurum.Onaylandi || s.Durum == SiparisDurum.Hazirlaniyor));
-
-            var garsondaVarMi = siparisler.Any(s => s.Durum == SiparisDurum.Hazir);
-
-            var odemeBekliyorMu = siparisler.Any(s =>
-                s.Durum == SiparisDurum.TeslimEdildi ||
-                s.Durum == SiparisDurum.KismiOdendi);
-
-            var kalanBakiye = siparisler.Sum(s =>
-            {
-                var bazToplam = s.SiparisDetaylar
-                    .Where(sd => sd.Durum != SiparisDurum.Iptal && sd.Durum != SiparisDurum.Iade)
-                    .Sum(sd => sd.Adet * sd.BirimFiyat);
-
-                var oran = bazToplam > 0 ? (s.ToplamTutar / bazToplam) : 1m;
-
-                return s.SiparisDetaylar
-                    .Where(sd => sd.Durum != SiparisDurum.TamOdendi &&
-                                 sd.Durum != SiparisDurum.Iptal &&
-                                 sd.Durum != SiparisDurum.Iade)
-                    .Sum(sd => (sd.Adet * sd.BirimFiyat) * oran);
-            });
-
-            var doluMu = aktifDetayVarmi && kalanBakiye > 0;
-
-            var enEskiSiparis = siparisler
-                .Select(s => (DateTime?)s.OlusturmaTarihi)
-                .OrderBy(t => t)
-                .FirstOrDefault();
-
-            var beklemeDakika = enEskiSiparis.HasValue
-                ? (int)Math.Max(0, (nowUtc - enEskiSiparis.Value).TotalMinutes)
-                : 0;
-
-            var bolgeAd = string.IsNullOrWhiteSpace(masa.Bolge?.Ad) ? "Salon" : masa.Bolge!.Ad;
-
-            var durumMetni = "Hazır";
-            if (doluMu)
-            {
-                if (odemeBekliyorMu)
-                {
-                    durumMetni = "Ödeme Bekliyor";
-                }
-                else if (garsondaVarMi)
-                {
-                    durumMetni = "Garsonda";
-                }
-                else if (mutfaktaVarMi)
-                {
-                    durumMetni = "Mutfakta";
-                }
-                else
-                {
-                    durumMetni = "Sipariş Var";
-                }
-            }
-
-            var acilMi = doluMu && beklemeDakika >= 40;
-
-            return new
-            {
-                MasaId = masa.Id,
-                MasaNo = masa.MasaNo,
-                BolgeAd = bolgeAd,
-                DoluMu = doluMu,
-                DurumMetni = durumMetni,
-                KalanBakiye = kalanBakiye,
-                BeklemeDakika = beklemeDakika,
-                AcilMi = acilMi,
-                OdemedeMi = odemeBekliyorMu,
-                MutfaktaMi = mutfaktaVarMi,
-                GarsondaMi = garsondaVarMi
-            };
-        })
-        .ToList();
-
-    var toplamOdemeBekleyen = masaKartlari.Count(x => x.DoluMu);
-    var bolgeChipleri = masaKartlari
-        .GroupBy(x => x.BolgeAd)
-        .Select(g => new
-        {
-            Bolge = g.Key,
-            Bekleyen = g.Count(x => x.DoluMu)
-        })
-        .OrderByDescending(x => x.Bekleyen)
-        .ThenBy(x => x.Bolge)
-        .ToList();
 }
 
 @section Styles {
@@ -134,24 +28,6 @@
             padding: 0.75rem 1rem;
         }
 
-        .kasa-main-scroll::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .kasa-main-scroll::-webkit-scrollbar-thumb {
-            background: #d5d4d4;
-            border-radius: 999px;
-        }
-
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
         .table-bento-grid {
             display: grid;
             grid-template-columns: repeat(1, minmax(0, 1fr));
@@ -162,61 +38,13 @@
             overflow: visible;
         }
 
-        @@media (min-width: 768px) {
-            .table-bento-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
+        @@media (min-width: 768px) { .table-bento-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @@media (min-width: 1024px) { .table-bento-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        @@media (min-width: 1280px) { .table-bento-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
-        @@media (min-width: 1024px) {
-            .table-bento-grid {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-            }
-        }
-
-        @@media (min-width: 1280px) {
-            .table-bento-grid {
-                grid-template-columns: repeat(4, minmax(0, 1fr));
-            }
-        }
-
-        .kasa-compact-mode .table-card {
-            height: 11.15rem;
-        }
-
-        .table-card {
-            height: 11.5rem;
-        }
-
-        .table-card.is-clickable {
-            cursor: pointer;
-        }
-
-        .table-card.is-clickable:focus-visible {
-            outline: 2px solid rgba(162, 55, 24, 0.4);
-            outline-offset: 2px;
-        }
-
-        @@media (max-width: 767px) {
-            .kasa-main-scroll {
-                padding: .75rem;
-            }
-
-            .table-card {
-                height: 12.5rem;
-            }
-
-            .kasa-pager-btn {
-                width: 2.35rem;
-                height: 2.35rem;
-            }
-        }
-
-        @@media (max-width: 640px) {
-            .table-card {
-                height: 11.75rem;
-            }
-        }
+        .kasa-compact-mode .table-card { height: 11.15rem; }
+        .table-card { height: 11.5rem; }
+        .table-card.is-clickable { cursor: pointer; }
 
         .kasa-main-footer {
             margin-top: .25rem;
@@ -235,11 +63,6 @@
             color: #2e2f2f;
             font-weight: 800;
             border: 0;
-            transition: background-color .2s ease, color .2s ease, opacity .2s ease;
-        }
-
-        .kasa-pager-btn:hover {
-            background: #dedcdc;
         }
 
         .kasa-pager-btn.is-active {
@@ -257,145 +80,7 @@
 <audio id="kasaBellSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
 
 <section class="kasa-masalar-root">
-    <div id="kasaTabContent" class="kasa-main-scroll">
-        @if (ViewBag.ConnectionWarning != null)
-        {
-            <div class="mb-4 border border-amber-200 bg-amber-50 text-amber-800 rounded-xl px-4 py-3 flex items-center gap-2 text-sm">
-                <i class="bi bi-wifi-off"></i>
-                <span>@ViewBag.ConnectionWarning</span>
-            </div>
-        }
-
-        <header class="mb-1">
-            <div class="flex items-end justify-between mb-2 gap-3 flex-wrap">
-                <div>
-                    <span class="text-secondary font-bold tracking-widest text-[10px] uppercase mb-1 block">Operasyon Paneli</span>
-                    <h1 class="text-xl sm:text-2xl font-extrabold text-on-surface tracking-tight">Bekleyen Masalar</h1>
-                </div>
-                <div class="bg-primary/5 px-3 sm:px-4 py-2 rounded-xl flex items-center gap-3 w-full sm:w-auto">
-                    <div class="w-8 h-8 bg-primary flex items-center justify-center rounded-full text-white">
-                        <span class="material-symbols-outlined text-sm">receipt_long</span>
-                    </div>
-                    <div>
-                        <p class="text-[10px] text-on-surface-variant font-semibold">Toplam Ödeme Bekleyen</p>
-                        <p class="text-lg font-black text-primary">@toplamOdemeBekleyen Masa</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-2 flex-wrap pb-1">
-                <button type="button" class="px-3 sm:px-6 py-2 bg-secondary-container text-on-secondary-container rounded-full text-xs sm:text-sm font-bold shadow-sm whitespace-nowrap kasa-filter-chip active" data-area-chip="all">Tüm Masalar (@masaKartlari.Count)</button>
-                @foreach (var chip in bolgeChipleri)
-                {
-                    <button type="button" class="px-3 sm:px-6 py-2 bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high rounded-full text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap kasa-filter-chip" data-area-chip="@chip.Bolge">@chip.Bolge (@chip.Bekleyen)</button>
-                }
-
-                <div class="ml-0 sm:ml-auto w-full sm:w-auto flex items-center justify-between sm:justify-end gap-2">
-                    <span class="text-xs sm:text-sm font-semibold text-on-surface-variant">Sırala:</span>
-                    <div class="relative">
-                        <select id="kasaSortSelect" class="appearance-none pl-3 pr-8 py-2 rounded-full bg-surface-container-low hover:bg-surface-container-high text-xs sm:text-sm font-bold border-0 focus:ring-2 focus:ring-primary/20">
-                            <option value="wait-desc">Bekleme Süresi</option>
-                            <option value="amount-desc">Tutar</option>
-                            <option value="table-asc">Masa No</option>
-                        </select>
-                        <span class="material-symbols-outlined text-lg absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">arrow_drop_down</span>
-                    </div>
-                </div>
-            </div>
-        </header>
-
-        <div id="kasaTableGrid" class="table-bento-grid">
-            @foreach (var kart in masaKartlari)
-            {
-                var badgeText = kart.DoluMu
-                    ? (kart.AcilMi ? $"Acil - {kart.BeklemeDakika} dk." : $"{kart.BolgeAd} - {kart.BeklemeDakika} dk.")
-                    : $"{kart.BolgeAd} - Boş";
-
-                var borderClass = "border-outline-variant";
-                var badgeClass = "bg-surface-container-high text-on-surface-variant";
-
-                if (kart.AcilMi)
-                {
-                    borderClass = "border-error";
-                    badgeClass = "bg-error/10 text-error";
-                }
-                else if (kart.DoluMu && kart.OdemedeMi)
-                {
-                    borderClass = "border-secondary";
-                    badgeClass = "bg-secondary/10 text-secondary";
-                }
-                else if (kart.DoluMu && kart.MutfaktaMi)
-                {
-                    borderClass = "border-blue-500";
-                    badgeClass = "bg-blue-100 text-blue-700";
-                }
-                else if (kart.DoluMu && kart.GarsondaMi)
-                {
-                    borderClass = "border-emerald-500";
-                    badgeClass = "bg-emerald-100 text-emerald-700";
-                }
-
-                var displayAmount = kart.DoluMu ? kart.KalanBakiye : 0m;
-                var searchText = $"masa {kart.MasaNo} {kart.BolgeAd} {kart.DurumMetni}";
-
-                <article class="group bg-surface-container-lowest rounded-xl p-5 border-l-4 @borderClass shadow-sm hover:shadow-md transition-all scale-95 hover:scale-100 flex flex-col justify-between table-card is-clickable"
-                         data-area="@kart.BolgeAd"
-                         data-wait="@kart.BeklemeDakika"
-                         data-amount="@displayAmount"
-                         data-table="@kart.MasaNo"
-                         data-search="@searchText.ToLowerInvariant()"
-                         data-detail-url="/Kasa/Odeme/@kart.MasaId"
-                         role="button"
-                         tabindex="0"
-                         aria-label="Masa @kart.MasaNo detayını aç">
-                    <div>
-                        <div class="flex justify-between items-start mb-2 gap-2">
-                            <span class="text-2xl font-black text-on-surface opacity-30">#@kart.MasaNo</span>
-                            <div class="@badgeClass px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider">@badgeText</div>
-                        </div>
-                        <h3 class="text-lg font-bold text-on-surface mb-0.5">Masa @kart.MasaNo</h3>
-                        <p class="text-xs text-on-surface-variant">Durum: @kart.DurumMetni</p>
-                    </div>
-                    <div class="flex items-center justify-between border-t border-surface-container-high pt-3 gap-2">
-                        <div>
-                            <p class="text-[9px] text-on-surface-variant font-bold uppercase">Tutar</p>
-                            <p class="text-base font-black text-on-surface">@displayAmount.ToString("N2") TL</p>
-                        </div>
-
-                        @if (kart.DoluMu)
-                        {
-                            <a href="/Kasa/Odeme/@kart.MasaId" class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary-dim transition-colors flex items-center gap-2 whitespace-nowrap">
-                                Ödeme Al
-                            </a>
-                        }
-                        else
-                        {
-                            <span class="bg-surface-container-high text-on-surface-variant px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap">Hazır</span>
-                        }
-                    </div>
-                </article>
-            }
-
-            <div id="kasaGridEmpty" class="border-2 border-dashed border-outline-variant rounded-xl p-5 flex flex-col items-center justify-center text-center table-card opacity-60" style="display:none;">
-                <span class="material-symbols-outlined text-4xl mb-2">search</span>
-                <p class="text-sm font-bold">Filtreye uygun masa bulunamadı</p>
-                <p class="text-xs text-on-surface-variant">Arama veya filtreyi değiştir</p>
-            </div>
-        </div>
-
-        <footer class="kasa-main-footer flex items-center justify-between border-t border-surface-container-high gap-3 flex-wrap">
-            <p id="kasaFooterInfo" class="text-sm text-on-surface-variant font-medium">Toplam @masaKartlari.Count masadan @toplamOdemeBekleyen bekleyen masa gösteriliyor</p>
-            <div class="flex gap-2 items-center" id="kasaPagerControls">
-                <button id="kasaPrevPageBtn" type="button" class="kasa-pager-btn" aria-label="Önceki sayfa" disabled>
-                    <span class="material-symbols-outlined">chevron_left</span>
-                </button>
-                <div id="kasaPageNumberGroup" class="flex gap-2"></div>
-                <button id="kasaNextPageBtn" type="button" class="kasa-pager-btn" aria-label="Sonraki sayfa" disabled>
-                    <span class="material-symbols-outlined">chevron_right</span>
-                </button>
-            </div>
-        </footer>
-    </div>
+    @await Html.PartialAsync("_KasaMasalarContent", Model)
 </section>
 
 @section Scripts {
@@ -403,21 +88,16 @@
         function readBoolSetting(key, fallback) {
             try {
                 const raw = localStorage.getItem(key);
-                if (raw === null) {
-                    return fallback;
-                }
-
-                return raw === '1';
-            } catch (e) {
+                return raw === null ? fallback : raw === '1';
+            } catch {
                 return fallback;
             }
         }
 
         function readTextSetting(key, fallback) {
             try {
-                const raw = localStorage.getItem(key);
-                return raw || fallback;
-            } catch (e) {
+                return localStorage.getItem(key) || fallback;
+            } catch {
                 return fallback;
             }
         }
@@ -461,32 +141,22 @@
         }
 
         function getGridColumnCount(grid) {
-            if (!grid) {
-                return 1;
-            }
-
             const template = window.getComputedStyle(grid).gridTemplateColumns || '';
-            const parts = template.split(' ').filter(Boolean);
-            return Math.max(1, parts.length);
+            return Math.max(1, template.split(' ').filter(Boolean).length);
         }
 
         function calculatePageSize(grid, visibleCards) {
             const cols = getGridColumnCount(grid);
-            if (!visibleCards.length) {
-                return cols;
-            }
+            if (!visibleCards.length) return cols;
 
             const cardRect = visibleCards[0].getBoundingClientRect();
-            const cardHeight = cardRect.height || 0;
             const gridStyle = window.getComputedStyle(grid);
             const rowGap = Number.parseFloat(gridStyle.rowGap || '0') || 0;
             const availableHeight = grid.clientHeight || 0;
 
-            if (cardHeight <= 0 || availableHeight <= 0) {
-                return cols;
-            }
+            if (!cardRect.height || !availableHeight) return cols;
 
-            const rows = Math.max(1, Math.floor((availableHeight + rowGap) / (cardHeight + rowGap)));
+            const rows = Math.max(1, Math.floor((availableHeight + rowGap) / (cardRect.height + rowGap)));
             return Math.max(1, cols * rows);
         }
 
@@ -501,31 +171,21 @@
                 footerInfo.textContent = `Toplam ${totalAll} masadan ${totalItems} masa gösteriliyor`;
             }
 
-            if (!prevBtn || !nextBtn || !numberGroup) {
-                return;
-            }
+            if (!prevBtn || !nextBtn || !numberGroup) return;
 
             numberGroup.innerHTML = '';
+            prevBtn.disabled = kasaUiState.currentPage <= 1;
+            nextBtn.disabled = kasaUiState.currentPage >= kasaUiState.totalPages;
 
-            const totalPages = kasaUiState.totalPages;
-            const currentPage = kasaUiState.currentPage;
+            if (kasaUiState.totalPages <= 1) return;
 
-            prevBtn.disabled = currentPage <= 1;
-            nextBtn.disabled = currentPage >= totalPages;
-
-            if (totalPages <= 1) {
-                return;
-            }
-
-            for (let i = 1; i <= totalPages; i++) {
+            for (let i = 1; i <= kasaUiState.totalPages; i++) {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = `kasa-pager-btn${i === currentPage ? ' is-active' : ''}`;
+                btn.className = `kasa-pager-btn${i === kasaUiState.currentPage ? ' is-active' : ''}`;
                 btn.textContent = String(i);
                 btn.addEventListener('click', () => {
-                    if (kasaUiState.currentPage === i) {
-                        return;
-                    }
+                    if (kasaUiState.currentPage === i) return;
                     kasaUiState.currentPage = i;
                     applyBekleyenFilters();
                 });
@@ -537,16 +197,12 @@
             document.querySelectorAll('#kasaTableGrid .table-card[data-detail-url]').forEach(card => {
                 const goToDetail = () => {
                     const detailUrl = card.dataset.detailUrl;
-                    if (detailUrl) {
-                        window.location.href = detailUrl;
-                    }
+                    if (detailUrl) window.location.href = detailUrl;
                 };
 
                 card.onclick = (evt) => {
                     const target = evt.target;
-                    if (target instanceof Element && target.closest('a, button, input, select, textarea, label')) {
-                        return;
-                    }
+                    if (target instanceof Element && target.closest('a, button, input, select, textarea, label')) return;
                     goToDetail();
                 };
 
@@ -565,30 +221,23 @@
 
             const empty = document.getElementById('kasaGridEmpty');
             const cards = Array.from(grid.querySelectorAll('.table-card[data-search]'));
-
             const visibleCards = cards.filter(card => {
                 const areaMatch = kasaUiState.area === 'all' || card.dataset.area === kasaUiState.area;
                 const text = normalizeText(card.dataset.search || '');
-                const queryMatch = !kasaUiState.query || text.includes(kasaUiState.query);
-                return areaMatch && queryMatch;
+                return areaMatch && (!kasaUiState.query || text.includes(kasaUiState.query));
             });
 
             sortCards(visibleCards);
             visibleCards.forEach(card => grid.appendChild(card));
 
-            const pageSize = calculatePageSize(grid, visibleCards);
-            kasaUiState.pageSize = pageSize;
-            kasaUiState.totalPages = Math.max(1, Math.ceil(visibleCards.length / pageSize));
-            kasaUiState.currentPage = Math.min(kasaUiState.currentPage, kasaUiState.totalPages);
-            kasaUiState.currentPage = Math.max(1, kasaUiState.currentPage);
+            kasaUiState.pageSize = calculatePageSize(grid, visibleCards);
+            kasaUiState.totalPages = Math.max(1, Math.ceil(visibleCards.length / kasaUiState.pageSize));
+            kasaUiState.currentPage = Math.max(1, Math.min(kasaUiState.currentPage, kasaUiState.totalPages));
 
             const startIndex = (kasaUiState.currentPage - 1) * kasaUiState.pageSize;
             const endIndex = startIndex + kasaUiState.pageSize;
 
-            cards.forEach(card => {
-                card.style.display = 'none';
-            });
-
+            cards.forEach(card => card.style.display = 'none');
             visibleCards.forEach((card, index) => {
                 card.style.display = index >= startIndex && index < endIndex ? '' : 'none';
             });
@@ -634,25 +283,8 @@
                 };
             }
 
-            if (prevBtn) {
-                prevBtn.onclick = () => {
-                    if (kasaUiState.currentPage <= 1) {
-                        return;
-                    }
-                    kasaUiState.currentPage -= 1;
-                    applyBekleyenFilters();
-                };
-            }
-
-            if (nextBtn) {
-                nextBtn.onclick = () => {
-                    if (kasaUiState.currentPage >= kasaUiState.totalPages) {
-                        return;
-                    }
-                    kasaUiState.currentPage += 1;
-                    applyBekleyenFilters();
-                };
-            }
+            if (prevBtn) prevBtn.onclick = () => { if (kasaUiState.currentPage > 1) { kasaUiState.currentPage -= 1; applyBekleyenFilters(); } };
+            if (nextBtn) nextBtn.onclick = () => { if (kasaUiState.currentPage < kasaUiState.totalPages) { kasaUiState.currentPage += 1; applyBekleyenFilters(); } };
 
             initTableCardNavigation();
             applyBekleyenFilters();
@@ -664,19 +296,13 @@
 
             try {
                 const searchInput = document.getElementById('kasaSearchInput');
-                if (searchInput) {
-                    kasaUiState.query = normalizeText(searchInput.value).trim();
-                }
+                if (searchInput) kasaUiState.query = normalizeText(searchInput.value).trim();
 
                 const sortSelect = document.getElementById('kasaSortSelect');
-                if (sortSelect) {
-                    kasaUiState.sort = sortSelect.value;
-                }
+                if (sortSelect) kasaUiState.sort = sortSelect.value;
 
                 const activeChip = document.querySelector('[data-area-chip].active');
-                if (activeChip) {
-                    kasaUiState.area = activeChip.dataset.areaChip || 'all';
-                }
+                if (activeChip) kasaUiState.area = activeChip.dataset.areaChip || 'all';
 
                 const res = await fetch(window.location.pathname, {
                     cache: 'no-store',
@@ -686,11 +312,10 @@
 
                 const html = await res.text();
                 const doc = new DOMParser().parseFromString(html, 'text/html');
-
-                const yeniIcerik = doc.getElementById('kasaTabContent');
-                const mevcutIcerik = document.getElementById('kasaTabContent');
-                if (yeniIcerik && mevcutIcerik) {
-                    mevcutIcerik.innerHTML = yeniIcerik.innerHTML;
+                const incoming = doc.getElementById('kasaTabContent');
+                const current = document.getElementById('kasaTabContent');
+                if (incoming && current) {
+                    current.outerHTML = incoming.outerHTML;
                     initBekleyenMasalarUI();
                 }
             } catch (err) {
@@ -701,8 +326,8 @@
             }
         }
 
-        function scheduleSoftRefresh(delayMs = 500) {
-            const minIntervalMs = 3000;
+        function scheduleSoftRefresh(delayMs = 90) {
+            const minIntervalMs = 200;
             const elapsed = Date.now() - lastRefreshAt;
             const waitMs = Math.max(delayMs, minIntervalMs - elapsed);
 
@@ -728,26 +353,15 @@
         }
 
         function registerConnectionHandlers(conn) {
-            conn.on('SiparisGeldi', function () {
-                scheduleSoftRefresh(800);
-            });
-
-            conn.on('SiparisEklendi', function () {
-                scheduleSoftRefresh(800);
-            });
-
-            conn.on('SiparisGuncellendi', function () {
-                scheduleSoftRefresh(500);
-            });
-
-            conn.on('OdemeYapildi', function () {
+            conn.on('SiparisGeldi', () => scheduleSoftRefresh(100));
+            conn.on('SiparisEklendi', () => scheduleSoftRefresh(100));
+            conn.on('SiparisGuncellendi', () => scheduleSoftRefresh(80));
+            conn.on('OdemeYapildi', () => {
                 if (readBoolSetting('kasaPaymentSound', true)) {
                     const bell = document.getElementById('kasaBellSound');
-                    if (bell) {
-                        bell.play().catch(() => {});
-                    }
+                    if (bell) bell.play().catch(() => {});
                 }
-                scheduleSoftRefresh(300);
+                scheduleSoftRefresh(60);
             });
         }
 
@@ -757,16 +371,11 @@
         async function startConnection(conn, allowFallback) {
             try {
                 await conn.start();
-                console.log('Kasa Paneli SignalR bağlantısı başarılı.');
             } catch (err) {
                 console.error('SignalR Hatası:', err);
                 if (!allowFallback) return;
 
-                try {
-                    await conn.stop();
-                } catch (stopErr) {
-                    console.warn('SignalR kapatılırken hata:', stopErr);
-                }
+                try { await conn.stop(); } catch {}
 
                 connection = buildConnection(true);
                 registerConnectionHandlers(connection);
@@ -778,16 +387,12 @@
 
         let kasaResizeTimer = null;
         window.addEventListener('resize', function () {
-            if (kasaResizeTimer) {
-                clearTimeout(kasaResizeTimer);
-            }
-
-            kasaResizeTimer = setTimeout(() => {
-                applyBekleyenFilters();
-            }, 120);
+            if (kasaResizeTimer) clearTimeout(kasaResizeTimer);
+            kasaResizeTimer = setTimeout(applyBekleyenFilters, 120);
         });
 
         applyKasaViewSettings();
         initBekleyenMasalarUI();
     </script>
 }
+

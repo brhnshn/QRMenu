@@ -577,7 +577,7 @@
                         foreach (var siparis in siparisler)
                         {
                             var bekleyenDetaylar = siparis.SiparisDetaylar
-                                .Where(sd => sd.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi || sd.Durum == QRMenu.Core.Enums.SiparisDurum.KismiOdendi)
+                                .Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal && sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iade && sd.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi)
                                 .ToList();
 
                             if (!bekleyenDetaylar.Any())
@@ -626,14 +626,15 @@
 
                                     @for (var i = 0; i < detay.Adet; i++)
                                     {
-                                        <label class="odeme-item-row">
+                                        var isPayable = detay.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi || detay.Durum == QRMenu.Core.Enums.SiparisDurum.KismiOdendi;
+                                        <label class="odeme-item-row @(isPayable ? "" : "opacity-60 cursor-not-allowed")" title="@(isPayable ? "" : "Sipariş henüz müşteriye teslim edilmediği için ödeme alınamaz.")">
                                             <div class="odeme-item-main">
                                                 <div class="odeme-check-wrap">
                                                     <input type="checkbox"
                                                            class="odeme-check urun-check"
                                                            value="@detay.Id"
                                                            data-fiyat="@satirTutar.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                                                           onchange="hesapla()" />
+                                                           onchange="hesapla()" @(isPayable ? "" : "disabled") />
                                                 </div>
 
                                                 <div class="odeme-item-icon">
@@ -810,7 +811,7 @@
         }
 
         function tumunuSec() {
-            const checks = Array.from(document.querySelectorAll('.urun-check'));
+            const checks = Array.from(document.querySelectorAll('.urun-check:not([disabled])'));
             if (!checks.length) {
                 return;
             }

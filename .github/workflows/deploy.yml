@@ -26,7 +26,7 @@ jobs:
       with:
         files: 'src/QRMenu.Web/appsettings.json'
       env:
-        ConnectionStrings.DefaultConnection: "User Id=${{ secrets.DB_USER }};Password=${{ secrets.DB_PASSWORD }};Server=${{ secrets.DB_SERVER }};Port=5432;Database=postgres;Pooling=true;Maximum Pool Size=40;"
+        ConnectionStrings.DefaultConnection: "Host=${{ secrets.DB_SERVER }};Port=5432;Database=QRMenu;Username=${{ secrets.DB_USER }};Password=${{ secrets.DB_PASSWORD }};Pooling=true;Maximum Pool Size=40;"
 
     - name: 🧪 Testleri Çalıştır
       run: dotnet test --nologo --verbosity minimal

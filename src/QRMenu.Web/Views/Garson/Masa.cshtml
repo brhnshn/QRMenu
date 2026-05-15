@@ -1,64 +1,11 @@
-@model QRMenu.Core.Entities.Masa
+@model QRMenu.Web.ViewModels.GarsonMasaPageViewModel
+
 @{
     Layout = "~/Views/Shared/_GarsonLayout.cshtml";
-
-    var siparisler = ViewBag.AktifSiparisler as List<QRMenu.Core.Entities.Siparis> ?? new List<QRMenu.Core.Entities.Siparis>();
-    var gecmisSiparisler = ViewBag.GecmisSiparisler as List<QRMenu.Core.Entities.Siparis> ?? new List<QRMenu.Core.Entities.Siparis>();
-    var turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
-    Func<DateTime, string> toTR = dt => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(dt, DateTimeKind.Utc), turkeyTz).ToString("HH:mm");
-
-    var acikSiparisler = siparisler
-        .Where(s => s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal
-            && s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi
-            && s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade)
-        .ToList();
-
-    var toplamAktifTutar = acikSiparisler.Sum(s => s.ToplamTutar);
-    var hazirSiparisSayisi = acikSiparisler.Count(s => s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir);
-    var masaDurumYazi = acikSiparisler.Any() ? (hazirSiparisSayisi > 0 ? "Servis Bekliyor" : "Dolu") : "Boş";
-    var masaDurumSinif = acikSiparisler.Any() ? "text-secondary" : "text-emerald-700";
-    var masaDurumDot = acikSiparisler.Any() ? "bg-secondary" : "bg-emerald-600";
-    var bugunTr = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, turkeyTz).Date;
-
-    DateTime toTRDate(DateTime utc) =>
-        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), turkeyTz).Date;
-
-    string? MusteriNotunuAyikla(string? notlar)
-    {
-        if (string.IsNullOrWhiteSpace(notlar)) return null;
-
-        var trimmed = notlar.Trim();
-        var parts = trimmed.Split('|', 2, StringSplitOptions.TrimEntries);
-        if (parts.Length == 2 && !string.IsNullOrWhiteSpace(parts[1]))
-            return parts[1];
-
-        if (trimmed.StartsWith("🎉 Happy Hour", StringComparison.OrdinalIgnoreCase))
-            return null;
-
-        return trimmed;
-    }
-
-    var notluSiparisler = siparisler
-        .Concat(gecmisSiparisler)
-        .Where(s => toTRDate(s.OlusturmaTarihi) == bugunTr)
-        .Select(s => new
-        {
-            Siparis = s,
-            MusteriNotu = MusteriNotunuAyikla(s.Notlar)
-        })
-        .Where(x => !string.IsNullOrWhiteSpace(x.MusteriNotu))
-        .OrderByDescending(x => x.Siparis.OlusturmaTarihi)
-        .ToList();
-
-    var gorunenSiparisler = siparisler.Take(5).ToList();
-    var gizliSiparisSayisi = Math.Max(0, siparisler.Count - gorunenSiparisler.Count);
-    var yanPanelNotlari = notluSiparisler.Take(4).ToList();
-    var gizliYanNotSayisi = Math.Max(0, notluSiparisler.Count - yanPanelNotlari.Count);
-
     ViewData["GarsonPageTitle"] = $"Masa {Model.MasaNo}";
     ViewData["GarsonActivePage"] = "Masa";
     ViewData["GarsonContentClass"] = "px-3 py-3 sm:px-5 sm:py-3 flex-1 min-h-0 overflow-y-auto lg:overflow-hidden";
-    ViewData["GarsonMasaLink"] = $"/Garson/Masa/{Model.Id}";
+    ViewData["GarsonMasaLink"] = $"/Garson/Masa/{Model.MasaId}";
 }
 
 @section GarsonHeaderLeft {
@@ -71,7 +18,7 @@
 }
 
 @section GarsonHeaderRight {
-    <a href="/Garson/Masa/@Model.Id/YeniSiparis" class="bg-primary text-on-primary px-4 sm:px-5 py-2.5 rounded-2xl flex items-center justify-center gap-2 font-label font-bold tracking-tight active:scale-95 transition-all shadow-lg shadow-primary/20 w-full sm:w-auto">
+    <a href="/Garson/Masa/@Model.MasaId/YeniSiparis" class="bg-primary text-on-primary px-4 sm:px-5 py-2.5 rounded-2xl flex items-center justify-center gap-2 font-label font-bold tracking-tight active:scale-95 transition-all shadow-lg shadow-primary/20 w-full sm:w-auto">
         <span class="material-symbols-outlined text-[20px]">add</span>
         <span>Yeni Sipariş Al</span>
     </a>
@@ -112,28 +59,9 @@
             margin-bottom: 2px;
         }
 
-        .fis-item-row:hover {
-            background: #fdfdfd;
-        }
-
         .fis-item-row.is-selected {
             background: #fff6f3;
-            border-radius: .85rem;
-            padding: .85rem .75rem;
             outline: 1px solid rgba(162, 55, 24, 0.18);
-        }
-
-        .fis-cancel-check {
-            width: 1.75rem;
-            height: 1.75rem;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: .6rem;
-            border: 2px solid #d9d3cf;
-            background: #fff;
-            flex-shrink: 0;
-            transition: all 0.2s ease;
         }
 
         .fis-cancel-btn {
@@ -152,63 +80,9 @@
             gap: .45rem;
         }
 
-        .fis-cancel-btn:disabled {
-            opacity: .45;
-            cursor: not-allowed;
-        }
-
-        .fis-cancel-btn.is-busy {
-            opacity: .9;
-        }
-
-        .fis-btn-spinner {
-            width: 0.9rem;
-            height: 0.9rem;
-            border-radius: 999px;
-            border: 2px solid rgba(255,255,255,0.42);
-            border-top-color: #fff;
-            animation: fisSpin .75s linear infinite;
-        }
-
-        .fis-qty-chip-group {
-            display: inline-flex;
-            flex-wrap: wrap;
-            gap: .35rem;
-            align-items: center;
-        }
-
-        .fis-qty-chip {
-            border: 1px solid #ddd7d3;
-            background: #fff;
-            color: #5f5e5d;
-            border-radius: .6rem;
-            min-width: 2.05rem;
-            min-height: 1.9rem;
-            padding: .1rem .45rem;
-            font-size: .72rem;
-            font-weight: 800;
-            line-height: 1;
-        }
-
-        .fis-qty-chip.is-active {
-            background: #c62828;
-            border-color: #c62828;
-            color: #fff;
-        }
-
-        .fis-cancel-qty {
-            display: none;
-        }
-
-        @@keyframes fisSpin {
-            to { transform: rotate(360deg); }
-        }
-
-        .fis-cancel-input {
-            width: 1rem;
-            height: 1rem;
-            accent-color: #c62828;
-        }
+        .fis-cancel-btn:disabled { opacity: .45; cursor: not-allowed; }
+        .fis-btn-spinner { width: 0.9rem; height: 0.9rem; border-radius: 999px; border: 2px solid rgba(255,255,255,0.42); border-top-color: #fff; animation: fisSpin .75s linear infinite; }
+        .fis-cancel-input { width: 1rem; height: 1rem; accent-color: #c62828; }
         .durum-Onaylandi { background: #e0f2fe; color: #0369a1; }
         .durum-Hazirlaniyor { background: #dbeafe; color: #1d4ed8; }
         .durum-Hazir { background: #fff7ed; color: #c2410c; }
@@ -218,22 +92,8 @@
         .durum-Iptal { background: #fee2e2; color: #991b1b; }
         .durum-Iade { background: #ede9fe; color: #5b21b6; }
 
-        @@keyframes garsonNoticePulse {
-            from { transform: scale(1); }
-            to { transform: scale(1.05); }
-        }
-
-        @@media (min-width: 1024px) {
-            #waiterMain {
-                height: 100dvh;
-                min-height: 100dvh;
-                overflow: hidden;
-            }
-
-            #waiterMain > div {
-                min-height: 0;
-            }
-        }
+        @@keyframes fisSpin { to { transform: rotate(360deg); } }
+        @@keyframes garsonNoticePulse { from { transform: scale(1); } to { transform: scale(1.05); } }
 
         .masa-fit-layout {
             height: 100%;
@@ -251,361 +111,11 @@
             align-items: stretch;
         }
 
-        #masaSiparisSection {
-            min-height: 0;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #masaSiparisSection .masa-table-wrap {
-            min-height: 0;
-            flex: 1;
-            overflow: hidden;
-        }
-
-        #masaSiparisSection thead th {
-            padding-top: 0.85rem;
-            padding-bottom: 0.85rem;
-        }
-
-        #masaSiparisSection tbody td {
-            padding-top: 0.7rem;
-            padding-bottom: 0.7rem;
-        }
-
-        #masaYanPanel {
-            min-height: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 0.55rem;
-        }
-
-        #masaNotPaneli {
-            min-height: 0;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .yan-not-list {
-            display: grid;
-            gap: 0.45rem;
-        }
-
-        @@media (max-height: 860px) {
-            .masa-fit-layout {
-                gap: 0.45rem;
-            }
-
-            #masaDurumHeader {
-                margin-bottom: 0;
-            }
-
-            #masaDurumHeader h2 {
-                font-size: 1.45rem;
-            }
-
-            .masa-main-grid {
-                gap: 0.45rem;
-            }
-
-            #masaDurumHeader p {
-                display: none;
-            }
-        }
-
-        @@media (max-width: 1200px) {
-            .masa-main-grid {
-                grid-template-columns: minmax(0, 1fr);
-            }
-
-            #masaYanPanel {
-                display: none;
-            }
-        }
-
-        @@media (max-width: 1023px) {
-            .masa-fit-layout {
-                height: auto;
-                gap: 0.75rem;
-            }
-
-            #masaSiparisSection {
-                border-radius: 1.1rem;
-            }
-
-            #masaSiparisSection tbody td {
-                padding-top: 0.62rem;
-                padding-bottom: 0.62rem;
-            }
-
-            #gecmisSiparisPanel {
-                position: fixed;
-                left: 50%;
-                right: auto;
-                top: 78px;
-                transform: translateX(-50%);
-                width: min(94vw, 430px);
-                max-height: min(70vh, 420px);
-                overflow: hidden;
-            }
-        }
-
-        @@media (max-width: 640px) {
-            #garsonNoticeOverlay h1 {
-                font-size: 1.75rem !important;
-            }
-
-            #garsonNoticeOverlay p {
-                font-size: 0.92rem !important;
-            }
-
-            #garsonToastCard {
-                max-width: min(92vw, 360px);
-            }
-        }
+        @@media (max-width: 1200px) { .masa-main-grid { grid-template-columns: minmax(0, 1fr); } #masaYanPanel { display: none; } }
     </style>
 }
 
-<div class="w-full h-full masa-fit-layout">
-    <div id="masaDurumHeader" class="flex flex-col md:flex-row md:items-center justify-between gap-2">
-        <div class="flex flex-col">
-            <h2 class="text-xl font-bold font-headline text-on-surface tracking-tight">Masa Detayı</h2>
-            <p class="text-on-surface-variant text-xs mt-1">Aktif masa durumunu ve bekleyen siparişleri buradan yönetin.</p>
-        </div>
-        <div class="flex flex-wrap items-center justify-start md:justify-end gap-2 sm:gap-3 w-full md:w-auto">
-            <button type="button"
-                    onclick="topluTeslimEt(@Model.Id)"
-                    id="btnTopluTeslim"
-                    class="px-3 py-1 rounded-xl border border-sky-300 bg-sky-50 text-sky-700 text-xs font-bold flex items-center gap-1.5 hover:bg-sky-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    @(hazirSiparisSayisi == 0 ? "disabled" : null)>
-                <span class="material-symbols-outlined text-[16px]">done_all</span>
-                <span>Toplu Teslim Et</span>
-                <span class="px-1.5 py-0.5 rounded-full bg-sky-100 text-[11px]">@hazirSiparisSayisi</span>
-            </button>
-
-            <div id="gecmisSiparisWidget" class="relative">
-                <button type="button" onclick="toggleGecmisPanel()" class="px-2.5 py-1 rounded-xl border border-outline-variant/30 bg-surface-container-low text-on-surface text-xs font-semibold flex items-center gap-2 hover:bg-surface-container transition-colors">
-                    <span class="material-symbols-outlined text-[18px]">history</span>
-                    <span>Geçmiş İşlemler</span>
-                    <span class="text-xs bg-surface-container-high px-2 py-0.5 rounded-full">@gecmisSiparisler.Count</span>
-                </button>
-
-                <div id="gecmisSiparisPanel" class="hidden absolute right-0 top-full mt-2 w-[430px] max-w-[92vw] bg-white border border-outline-variant/20 rounded-2xl shadow-2xl overflow-hidden z-20">
-                    <div class="px-4 py-3 border-b border-surface-container-high flex items-center justify-between">
-                        <h3 class="font-headline font-bold text-base">Geçmiş İşlemler</h3>
-                        <button type="button" class="text-on-surface-variant hover:text-on-surface" onclick="closeGecmisPanel()">
-                            <span class="material-symbols-outlined text-[18px]">close</span>
-                        </button>
-                    </div>
-                    <div class="max-h-[320px] overflow-y-auto">
-                        @if (!gecmisSiparisler.Any())
-                        {
-                            <div class="px-4 py-6 text-sm text-on-surface-variant text-center">Bugün için geçmiş işlem yok.</div>
-                        }
-                        else
-                        {
-                            @foreach (var gs in gecmisSiparisler)
-                            {
-                                var gecmisDetay = string.Join(", ", gs.SiparisDetaylar.Select(sd => $"{sd.Adet}x {sd.Urun.Ad}"));
-                                <button type="button" class="w-full text-left px-4 py-3 border-b border-surface-container-low hover:bg-surface-container-low/50 transition-colors" onclick="siparisDetayAc(@gs.Id); closeGecmisPanel();">
-                                    <div class="flex items-center justify-between gap-3 mb-1">
-                                        <div class="font-bold text-sm">#@gs.GunlukSiparisNo</div>
-                                        <span class="durum-chip durum-@gs.Durum">@DurumLabel(gs.Durum.ToString())</span>
-                                    </div>
-                                    <div class="text-xs text-on-surface-variant line-clamp-2">@gecmisDetay</div>
-                                    <div class="mt-1 text-xs font-semibold">@toTR(gs.OlusturmaTarihi) · @gs.ToplamTutar.ToString("N2") TL</div>
-                                </button>
-                            }
-                        }
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-surface-container-low px-2.5 py-1 rounded-xl flex items-center gap-2">
-                <span class="material-symbols-outlined text-secondary text-[18px]">event_seat</span>
-                <span class="text-xs font-semibold font-label">Kapasite: Bilinmiyor</span>
-            </div>
-            <div class="bg-secondary-container/20 @masaDurumSinif px-2.5 py-1 rounded-xl flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full @masaDurumDot"></span>
-                <span class="text-xs font-bold font-label uppercase tracking-wider">@masaDurumYazi</span>
-            </div>
-        </div>
-    </div>
-
-    <div id="masaMainGrid" class="masa-main-grid">
-        <div id="masaSiparisSection" class="bg-surface-container-lowest rounded-3xl overflow-hidden shadow-[0_12px_32px_rgba(46,47,47,0.04)] ring-1 ring-outline-variant/10">
-            <div class="masa-table-wrap overflow-x-auto overscroll-x-contain">
-                <table class="w-full min-w-[760px] md:min-w-0 table-fixed text-left border-collapse">
-                    <thead>
-                        <tr class="bg-surface-container-low/50">
-                            <th class="w-[6%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">#</th>
-                            <th class="w-[32%] px-4 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Ürünler</th>
-                            <th class="w-[12%] px-3 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Tutar</th>
-                            <th class="w-[13%] px-3 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Durum</th>
-                            <th class="w-[9%] px-3 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em]">Saat</th>
-                            <th class="w-[28%] px-3 py-4 text-[11px] font-extrabold font-label text-stone-400 uppercase tracking-[0.15em] text-right">İşlem</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-surface-container/30">
-                        @if (!gorunenSiparisler.Any())
-                        {
-                            <tr>
-                                <td class="py-8" colspan="6">
-                                    <div class="flex flex-col items-center justify-center text-center px-4">
-                                        <div class="w-12 h-12 bg-surface-container rounded-full flex items-center justify-center mb-2 ring-4 ring-surface-container-low">
-                                            <span class="material-symbols-outlined text-stone-400 text-3xl">assignment</span>
-                                        </div>
-                                        <h3 class="text-base font-bold font-headline text-on-surface mb-1">Aktif sipariş bulunamadı</h3>
-                                        <p class="text-on-surface-variant text-sm max-w-sm mx-auto">Bu masa için henüz sipariş girişi yapılmamış.</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                        else
-                        {
-                            @foreach (var s in gorunenSiparisler)
-                            {
-                                var detayOzet = string.Join(", ", s.SiparisDetaylar.Where(sd => sd.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal).Select(sd => $"{sd.Adet}x {sd.Urun.Ad}"));
-
-                                <tr class="hover:bg-surface-container-low/50 cursor-pointer" onclick="siparisDetayAc(@s.Id)">
-                                    <td class="px-4 py-3 font-bold text-sm">#@s.GunlukSiparisNo</td>
-                                    <td class="px-4 py-3 text-sm"><span class="urun-ozet">@detayOzet</span></td>
-                                    <td class="px-3 py-3 font-semibold text-sm whitespace-nowrap">@s.ToplamTutar.ToString("N2") TL</td>
-                                    <td class="px-3 py-3"><span class="durum-chip durum-@s.Durum">@DurumLabel(s.Durum.ToString())</span></td>
-                                    <td class="px-3 py-3 text-sm whitespace-nowrap">@toTR(s.OlusturmaTarihi)</td>
-                                    <td class="px-3 py-3">
-                                        @{
-                                            var teslimAktif = s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir;
-                                            var iptalAktif = s.Durum == QRMenu.Core.Enums.SiparisDurum.Hazir || s.Durum == QRMenu.Core.Enums.SiparisDurum.TeslimEdildi;
-
-                                            var teslimClass = teslimAktif
-                                                ? "min-w-[96px] px-3 py-2 rounded-xl bg-sky-600 text-white text-[13px] font-extrabold tracking-tight hover:bg-sky-700 transition-colors whitespace-nowrap"
-                                                : "min-w-[96px] px-3 py-2 rounded-xl bg-slate-100 text-slate-400 text-[13px] font-extrabold tracking-tight cursor-not-allowed whitespace-nowrap";
-
-                                            var iptalClass = iptalAktif
-                                                ? "min-w-[96px] px-3 py-2 rounded-xl border border-red-300 bg-red-50 text-red-700 text-[13px] font-extrabold tracking-tight hover:bg-red-100 transition-colors whitespace-nowrap"
-                                                : "min-w-[96px] px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 text-[13px] font-extrabold tracking-tight cursor-not-allowed whitespace-nowrap";
-                                        }
-                                        <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
-                                            <button type="button"
-                                                    class="@teslimClass"
-                                                    disabled="@(!teslimAktif)"
-                                                    onclick="event.stopPropagation(); durumGuncelle(@s.Id, 'TeslimEdildi', this)">
-                                                Teslim Et
-                                            </button>
-                                            <button type="button"
-                                                    class="@iptalClass"
-                                                    disabled="@(!iptalAktif)"
-                                                    onclick="event.stopPropagation(); siparisIptalEt(@s.Id)">
-                                                İptal
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        }
-                    </tbody>
-                </table>
-            </div>
-
-            @if (gizliSiparisSayisi > 0)
-            {
-                <div class="px-4 py-2 text-xs font-semibold text-on-surface-variant bg-surface-container-low/70 border-t border-outline-variant/20">
-                    +@gizliSiparisSayisi sipariş daha var. Tam liste için Geçmiş İşlemler'i açın.
-                </div>
-            }
-        </div>
-
-        <aside id="masaYanPanel">
-            <div class="bg-stone-900 rounded-2xl px-4 py-3 text-white">
-                <span class="text-orange-300 font-label text-[10px] font-bold uppercase tracking-widest block">Özet</span>
-                <div class="mt-2 text-sm font-bold">Aktif Sipariş Tutarı</div>
-                <div class="text-xl font-bold font-headline text-orange-200 mt-1">@toplamAktifTutar.ToString("N2") TL</div>
-                <div class="mt-2 text-[11px] text-orange-100/85">Hazır bekleyen sipariş: @hazirSiparisSayisi</div>
-                <a href="/Garson/Masa/@Model.Id/YeniSiparis" class="mt-3 inline-flex items-center gap-1 text-orange-200 font-bold text-[11px] uppercase tracking-widest hover:gap-2 transition-all">
-                    Yeni sipariş al <span class="material-symbols-outlined text-sm">chevron_right</span>
-                </a>
-            </div>
-
-            <div id="masaNotPaneli" class="bg-surface-container-low rounded-2xl px-4 py-3 border border-white/40">
-                <span class="text-secondary font-label text-[10px] font-bold uppercase tracking-widest block mb-2">Masa Notları</span>
-                @if (!yanPanelNotlari.Any())
-                {
-                    <p class="text-xs italic text-on-surface-variant leading-relaxed">Bugün için müşteri notu yok.</p>
-                }
-                else
-                {
-                    <div class="yan-not-list">
-                        @foreach (var item in yanPanelNotlari)
-                        {
-                            <button type="button" class="w-full text-left rounded-xl border border-outline-variant/25 bg-white/70 px-2.5 py-2 hover:bg-white transition-colors" onclick="siparisDetayAc(@item.Siparis.Id)">
-                                <div class="flex items-center justify-between gap-2 mb-0.5">
-                                    <span class="text-[11px] font-extrabold text-on-surface">#@item.Siparis.GunlukSiparisNo</span>
-                                    <span class="durum-chip durum-@item.Siparis.Durum">@DurumLabel(item.Siparis.Durum.ToString())</span>
-                                </div>
-                                <p class="text-xs text-on-surface-variant leading-relaxed line-clamp-1 break-all">@item.MusteriNotu</p>
-                            </button>
-                        }
-                    </div>
-                    @if (gizliYanNotSayisi > 0)
-                    {
-                        <p class="text-[11px] font-semibold text-on-surface-variant mt-1">+@gizliYanNotSayisi not daha var.</p>
-                    }
-                }
-            </div>
-        </aside>
-    </div>
-</div>
-
-<div id="fisOverlay" style="display:none; position:fixed; inset:0; z-index:80; background:rgba(0,0,0,0.72); justify-content:center; align-items:center; cursor:pointer;" onclick="if(event.target===this)fisKapat()">
-    <div class="bg-white rounded-3xl shadow-2xl w-[min(900px,95vw)] max-h-[90vh] overflow-hidden" onclick="event.stopPropagation()">
-        <div class="flex items-center justify-between px-6 py-4 border-b">
-            <h3 class="font-bold font-headline text-lg">Sipariş Detayı</h3>
-            <button class="text-stone-500 hover:text-stone-800" onclick="fisKapat()"><span class="material-symbols-outlined">close</span></button>
-        </div>
-        <div id="fisContent" class="p-6 overflow-y-auto max-h-[78vh]">
-            <div class="text-center text-stone-400 py-8">Yükleniyor...</div>
-        </div>
-    </div>
-</div>
-
-<div id="garsonNoticeOverlay" style="display:none; position:fixed; inset:0; z-index:95; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; flex-direction:column; cursor:pointer;" onclick="closeGarsonNotice()">
-    <div style="text-align:center; animation: garsonNoticePulse 0.6s ease-in-out infinite alternate;">
-        <div style="font-size:5rem;">🔔</div>
-        <h1 style="color:#fff; font-size:2.5rem; margin:1rem 0; font-weight:800;" id="garsonNoticeText">Masa ?</h1>
-        <p style="color:rgba(255,255,255,0.7); font-size:1.1rem;">Kapatmak için tıklayın</p>
-    </div>
-</div>
-
-<div id="garsonConfirmModal" class="fixed inset-0 z-[110] hidden items-center justify-center p-4 bg-black/45 backdrop-blur-[2px]">
-    <div class="w-[min(430px,92vw)] rounded-2xl bg-white border border-outline-variant/20 shadow-2xl overflow-hidden">
-        <div class="px-5 py-4 border-b border-surface-container-high flex items-center justify-between gap-3">
-            <h3 id="garsonConfirmTitle" class="font-headline font-bold text-lg text-on-surface">İşlemi Onayla</h3>
-            <button type="button" class="text-on-surface-variant hover:text-on-surface" onclick="closeGarsonConfirm(false)">
-                <span class="material-symbols-outlined text-[18px]">close</span>
-            </button>
-        </div>
-        <div class="px-5 py-4">
-            <p id="garsonConfirmMessage" class="text-sm text-on-surface-variant leading-relaxed">Bu işlem uygulanacak. Devam etmek istiyor musunuz?</p>
-        </div>
-        <div class="px-5 py-4 bg-surface-container-low flex items-center justify-end gap-2">
-            <button id="garsonConfirmCancelBtn" type="button" class="px-4 py-2 rounded-xl border border-outline-variant/35 bg-white text-on-surface text-sm font-bold hover:bg-surface-container transition-colors" onclick="closeGarsonConfirm(false)">
-                Vazgeç
-            </button>
-            <button id="garsonConfirmOkBtn" type="button" class="px-4 py-2 rounded-xl bg-sky-600 text-white text-sm font-bold hover:bg-sky-700 transition-colors" onclick="closeGarsonConfirm(true)">
-                Onayla
-            </button>
-        </div>
-    </div>
-</div>
-
-<div id="garsonToast" class="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-[120] opacity-0 pointer-events-none translate-y-3 transition-all duration-300">
-    <div id="garsonToastCard" class="max-w-[360px] flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 shadow-xl">
-        <span id="garsonToastIcon" class="material-symbols-outlined text-[18px] mt-0.5">error</span>
-        <span id="garsonToastMessage" class="text-sm font-semibold leading-relaxed">İşlem sırasında bir hata oluştu.</span>
-    </div>
-</div>
+@await Html.PartialAsync("_GarsonMasaPanel", Model.Panel)
 
 @section PageScripts {
     <script>
@@ -616,34 +126,22 @@
         let garsonToastTimer = null;
         let garsonConfirmResolver = null;
 
-        function garsonSettingEnabled(key, fallback) {
-            try {
-                const raw = localStorage.getItem(key);
-                if (raw === null) {
-                    return fallback;
-                }
-
-                return raw === '1';
-            } catch (e) {
-                return fallback;
-            }
-        }
-
-        function DurumLabel(d) {
-            const map = {
+        function durumLabel(durum) {
+            const labels = {
                 Onaylandi: 'Onaylandı',
                 Hazirlaniyor: 'Hazırlanıyor',
                 Hazir: 'Hazır',
                 TeslimEdildi: 'Teslim Edildi',
                 KismiOdendi: 'Kısmi Ödendi',
                 TamOdendi: 'Tam Ödendi',
-                Iptal: 'İptal'
+                Iptal: 'İptal',
+                Iade: 'İade'
             };
-            return map[d] || d;
+            return labels[durum] || durum;
         }
 
-        function escapeHtml(value) {
-            return String(value ?? '')
+        function escapeHtml(text) {
+            return String(text || '')
                 .replaceAll('&', '&amp;')
                 .replaceAll('<', '&lt;')
                 .replaceAll('>', '&gt;')
@@ -651,202 +149,115 @@
                 .replaceAll("'", '&#39;');
         }
 
-        function parseSeciliOpsiyonlar(rawOpsiyonlar) {
-            if (!rawOpsiyonlar || rawOpsiyonlar === '[]') return [];
-
-            try {
-                const parsed = typeof rawOpsiyonlar === 'string'
-                    ? JSON.parse(rawOpsiyonlar)
-                    : rawOpsiyonlar;
-
-                if (!Array.isArray(parsed)) return [];
-
-                return parsed
-                    .map(o => ({
-                        ad: o?.Ad ?? o?.ad ?? '',
-                        grup: o?.Grup ?? o?.grup ?? '',
-                        ekFiyat: Number(o?.EkFiyat ?? o?.ekFiyat ?? 0)
-                    }))
-                    .filter(o => o.ad);
-            } catch {
-                return [];
-            }
-        }
-
-        function formatOpsiyonlarHtml(rawOpsiyonlar) {
-            const opsiyonlar = parseSeciliOpsiyonlar(rawOpsiyonlar);
-            if (!opsiyonlar.length) return '';
-
-            const secimler = opsiyonlar.map(o => {
-                const grupPrefix = o.grup ? `${escapeHtml(o.grup)}: ` : '';
-                const fiyatText = o.ekFiyat > 0 ? ` (+${o.ekFiyat.toFixed(2)} TL)` : '';
-                return `${grupPrefix}${escapeHtml(o.ad)}${fiyatText}`;
-            }).join(' · ');
-
-            return `<div class="mt-1 text-xs text-on-surface-variant">Seçimler: ${secimler}</div>`;
-        }
-
-        function musteriNotunuAyikla(rawNotlar) {
-            if (!rawNotlar) return '';
-
-            const trimmed = String(rawNotlar).trim();
-            if (!trimmed) return '';
-
-            const parts = trimmed.split('|');
-            if (parts.length > 1) {
-                const customNote = parts.slice(1).join('|').trim();
-                return customNote || '';
-            }
-
-            if (trimmed.startsWith('🎉 Happy Hour')) {
-                return '';
-            }
-
-            return trimmed;
-        }
-
         async function siparisDetayAc(id) {
             acikSiparisId = id;
-            document.getElementById('fisContent').innerHTML = '<div class="text-center text-stone-400 py-8">Yükleniyor...</div>';
-            document.getElementById('fisOverlay').style.display = 'flex';
+            const overlay = document.getElementById('fisOverlay');
+            const content = document.getElementById('fisContent');
+            if (!overlay || !content) return;
+
+            overlay.style.display = 'flex';
+            content.innerHTML = '<div class="text-center text-stone-400 py-8">Yükleniyor...</div>';
 
             try {
                 const res = await fetch(`/Garson/SiparisDetay/${id}`);
                 const data = await res.json();
-                if (!data.success) {
-                    const errorBox = document.createElement('div');
-                    errorBox.className = 'text-center text-red-600 py-8';
-                    errorBox.textContent = data.message || 'Detay yüklenemedi.';
-                    const fisContent = document.getElementById('fisContent');
-                    fisContent.innerHTML = '';
-                    fisContent.appendChild(errorBox);
-                    return;
+                if (!data.success) throw new Error(data.message || 'Sipariş bulunamadı.');
+
+                let urunlerHtml = '';
+                for (const d of data.detaylar || []) {
+                    const checkboxEnabled = d.durum === 'Onaylandi' || d.durum === 'Hazir' || d.durum === 'TeslimEdildi';
+                    let opsText = '';
+                    if (d.opsiyonlar) {
+                        try {
+                            const parsed = JSON.parse(d.opsiyonlar);
+                            if (Array.isArray(parsed) && parsed.length > 0) {
+                                opsText = parsed.map(o => o.Ad + (o.EkFiyat > 0 ? ` (+${o.EkFiyat} TL)` : '')).join(', ');
+                            } else {
+                                opsText = d.opsiyonlar;
+                            }
+                        } catch (e) {
+                            opsText = d.opsiyonlar;
+                        }
+                    }
+
+                    urunlerHtml += `
+                        <div class="fis-item-row" data-detail-id="${d.detayId}">
+                            <input type="checkbox" class="fis-cancel-input" value="${d.detayId}" ${checkboxEnabled ? '' : 'disabled'}>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-bold text-sm">${escapeHtml(d.urunAd)} x ${d.adet}</div>
+                                ${opsText ? `<div class="text-xs text-stone-500 mt-0.5">${escapeHtml(opsText)}</div>` : ''}
+                            </div>
+                            <span class="durum-chip durum-${escapeHtml(d.durum)}">${escapeHtml(durumLabel(d.durum))}</span>
+                        </div>`;
                 }
-                renderFis(data);
-            } catch (e) {
-                console.error(e);
-                if (typeof btnToplu !== 'undefined' && btnToplu && original !== null) {
-                    btnToplu.innerHTML = original;
-                    btnToplu.disabled = false;
-                }
-                if (button && original !== null) {
-                    button.innerHTML = original;
-                    button.disabled = false;
-                }
-                document.getElementById('fisContent').innerHTML = '<div class="text-center text-red-600 py-8">Detay yüklenemedi.</div>';
+
+                const teslimButonuAktif = data.durum === 'Hazir';
+                const iptalButonuAktif = data.durum === 'Hazir' || data.durum === 'TeslimEdildi';
+
+                content.innerHTML = `
+                    <div data-fis-order-id="${data.id}">
+                        <div class="mb-5">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <h4 class="font-headline font-black text-xl text-on-surface">#${data.gunlukSiparisNo} - Masa ${data.masaNo ?? '-'}</h4>
+                                    <p class="text-sm text-on-surface-variant">${data.olusturmaTarihi || ''}</p>
+                                </div>
+                                <span class="durum-chip durum-${escapeHtml(data.durum)}">${escapeHtml(durumLabel(data.durum))}</span>
+                            </div>
+                            <div class="mt-3 text-sm font-semibold">${Number(data.toplamTutar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL</div>
+                        </div>
+                        <div class="rounded-2xl border p-4">${urunlerHtml || '<div class="text-sm text-stone-500">Detay bulunamadı.</div>'}</div>
+                        <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+                            <button type="button" class="px-4 py-2 rounded-xl bg-sky-600 text-white text-sm font-bold disabled:opacity-40" ${teslimButonuAktif ? '' : 'disabled'} onclick="durumGuncelle(${data.id}, 'TeslimEdildi')">Teslim Et</button>
+                            <button type="button" class="px-4 py-2 rounded-xl border border-red-300 bg-red-50 text-red-700 text-sm font-bold disabled:opacity-40" ${iptalButonuAktif ? '' : 'disabled'} onclick="siparisIptalEt(${data.id})">Siparişi İptal Et</button>
+                            <button type="button" id="garsonFisCancelBtn" class="fis-cancel-btn" data-cancel-selected disabled>
+                                <span class="fis-btn-spinner hidden" id="garsonFisCancelSpinner"></span>
+                                <span>Seçilenleri İptal Et</span>
+                            </button>
+                        </div>
+                    </div>`;
+
+                bindFisSelection();
+                updateGarsonFisSelection();
+            } catch (err) {
+                console.error(err);
+                content.innerHTML = '<div class="text-center text-red-500 py-8">Detay yüklenemedi.</div>';
             }
         }
 
-        function renderFis(data) {
-            const iptalEdilebilir = data.durum === 'Hazir' || data.durum === 'TeslimEdildi';
-            let urunlerHtml = '';
-            data.detaylar.forEach(d => {
-                const opsiyonlarHtml = formatOpsiyonlarHtml(d.opsiyonlar);
-                const secimDisabled = iptalEdilebilir ? '' : 'disabled';
-                
-                for(let i = 0; i < d.adet; i++) {
-                    urunlerHtml += `
-                        <div class="fis-item-row" data-detail-id="${d.detayId}">
-                            <div class="fis-cancel-check">
-                                <input type="checkbox" class="fis-cancel-input" value="${d.detayId}" ${secimDisabled} />
-                            </div>
-                            <div class="flex-1">
-                                <div class="font-semibold">
-                                    ${escapeHtml(d.urunAd)}
-                                    <span class="text-[10px] bg-stone-100 px-1.5 py-0.5 rounded text-stone-500 ml-1">1 ADET</span>
-                                </div>
-                                ${opsiyonlarHtml}
-                            </div>
-                            <div class="font-bold">${d.birimFiyat.toFixed(2)} TL</div>
-                        </div>`;
-                }
-            });
-
-            const musteriNotu = musteriNotunuAyikla(data.notlar);
-            const notHtml = musteriNotu
-                ? `<div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                        <div class="text-[11px] font-bold uppercase tracking-wider text-amber-700">Müşteri Notu</div>
-                        <div class="text-sm text-amber-900 mt-1 whitespace-pre-line break-all overflow-hidden">${escapeHtml(musteriNotu)}</div>
-                   </div>`
-                : '';
-
-            let aksiyonlar = '';
-            if (data.durum === 'Hazir') {
-                aksiyonlar += `<button class="min-w-[156px] px-4 py-2.5 rounded-2xl bg-sky-600 text-white text-sm font-extrabold tracking-tight shadow-sm hover:bg-sky-700 active:scale-95 transition-all" onclick="durumGuncelle(${data.id}, 'TeslimEdildi', this)">Teslim Edildi</button>`;
-            }
-            if (iptalEdilebilir) {
-                aksiyonlar += `<button class="min-w-[156px] px-4 py-2.5 rounded-2xl border-2 border-red-300 bg-red-50 text-red-700 text-sm font-extrabold tracking-tight shadow-sm hover:bg-red-100 active:scale-95 transition-all" onclick="siparisIptalEt(${data.id})">Siparişi İptal Et</button>`;
-            }
-
-            document.getElementById('fisContent').innerHTML = `
-                <div class="space-y-4" data-fis-order-id="${data.id}">
-                    <div class="flex items-center justify-between">
-                        <div class="text-2xl font-extrabold">#${data.gunlukSiparisNo}</div>
-                        <span class="durum-chip durum-${data.durum}">${DurumLabel(data.durum)}</span>
-                    </div>
-                    ${notHtml}
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <button type="button" class="fis-cancel-btn" id="garsonFisCancelBtn" onclick="garsonIptalSeciliDetaylar()" data-cancel-selected data-cancel-enabled="${iptalEdilebilir ? '1' : '0'}" ${iptalEdilebilir ? '' : 'disabled'}>
-                            <span class="fis-btn-spinner hidden" id="garsonFisCancelSpinner"></span>
-                            <span>Seçilenleri İptal Et</span>
-                        </button>
-                    </div>
-                    <div class="rounded-2xl border p-4">${urunlerHtml}</div>
-                    <div class="flex items-center justify-between text-lg font-extrabold">
-                        <span>Toplam</span>
-                        <span>${data.toplamTutar.toFixed(2)} TL</span>
-                    </div>
-                    <div class="flex gap-2 flex-wrap">${aksiyonlar || '<span class="text-stone-400 text-sm">Bu durum için işlem yok</span>'}</div>
-                </div>`;
-
-            updateGarsonFisSelection();
-
-            // Satırların herhangi bir yerine tıklanınca seçimi toggle et
-            const root = document.getElementById('fisContent').querySelector('[data-fis-order-id]');
-            if (root) {
-                root.querySelectorAll('.fis-item-row').forEach(row => {
-                    row.addEventListener('click', (e) => {
-                        if (e.target.closest('input,select,button,a,label')) return;
-                        const cb = row.querySelector('.fis-cancel-input');
-                        if (cb && !cb.disabled) {
-                            cb.checked = !cb.checked;
-                            updateGarsonFisSelection();
-                        }
-                    });
+        function bindFisSelection() {
+            document.querySelectorAll('#fisContent .fis-item-row').forEach(row => {
+                row.addEventListener('click', (e) => {
+                    if (e.target.closest('input,button,a,label')) return;
+                    const cb = row.querySelector('.fis-cancel-input');
+                    if (cb && !cb.disabled) {
+                        cb.checked = !cb.checked;
+                        updateGarsonFisSelection();
+                    }
                 });
-            }
+            });
         }
 
         function updateGarsonFisSelection() {
             const root = document.querySelector('#fisContent [data-fis-order-id]');
-            if (!root) {
-                return;
-            }
+            if (!root) return;
 
             let selectedCount = 0;
             root.querySelectorAll('.fis-item-row').forEach(row => {
                 const checked = row.querySelector('.fis-cancel-input')?.checked;
                 row.classList.toggle('is-selected', Boolean(checked));
-                if (checked) {
-                    selectedCount += 1;
-                }
+                if (checked) selectedCount += 1;
             });
 
             const cancelBtn = root.querySelector('[data-cancel-selected]');
-            const enabled = cancelBtn?.getAttribute('data-cancel-enabled') !== '0';
             if (cancelBtn) {
-                cancelBtn.disabled = !enabled || selectedCount === 0;
+                cancelBtn.disabled = selectedCount === 0;
             }
         }
 
         function collectGarsonCancelDetails() {
-            const root = document.querySelector('#fisContent [data-fis-order-id]');
-            if (!root) {
-                return [];
-            }
-
             const selectionMap = new Map();
-            root.querySelectorAll('.fis-cancel-input:checked').forEach(input => {
+            document.querySelectorAll('#fisContent .fis-cancel-input:checked').forEach(input => {
                 const detailId = Number.parseInt(input.value, 10);
                 if (Number.isFinite(detailId)) {
                     selectionMap.set(detailId, (selectionMap.get(detailId) || 0) + 1);
@@ -854,17 +265,13 @@
             });
 
             const result = [];
-            selectionMap.forEach((adet, siparisDetayId) => {
-                result.push({ siparisDetayId, adet });
-            });
+            selectionMap.forEach((adet, siparisDetayId) => result.push({ siparisDetayId, adet }));
             return result;
         }
 
         async function garsonIptalSeciliDetaylar() {
             const detaylar = collectGarsonCancelDetails();
-            if (!detaylar.length) {
-                return;
-            }
+            if (!detaylar.length) return;
 
             const onay = await showGarsonConfirm({
                 title: 'Seçili İptal Onayı',
@@ -873,20 +280,15 @@
                 cancelText: 'Vazgeç',
                 tone: 'danger'
             });
+            if (!onay) return;
 
-            if (!onay) {
-                return;
-            }
-
-            const root = document.querySelector('#fisContent [data-fis-order-id]');
-            const cancelBtn = root?.querySelector('#garsonFisCancelBtn');
-            const spinner = root?.querySelector('#garsonFisCancelSpinner');
+            const cancelBtn = document.getElementById('garsonFisCancelBtn');
+            const spinner = document.getElementById('garsonFisCancelSpinner');
             const labelEl = cancelBtn?.querySelector('span:not(.fis-btn-spinner)');
             const originalText = labelEl ? labelEl.innerText : 'Seçilenleri İptal Et';
 
             if (cancelBtn) {
                 cancelBtn.disabled = true;
-                cancelBtn.classList.add('is-busy');
                 if (spinner) spinner.classList.remove('hidden');
                 if (labelEl) labelEl.innerText = 'İşleniyor...';
             }
@@ -895,10 +297,7 @@
                 const res = await fetch('/Garson/SiparisDetayIptal', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        masaId: @Model.Id,
-                        detaylar 
-                    })
+                    body: JSON.stringify({ masaId: @Model.MasaId, detaylar })
                 });
 
                 const result = await res.json();
@@ -909,14 +308,13 @@
 
                 showGarsonToast('Seçilen kalemler iptal edildi.', 'success');
                 fisKapat();
-                scheduleSoftRefresh(120);
+                scheduleSoftRefresh(40);
             } catch (err) {
                 console.error(err);
                 showGarsonToast('İptal işlemi sırasında bağlantı hatası oluştu.', 'error');
             } finally {
                 if (cancelBtn) {
                     cancelBtn.disabled = false;
-                    cancelBtn.classList.remove('is-busy');
                     if (spinner) spinner.classList.add('hidden');
                     if (labelEl) labelEl.innerText = originalText;
                 }
@@ -925,7 +323,9 @@
         }
 
         function fisKapat() {
-            document.getElementById('fisOverlay').style.display = 'none';
+            const overlay = document.getElementById('fisOverlay');
+            if (overlay) overlay.style.display = 'none';
+            acikSiparisId = null;
         }
 
         function showGarsonToast(message, type = 'error') {
@@ -936,25 +336,15 @@
             if (!toast || !card || !icon || !msg) return;
 
             const themes = {
-                success: {
-                    cardClass: 'max-w-[360px] flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700 shadow-xl',
-                    icon: 'check_circle'
-                },
-                info: {
-                    cardClass: 'max-w-[360px] flex items-start gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sky-700 shadow-xl',
-                    icon: 'info'
-                },
-                error: {
-                    cardClass: 'max-w-[360px] flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 shadow-xl',
-                    icon: 'error'
-                }
+                success: { cardClass: 'max-w-[360px] flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700 shadow-xl', icon: 'check_circle' },
+                info: { cardClass: 'max-w-[360px] flex items-start gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sky-700 shadow-xl', icon: 'info' },
+                error: { cardClass: 'max-w-[360px] flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 shadow-xl', icon: 'error' }
             };
 
             const theme = themes[type] || themes.error;
             card.className = theme.cardClass;
             icon.textContent = theme.icon;
             msg.textContent = message;
-
             toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-3');
 
             if (garsonToastTimer) clearTimeout(garsonToastTimer);
@@ -969,37 +359,26 @@
             const messageEl = document.getElementById('garsonConfirmMessage');
             const okBtn = document.getElementById('garsonConfirmOkBtn');
             const cancelBtn = document.getElementById('garsonConfirmCancelBtn');
-
-            if (!modal || !titleEl || !messageEl || !okBtn || !cancelBtn) {
-                return Promise.resolve(false);
-            }
+            if (!modal || !titleEl || !messageEl || !okBtn || !cancelBtn) return Promise.resolve(false);
 
             titleEl.textContent = title;
             messageEl.textContent = message;
             okBtn.textContent = okText;
             cancelBtn.textContent = cancelText;
-
-            if (tone === 'danger') {
-                okBtn.className = 'px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors';
-            } else {
-                okBtn.className = 'px-4 py-2 rounded-xl bg-sky-600 text-white text-sm font-bold hover:bg-sky-700 transition-colors';
-            }
+            okBtn.className = tone === 'danger'
+                ? 'px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors'
+                : 'px-4 py-2 rounded-xl bg-sky-600 text-white text-sm font-bold hover:bg-sky-700 transition-colors';
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-
-            return new Promise((resolve) => {
-                garsonConfirmResolver = resolve;
-            });
+            return new Promise(resolve => { garsonConfirmResolver = resolve; });
         }
 
         function closeGarsonConfirm(accepted) {
             const modal = document.getElementById('garsonConfirmModal');
             if (!modal) return;
-
             modal.classList.add('hidden');
             modal.classList.remove('flex');
-
             if (garsonConfirmResolver) {
                 const resolve = garsonConfirmResolver;
                 garsonConfirmResolver = null;
@@ -1007,12 +386,7 @@
             }
         }
 
-        async function durumGuncelle(id, durum, button = null) {
-            const original = button ? button.innerHTML : null;
-            if (button) {
-                button.disabled = true;
-                button.innerHTML = 'İşleniyor';
-            }
+        async function durumGuncelle(id, durum) {
             try {
                 const res = await fetch(`/Garson/DurumGuncelle/${id}`, {
                     method: 'POST',
@@ -1020,15 +394,17 @@
                     body: JSON.stringify({ yeniDurum: durum })
                 });
                 const result = await res.json();
-                if (result.success) {
-                    scheduleSoftRefresh(120);
-                } else {
-                    if (button && original !== null) {
-                        button.innerHTML = original;
-                        button.disabled = false;
-                    }
+                if (!result.success) {
                     showGarsonToast('Hata: ' + result.message, 'error');
+                    return;
                 }
+
+                if (durum === 'TeslimEdildi') {
+                    showGarsonToast('Sipariş teslim edildi.', 'success');
+                }
+
+                fisKapat();
+                scheduleSoftRefresh(40);
             } catch (e) {
                 console.error(e);
                 showGarsonToast('Bağlantı hatası. Lütfen tekrar deneyin.', 'error');
@@ -1036,36 +412,27 @@
         }
 
         async function topluTeslimEt(masaId) {
-            const btnToplu = document.getElementById('btnTopluTeslim');
-            const original = btnToplu ? btnToplu.innerHTML : null;
             const onay = await showGarsonConfirm({
                 title: 'Toplu Teslim Onayı',
                 message: 'Hazır durumdaki tüm siparişler teslim edildi olarak işaretlenecek. Devam edilsin mi?',
                 okText: 'Toplu Teslim Et',
-                cancelText: 'Vazgeç',
-                tone: 'primary'
+                cancelText: 'Vazgeç'
             });
             if (!onay) return;
 
             try {
-                if (btnToplu) {
-                    btnToplu.disabled = true;
-                    btnToplu.innerHTML = '<span>İşleniyor</span>';
-                }
                 const res = await fetch(`/Garson/Masa/${masaId}/TopluTeslimEt`, {
                     method: 'POST',
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 const result = await res.json();
-
                 if (!result.success) {
                     showGarsonToast('Hata: ' + result.message, 'error');
                     return;
                 }
 
-                const teslimEdilen = Number(result.affectedCount || 0);
-                showGarsonToast(`${teslimEdilen} sipariş teslim edildi.`, 'success');
-                scheduleSoftRefresh(120);
+                showGarsonToast(`${Number(result.affectedCount || 0)} sipariş teslim edildi.`, 'success');
+                scheduleSoftRefresh(40);
             } catch (e) {
                 console.error(e);
                 showGarsonToast('Toplu teslim işlemi sırasında bağlantı hatası oluştu.', 'error');
@@ -1081,104 +448,53 @@
                 tone: 'danger'
             });
             if (!onay) return;
-
             durumGuncelle(id, 'Iptal');
         }
 
         function toggleGecmisPanel() {
             const panel = document.getElementById('gecmisSiparisPanel');
-            if (!panel) return;
-            panel.classList.toggle('hidden');
+            if (panel) panel.classList.toggle('hidden');
         }
 
         function closeGecmisPanel() {
             const panel = document.getElementById('gecmisSiparisPanel');
-            if (!panel) return;
-            panel.classList.add('hidden');
+            if (panel) panel.classList.add('hidden');
         }
-
-        document.addEventListener('click', (event) => {
-            const widget = document.getElementById('gecmisSiparisWidget');
-            if (!widget) return;
-            if (!widget.contains(event.target)) {
-                closeGecmisPanel();
-            }
-        });
-
-        document.addEventListener('click', (event) => {
-            const qtyBtn = event.target.closest('[data-cancel-qty-btn]');
-            if (qtyBtn) {
-                event.preventDefault();
-                const detailId = qtyBtn.getAttribute('data-cancel-qty-btn');
-                const row = qtyBtn.closest('[data-detail-id]');
-                if (row) {
-                    row.querySelectorAll(`[data-cancel-qty-btn="${detailId}"]`).forEach(btn => btn.classList.remove('is-active'));
-                    qtyBtn.classList.add('is-active');
-                }
-                return;
-            }
-
-            const cancelBtn = event.target.closest('[data-cancel-selected]');
-            if (cancelBtn) {
-                event.preventDefault();
-                if (!cancelBtn.disabled) {
-                    garsonIptalSeciliDetaylar();
-                }
-            }
-        });
-
-        document.addEventListener('change', (event) => {
-            const cancelInput = event.target.closest('.fis-cancel-input');
-            if (!cancelInput) {
-                return;
-            }
-
-            updateGarsonFisSelection();
-        });
-
-        document.addEventListener('click', (event) => {
-            const modal = document.getElementById('garsonConfirmModal');
-            if (!modal || modal.classList.contains('hidden')) return;
-            if (event.target === modal) {
-                closeGarsonConfirm(false);
-            }
-        });
-
-        document.addEventListener('keydown', (event) => {
-            if (event.key !== 'Escape') return;
-
-            const modal = document.getElementById('garsonConfirmModal');
-            if (!modal || modal.classList.contains('hidden')) return;
-
-            closeGarsonConfirm(false);
-        });
 
         async function softRefreshMasaSiparisleri() {
             if (refreshInFlight) return;
             refreshInFlight = true;
             try {
-                const res = await fetch(window.location.pathname, { cache: 'no-store', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                // Mevcut uyarı durumu kaybolmasın diye cache'le
+                const noticeOverlay = document.getElementById('garsonNoticeOverlay');
+                const isNoticeVisible = noticeOverlay && noticeOverlay.style.display !== 'none';
+                const noticeText = isNoticeVisible ? document.getElementById('garsonNoticeText').textContent : '';
+
+                const res = await fetch(window.location.pathname, {
+                    cache: 'no-store',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
                 if (!res.ok) throw new Error('Masa sipariş verisi alınamadı.');
 
                 const html = await res.text();
                 const doc = new DOMParser().parseFromString(html, 'text/html');
-                const sectionIds = ['masaDurumHeader', 'masaMainGrid'];
-                let updatedCount = 0;
+                const incoming = doc.getElementById('garsonMasaPanelRoot');
+                const current = document.getElementById('garsonMasaPanelRoot');
+                if (incoming && current) {
+                    current.outerHTML = incoming.outerHTML;
 
-                sectionIds.forEach((id) => {
-                    const yeniNode = doc.getElementById(id);
-                    const mevcutNode = document.getElementById(id);
-                    if (yeniNode && mevcutNode) {
-                        mevcutNode.innerHTML = yeniNode.innerHTML;
-                        updatedCount += 1;
+                    // Eğer uyarı aktiftiyse DOM yenilendikten sonra geri getir
+                    if (isNoticeVisible) {
+                        const newOverlay = document.getElementById('garsonNoticeOverlay');
+                        const newText = document.getElementById('garsonNoticeText');
+                        if (newOverlay && newText) {
+                            newText.textContent = noticeText;
+                            newOverlay.style.display = 'flex';
+                        }
                     }
-                });
-
-                if (updatedCount === 0) {
-                    throw new Error('Yenilenecek içerik bulunamadı.');
                 }
 
-                if (acikSiparisId && document.getElementById('fisOverlay').style.display === 'flex') {
+                if (acikSiparisId) {
                     await siparisDetayAc(acikSiparisId);
                 }
             } catch (err) {
@@ -1188,8 +504,8 @@
             }
         }
 
-        function scheduleSoftRefresh(delayMs = 500) {
-            const minIntervalMs = 2500;
+        function scheduleSoftRefresh(delayMs = 70) {
+            const minIntervalMs = 150;
             const elapsed = Date.now() - lastRefreshAt;
             const waitMs = Math.max(delayMs, minIntervalMs - elapsed);
             if (refreshTimer) return;
@@ -1213,20 +529,27 @@
         }
 
         function registerConnectionHandlers(conn) {
-            conn.on('SiparisGuncellendi', () => scheduleSoftRefresh(500));
-            conn.on('SiparisHazir', (masaNo) => {
-                if (garsonSettingEnabled('garsonNoticeOverlay', true)) {
-                    showGarsonNotice(`Masa ${masaNo} Siparişi Hazır!`);
-                }
-
-                if (garsonSettingEnabled('garsonNoticeSound', true)) {
-                    playNoticeSound();
-                }
-
-                scheduleSoftRefresh(300);
+            conn.on('SiparisGeldi', () => {
+                scheduleSoftRefresh(100);
             });
-            conn.on('SiparisIptal', () => scheduleSoftRefresh(350));
-            conn.on('OdemeYapildi', () => scheduleSoftRefresh(300));
+            conn.on('SiparisEklendi', () => scheduleSoftRefresh(100));
+            conn.on('GarsonCagrisi', (masaNo) => {
+                showGarsonNotice('Masa ' + (masaNo || '?') + ' garson çağırıyor!');
+                playNoticeSound();
+                scheduleSoftRefresh(80);
+            });
+            conn.on('SiparisGuncellendi', () => {
+                const overlay = document.getElementById('garsonNoticeOverlay');
+                if (overlay && overlay.style.display === 'flex') return;
+                scheduleSoftRefresh(70);
+            });
+            conn.on('SiparisHazir', (masaNo) => {
+                showGarsonNotice(`Masa ${masaNo} Siparişi Hazır!`);
+                playNoticeSound();
+                scheduleSoftRefresh(50);
+            });
+            conn.on('SiparisIptal', () => scheduleSoftRefresh(60));
+            conn.on('OdemeYapildi', () => scheduleSoftRefresh(50));
         }
 
         let connection = buildConnection(false);
@@ -1238,13 +561,7 @@
             } catch (err) {
                 console.error('SignalR Hatası:', err);
                 if (!allowFallback) return;
-
-                try {
-                    await conn.stop();
-                } catch (stopErr) {
-                    console.warn('SignalR kapatılırken hata:', stopErr);
-                }
-
+                try { await conn.stop(); } catch {}
                 connection = buildConnection(true);
                 registerConnectionHandlers(connection);
                 await startConnection(connection, false);
@@ -1254,13 +571,17 @@
         startConnection(connection, true);
 
         function showGarsonNotice(text) {
-            document.getElementById('garsonNoticeText').textContent = text;
-            document.getElementById('garsonNoticeOverlay').style.display = 'flex';
+            const textNode = document.getElementById('garsonNoticeText');
+            const overlay = document.getElementById('garsonNoticeOverlay');
+            if (!textNode || !overlay) return;
+            textNode.textContent = text;
+            overlay.style.display = 'flex';
         }
 
         function closeGarsonNotice() {
-            document.getElementById('garsonNoticeOverlay').style.display = 'none';
-            scheduleSoftRefresh(100);
+            const overlay = document.getElementById('garsonNoticeOverlay');
+            if (overlay) overlay.style.display = 'none';
+            scheduleSoftRefresh(40);
         }
 
         function playNoticeSound() {
@@ -1273,27 +594,50 @@
                 osc.type = 'sine';
                 const now = ctx.currentTime;
                 osc.frequency.setValueAtTime(880, now);
-                osc.frequency.exponentialRampToValueAtTime(440, now + 0.5);
-                gain.gain.setValueAtTime(0.5, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                osc.frequency.exponentialRampToValueAtTime(440, now + 0.45);
+                gain.gain.setValueAtTime(0.45, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
                 osc.start(now);
-                osc.stop(now + 0.5);
-            } catch (e) {
-                console.log('Ses çalınamadı');
-            }
+                osc.stop(now + 0.45);
+            } catch {}
         }
+
+        document.addEventListener('click', (event) => {
+            const widget = document.getElementById('gecmisSiparisWidget');
+            if (widget && !widget.contains(event.target)) {
+                closeGecmisPanel();
+            }
+
+            const cancelBtn = event.target.closest('[data-cancel-selected]');
+            if (cancelBtn) {
+                event.preventDefault();
+                if (!cancelBtn.disabled) garsonIptalSeciliDetaylar();
+            }
+        });
+
+        document.addEventListener('change', (event) => {
+            if (event.target.closest('.fis-cancel-input')) {
+                updateGarsonFisSelection();
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            const modal = document.getElementById('garsonConfirmModal');
+            if (modal && !modal.classList.contains('hidden') && event.target === modal) {
+                closeGarsonConfirm(false);
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                const confirmModal = document.getElementById('garsonConfirmModal');
+                if (confirmModal && !confirmModal.classList.contains('hidden')) {
+                    closeGarsonConfirm(false);
+                } else {
+                    fisKapat();
+                }
+            }
+        });
     </script>
 }
 
-@functions {
-    string DurumLabel(string d) => d switch {
-        "Onaylandi" => "Onaylandı",
-        "Hazirlaniyor" => "Hazırlanıyor",
-        "Hazir" => "Hazır",
-        "TeslimEdildi" => "Teslim Edildi",
-        "KismiOdendi" => "Kısmi Ödendi",
-        "TamOdendi" => "Tam Ödendi",
-        "Iptal" => "İptal",
-        _ => d
-    };
-}

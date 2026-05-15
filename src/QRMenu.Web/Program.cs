@@ -1,19 +1,19 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Identity;
-using System.Threading.RateLimiting;
-using Serilog;
-using QRMenu.Data.Data;
-using QRMenu.Core.Interfaces;
-using QRMenu.Core.Entities;
-using QRMenu.Data.Services;
-using QRMenu.Web.Middleware;
-using QRMenu.Web.Hubs;
-using QRMenu.Web.Services;
-using QRMenu.Data.Interceptors;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using QRMenu.Core.Entities;
+using QRMenu.Core.Interfaces;
+using QRMenu.Data.Data;
+using QRMenu.Data.Interceptors;
+using QRMenu.Data.Services;
+using QRMenu.Web.Hubs;
+using QRMenu.Web.Middleware;
+using QRMenu.Web.Services;
+using Serilog;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,28 +31,27 @@ builder.Host.UseSerilog();
 
 // ===== SERVICES =====
 
-// DbContext — PostgreSQL (Supabase) bağlantısı
+// DbContext - PostgreSQL baglantisi
 builder.Services.AddDbContext<QRMenuDbContext>((sp, options) =>
 {
     var rawConnectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("DefaultConnection tanımlı değil.");
+        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' tanimli degil.");
 
     var configuredMaxPoolSize = builder.Configuration.GetValue<int?>("Database:MaxPoolSize");
+    var environment = sp.GetRequiredService<IWebHostEnvironment>();
 
     var csb = new NpgsqlConnectionStringBuilder(rawConnectionString)
     {
-        // İnternet dalgalanmalarında daha hızlı toparlanma için bağlantı/read tarafını sınırla.
         Timeout = 15,
         CommandTimeout = 30,
         KeepAlive = 30,
         TcpKeepAlive = true,
         Pooling = true,
-        MaxPoolSize = configuredMaxPoolSize
-            ?? (rawConnectionString.Contains("pooler.supabase.com", StringComparison.OrdinalIgnoreCase) ? 10 : 100),
+        MaxPoolSize = configuredMaxPoolSize ?? 100,
         MinPoolSize = 0,
         ConnectionIdleLifetime = 60,
         ConnectionPruningInterval = 10,
-        SslMode = SslMode.Require
+        SslMode = environment.IsDevelopment() ? SslMode.Prefer : SslMode.Disable
     };
 
     options.UseNpgsql(csb.ConnectionString, npgsqlOptions =>
@@ -64,16 +63,15 @@ builder.Services.AddDbContext<QRMenuDbContext>((sp, options) =>
         npgsqlOptions.CommandTimeout(30);
         npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
     });
-    
-    // AuditLogInterceptor'ı DI üzerinden alıp ekle
+
     var interceptor = sp.GetRequiredService<AuditLogInterceptor>();
     options.AddInterceptors(interceptor);
 });
 
-// Memory Cache — Sepet okumalarını hızlandırmak için (Supabase Stockholm latency çözümü)
+// Memory Cache - Sepet okumalarini hizlandirmak icin
 builder.Services.AddMemoryCache();
 
-// DI — Uygulama Servisleri
+// DI - Uygulama Servisleri
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserProvider, CurrentUserProvider>();
 builder.Services.AddScoped<AuditLogInterceptor>();
@@ -83,7 +81,6 @@ builder.Services.AddScoped<ISepetService, SepetService>();
 builder.Services.AddScoped<ISiparisService, SiparisService>();
 builder.Services.AddScoped<IOdemeService, OdemeService>();
 builder.Services.AddScoped<QRMenu.Web.Helpers.IRazorViewRenderer, QRMenu.Web.Helpers.RazorViewRenderer>();
-
 
 // MVC
 var mvcBuilder = builder.Services.AddControllersWithViews(options =>
@@ -98,24 +95,21 @@ if (builder.Environment.IsDevelopment())
 // ASP.NET Identity
 builder.Services.AddIdentity<Kullanici, IdentityRole>(options =>
 {
-    // Parola gereksinimleri
     options.Password.RequireDigit = true;
     options.Password.RequiredLength = 6;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequireUppercase = false;
     options.Password.RequireLowercase = false;
 
-    // Hesap kilitleme
     options.Lockout.MaxFailedAccessAttempts = 5;
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
 
-    // Kullanıcı adı uniq, email isteğe bağlı
     options.User.RequireUniqueEmail = false;
 })
 .AddEntityFrameworkStores<QRMenuDbContext>()
 .AddDefaultTokenProviders();
 
-// Identity cookie ayarları
+// Identity cookie ayarlari
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Auth/Login";
@@ -128,15 +122,15 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
 
-    options.Events = new Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationEvents
+    options.Events = new CookieAuthenticationEvents
     {
         OnRedirectToLogin = context =>
         {
-            // Eğer AJAX isteği değilse ve auth hatasıysa, middleware'in yakalaması için asıl statüyü Items'a at
             if (!context.Request.Path.StartsWithSegments("/Auth/Login"))
             {
                 context.HttpContext.Items["SecurityStatusCode"] = 401;
             }
+
             context.Response.Redirect(context.RedirectUri);
             return Task.CompletedTask;
         },
@@ -149,8 +143,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
 });
 
-// Güvenlik damgası (SecurityStamp) doğrulamasını her istekte yap
-// Böylece rol değişikliği veya hesabın pasife alınması anında yansır (kullanıcı çıkışa zorlanır)
+// SecurityStamp dogrulamasini her istekte yap
 builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 {
     options.ValidationInterval = TimeSpan.Zero;
@@ -166,10 +159,10 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("RequireStaff", policy => policy.RequireRole("Admin", "Garson", "Kasa", "Mutfak", "Barista"));
 });
 
-// SignalR — Gerçek zamanlı menü güncellemeleri
+// SignalR - Gercek zamanli menu guncellemeleri
 builder.Services.AddSignalR();
 
-// Background Service — 1 günden eski oturumları sil
+// Background Service - 1 gunden eski oturumlari sil
 builder.Services.AddHostedService<OturumTemizleyici>();
 
 // ===== RATE LIMITING =====
@@ -177,7 +170,6 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = 429;
 
-    // Token bazlı rate limiting (müşteri endpoint'leri)
     options.AddPolicy("TokenBasedPolicy", context =>
     {
         var token = context.Request.Cookies["qrmenu_token"] ?? "anonymous";
@@ -191,7 +183,6 @@ builder.Services.AddRateLimiter(options =>
             });
     });
 
-    // Garson çağır butonu için daha sıkı limit
     options.AddPolicy("GarsonCagirPolicy", context =>
     {
         var token = context.Request.Cookies["qrmenu_token"] ?? "anonymous";
@@ -204,7 +195,7 @@ builder.Services.AddRateLimiter(options =>
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
             });
     });
-    // Siparis Limiti
+
     options.AddPolicy("SiparisLimiti", context =>
     {
         var token = context.Request.Cookies["qrmenu_token"] ?? "anonymous";
@@ -217,8 +208,6 @@ builder.Services.AddRateLimiter(options =>
             });
     });
 
-    // Gizli Kurtarma (Sistem Yöneticisi Oluşturma) ekranı için brute-force (kaba kuvvet) engelleme
-    // 15 dakikada en fazla 5 deneme yapılabilir (IP bazlı)
     options.AddPolicy("RecoveryLimitPolicy", context =>
     {
         var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown_ip";
@@ -247,12 +236,12 @@ else
     app.UseStatusCodePagesWithReExecute("/Error/{0}");
 }
 
-// Güvenlik Başlıkları (Security Headers)
+// Guvenlik basliklari
 app.Use(async (context, next) =>
 {
     context.Response.Headers.Append("X-Frame-Options", "DENY");
     context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
-    
+
     var csp = "default-src 'self'; " +
               "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; " +
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; " +
@@ -260,7 +249,7 @@ app.Use(async (context, next) =>
               "img-src 'self' data: https: blob:; " +
               "media-src 'self' https: blob:; " +
               "connect-src 'self' wss: https:;";
-    
+
     context.Response.Headers.Append("Content-Security-Policy", csp);
     await next();
 });
@@ -273,7 +262,7 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
-// Güvenlik Olayları Loglayıcı
+// Guvenlik olaylari loglayici
 app.UseMiddleware<SecurityLogMiddleware>();
 
 app.UseRouting();
@@ -284,7 +273,7 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Token doğrulama middleware (müşteri istekleri için) - Auth'dan SONRA çalışmalı ki personeli tanıyabilsin
+// Token dogrulama middleware (musteri istekleri icin)
 app.UseTokenValidation();
 
 // ===== ROUTING =====
@@ -294,10 +283,9 @@ app.MapControllerRoute(
 
 // SignalR Hub endpoint
 app.MapHub<OrderHub>("/hubs/order");
-// Geriye dönük uyumluluk: eski istemciler bir süre daha /hubs/menu üzerinden bağlanabilir.
 app.MapHub<OrderHub>("/hubs/menu");
 
-// ===== VERİTABANI MIGRATION + IDENTITY SEED =====
+// ===== VERITABANI MIGRATION + IDENTITY SEED =====
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<QRMenuDbContext>();
@@ -307,31 +295,31 @@ using (var scope = app.Services.CreateScope())
     try
     {
         db.Database.Migrate();
-        Log.Information("Veritabanı migration başarılı.");
+        Log.Information("Veritabani migration basarili.");
 
-        // ===== ROL SEED =====
         string[] roller = ["Admin", "Garson", "Kasa", "Mutfak", "Barista"];
         foreach (var rol in roller)
         {
             if (!await roleManager.RoleExistsAsync(rol))
+            {
                 await roleManager.CreateAsync(new IdentityRole(rol));
+            }
         }
-
     }
     catch (Exception ex)
     {
-        Log.Error(ex, "Veritabanı migration veya Seed hatası! Hatalı migration uygulamanın çökmesine sebep oluyor.");
+        Log.Error(ex, "Veritabani migration veya seed hatasi.");
     }
 }
 
 try
 {
-    Log.Information("QR Menü uygulaması başlatılıyor...");
+    Log.Information("QR Menu uygulamasi baslatiliyor...");
     app.Run();
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "Uygulama başlatılırken kritik bir hata oluştu!");
+    Log.Fatal(ex, "Uygulama baslatilirken kritik bir hata olustu.");
 }
 finally
 {

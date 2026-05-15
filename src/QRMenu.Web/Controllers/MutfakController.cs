@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QRMenu.Core.Entities;
 using QRMenu.Data.Data;
@@ -153,21 +153,26 @@ namespace QRMenu.Web.Controllers
                 // Eğer durum "Hazır" ise Garson'a özel bildirim fırlat
                 if (durum == SiparisDurum.Hazir)
                 {
-                    await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisHazir", masaNo);
-                    await _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisHazir", masaNo);
+                    await Task.WhenAll(
+                        _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisHazir", masaNo),
+                        _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisHazir", masaNo)
+                    );
                 }
                 else if (durum == SiparisDurum.Iptal)
                 {
-                    await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisIptal", masaNo);
-                    await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisIptal", masaNo);
-                    await _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisIptal", masaNo);
+                    await Task.WhenAll(
+                        _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisIptal", masaNo),
+                        _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisIptal", masaNo),
+                        _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisIptal", masaNo)
+                    );
                 }
 
-                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
-                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
-                await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
-                await _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisGuncellendi");
-
+                await Task.WhenAll(
+                    _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi"),
+                    _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi"),
+                    _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi"),
+                    _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisGuncellendi")
+                );
                 return Json(new { success = true });
             }
             catch (Exception ex)
@@ -211,9 +216,11 @@ namespace QRMenu.Web.Controllers
                 foreach (var siparis in iptalSiparisler)
                 {
                     var masaNo = siparis.Masa?.MasaNo ?? 0;
-                    await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisIptal", masaNo);
-                    await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisIptal", masaNo);
-                    await _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisIptal", masaNo);
+                    await Task.WhenAll(
+                        _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisIptal", masaNo),
+                        _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisIptal", masaNo),
+                        _menuHub.Clients.Group(SignalRGroups.Table(siparis.MasaId)).SendAsync("SiparisIptal", masaNo)
+                    );
                 }
 
                 foreach (var masaId in siparisler.Select(s => s.MasaId).Distinct())
@@ -221,10 +228,11 @@ namespace QRMenu.Web.Controllers
                     await _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisGuncellendi");
                 }
 
-                await _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi");
-                await _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi");
-                await _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi");
-
+                await Task.WhenAll(
+                    _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi"),
+                    _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi"),
+                    _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi")
+                );
                 return Json(new { success = true });
             }
             catch (Exception ex)
@@ -240,5 +248,7 @@ namespace QRMenu.Web.Controllers
         public string? YeniDurum { get; set; }
     }
 }
+
+
 
 
