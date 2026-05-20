@@ -1,0 +1,77 @@
+﻿name: Deploy to VDS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Projeyi Çek (Checkout)
+      uses: actions/checkout@v3
+
+    - name: ⚙️ .NET Kurulumu
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: 📄 appsettings.json Oluştur (Example'dan kopyala)
+      run: cp src/QRMenu.Web/appsettings.Example.json src/QRMenu.Web/appsettings.json
+
+    - name: 🔐 Şifreleri (Secrets) AppSettings İçine Enjekte Et
+      uses: microsoft/variable-substitution@v1
+      with:
+        files: 'src/QRMenu.Web/appsettings.json'
+      env:
+        ConnectionStrings.DefaultConnection: "Host=${{ secrets.DB_SERVER }};Port=5432;Database=QRMenu;Username=${{ secrets.DB_USER }};Password=${{ secrets.DB_PASSWORD }};Pooling=true;Maximum Pool Size=40;"
+
+    - name: 🧪 Testleri Çalıştır
+      run: dotnet test --nologo --verbosity minimal
+
+    - name: 🔨 Projeyi Derle (Publish) ve ZIP'le
+      run: |
+        dotnet publish src/QRMenu.Web/QRMenu.Web.csproj -c Release -r linux-x64 --self-contained false -o publish_output
+        cd publish_output
+        zip -r ../QRMenu.zip ./*
+
+    - name: 🚀 ZIP Dosyasını VDS'e Aktar (SCP)
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.VDS_HOST }}
+        username: ${{ secrets.VDS_USERNAME }}
+        password: ${{ secrets.VDS_PASSWORD }}
+        port: ${{ secrets.VDS_PORT }}
+        source: "QRMenu.zip"
+        target: "/var/www/QRMenu"
+
+    - name: 🔄 VDS Üzerinde Unzip Et ve Sistemi Yeniden Başlat (SSH)
+      uses: appleboy/ssh-action@v0.1.6
+      with:
+        host: ${{ secrets.VDS_HOST }}
+        username: ${{ secrets.VDS_USERNAME }}
+        password: ${{ secrets.VDS_PASSWORD }}
+        port: ${{ secrets.VDS_PORT }}
+        script: |
+          echo "1. Hedef klasore gidiliyor..."
+          cd /var/www/QRMenu
+
+          echo "2. Yeni Zip dosyasi cikartiliyor ve ustune yaziliyor..."
+          unzip -o QRMenu.zip -d /var/www/QRMenu
+
+          echo "3. Cikartilan Zip dosyasi siliniyor..."
+          rm -f QRMenu.zip
+
+          echo "4. Servisler Yeniden Baslatiliyor..."
+          SCRIPT_PATH=$(find / -type f -name "project-manager.sh" 2>/dev/null | head -n 1)
+          if [ -n "$SCRIPT_PATH" ]; then
+            echo "Script bulundu: $SCRIPT_PATH"
+            bash -i -c "source ~/.bashrc 2>/dev/null || true; source ~/.profile 2>/dev/null || true; cd /var/www/ && bash '$SCRIPT_PATH' restart"
+          else
+            echo "HATA: project-manager.sh dinamik olarak bulunamadi, global terminal emri ile deneniyor..."
+            bash -i -c "source ~/.bashrc 2>/dev/null || true; source ~/.profile 2>/dev/null || true; cd /var/www/ && project-manager.sh restart"
+          fi
+
+          echo "Tum islemler basariyla tamamlandi!"

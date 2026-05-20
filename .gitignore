@@ -40,4 +40,3 @@ docs/Html/
 # Build and Config
 .codex-build/
 .config/
-.github/workflows/
