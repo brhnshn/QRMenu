@@ -2,7 +2,7 @@
 
 [![Kullanım Rehberi](https://img.shields.io/badge/Doküman-Kullanım%20Rehberi-success?style=for-the-badge&logo=adobeacrobatreader)](docs/Pdfler/QR%20Men%C3%BC%20Sistemi%20-%20Kullan%C4%B1m%20Rehberipdf.pdf)
 [![Vize Proje Raporu](https://img.shields.io/badge/Doküman-Vize%20Proje%20Raporu-blue?style=for-the-badge&logo=adobeacrobatreader)](docs/Pdfler/SAT_VizeRaporu_Burhan_Şahin_247017027.pdf)
-[![Final Proje Raporu](https://img.shields.io/badge/Doküman-Final%20Proje%20Raporu-red?style=for-the-badge&logo=html5&logoColor=white)](docs/Html/Final_Rapor.html)
+[![Final Proje Raporu](https://img.shields.io/badge/Doküman-Final%20Proje%20Raporu-red?style=for-the-badge&logo=html5&logoColor=white)](https://github.com/brhnshn/QRMenu/blob/main/docs/Pdfler/QR%20Men%C3%BC%20%E2%80%94%20Final%20Raporu.pdf)
 
 Restoran ve kafeler için tasarlanmış, çoklu rol desteğine (Müşteri, Garson, Mutfak, Kasa, Yönetici) sahip, gerçek zamanlı ve tam kapsamlı **QR Kod Tabanlı Sipariş ve Otomasyon Sistemi**. Bu sistem, yerel geliştirme süreçlerinden canlı sunucu ortamındaki (Production) yayına kadar modern yazılım mimarileri, veri tabanı eşzamanlılığı, OWASP Top 10 güvenlik prensipleri ve CI/CD otomasyonu gözetilerek hayata geçirilmiştir.
 
