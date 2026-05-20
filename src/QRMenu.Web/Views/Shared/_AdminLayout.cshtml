@@ -1,3 +1,10 @@
+@inject Microsoft.AspNetCore.Identity.UserManager<QRMenu.Core.Entities.Kullanici> UserManager
+@{
+    var currentUser = await UserManager.GetUserAsync(User);
+    var name = currentUser?.AdSoyad ?? "Admin User";
+    var firstLetter = !string.IsNullOrEmpty(name) ? name[0].ToString().ToUpper() : "A";
+    var displayRol = currentUser?.Rol == QRMenu.Core.Enums.KullaniciRol.Admin ? "Sistem Yöneticisi" : "Yönetici";
+}
 <!DOCTYPE html>
 <html lang="tr" class="light">
 <head>
@@ -138,8 +145,8 @@
         </nav>
         <div class="mt-auto border-t border-surface-container p-5 bg-surface-container-low">
             <div class="flex items-center gap-2.5">
-                <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">A</div>
-                <div><p class="text-xs font-bold text-on-surface font-headline">Admin User</p><p class="text-[10px] text-on-surface-variant">General Manager</p></div>
+                <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">@firstLetter</div>
+                <div><p class="text-xs font-bold text-on-surface font-headline">@name</p><p class="text-[10px] text-on-surface-variant">@displayRol</p></div>
             </div>
         </div>
     </aside>
