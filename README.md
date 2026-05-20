@@ -120,7 +120,7 @@ Sistemin tüm aşamalarını, teknik analizleri ve haftalık ilerleme detayları
 | Rapor / Dosya | İçerik ve Açıklama | Bağlantı & Format |
 |:---|:---|:---:|
 | 📖 **KULLANIM REHBERİ** | Adım adım resimli sistem kullanım kılavuzu. | [**PDF İNDİR / GÖRÜNTÜLE**](docs/Pdfler/QR%20Men%C3%BC%20Sistemi%20-%20Kullan%C4%B1m%20Rehberipdf.pdf) |
-| 📊 **FİNAL RAPORU (HAFTA 6-10)** | **Sistemin son aşamasını, veri tabanı kilitlenmelerini, canlı sunucu mimarisini özetleyen nihai proje raporu.** | [**HTML GÖRÜNTÜLE**](docs/Html/Final_Rapor.html) |
+| 📊 **FİNAL RAPORU (HAFTA 6-10)** | **Sistemin son aşamasını, veri tabanı kilitlenmelerini, canlı sunucu mimarisini özetleyen nihai proje raporu.** | [**PDF GÖRÜNTÜLE**](https://github.com/brhnshn/QRMenu/blob/main/docs/Pdfler/QR%20Men%C3%BC%20%E2%80%94%20Final%20Raporu.pdf) |
 | 📊 **VİZE RAPORU (HAFTA 1-5)** | Projenin ilk yarısını, veri şemasını ve mimari seçimleri içeren ara rapor. | [**PDF İNDİR / GÖRÜNTÜLE**](docs/Pdfler/SAT_VizeRaporu_Burhan_Şahin_247017027.pdf) |
 | **Plan Takvimi** | Projenin 10 haftalık zamanlama ve hedef tablosu. | [PDF](docs/10%20Haftalık%20Plan%20Takvimi.pdf) |
 | **Dosya Yapısı** | Uygulamanın dizin hiyerarşisi ve dosya açıklamaları. | [PDF](docs/Pdfler/Proje%20Dosya%20Yapısı%20—%20QR%20Menü%20Otomasyonu.pdf) |
