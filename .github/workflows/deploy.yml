@@ -53,7 +53,7 @@ jobs:
           target: "/var/www/QRMenu"
 
       - name: 🔄 VDS Üzerinde Unzip Et ve Sistemi Yeniden Başlat (SSH)
-        uses: appleboy/ssh-action@v0.1.10
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VDS_HOST }}
           username: ${{ secrets.VDS_USERNAME }}
