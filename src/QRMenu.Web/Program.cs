@@ -50,9 +50,15 @@ builder.Services.AddDbContext<QRMenuDbContext>((sp, options) =>
         MaxPoolSize = configuredMaxPoolSize ?? 100,
         MinPoolSize = 0,
         ConnectionIdleLifetime = 60,
-        ConnectionPruningInterval = 10,
-        SslMode = environment.IsDevelopment() ? SslMode.Prefer : SslMode.Require
+        ConnectionPruningInterval = 10
     };
+
+    // Bağlantı dizesinde açıkça SslMode belirtilmemişse: SslMode.Prefer (SSL destekleniyorsa SSL, Docker/yerelde SSL yoksa güvenle düz bağlantı)
+    if (!rawConnectionString.Contains("SslMode", StringComparison.OrdinalIgnoreCase) &&
+        !rawConnectionString.Contains("SSL Mode", StringComparison.OrdinalIgnoreCase))
+    {
+        csb.SslMode = SslMode.Prefer;
+    }
 
     options.UseNpgsql(csb.ConnectionString, npgsqlOptions =>
     {
