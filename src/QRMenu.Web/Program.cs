@@ -408,6 +408,28 @@ using (var scope = app.Services.CreateScope())
             }
         }
 
+        // İlk kurulumda admin kullanıcısı yoksa otomatik oluştur
+        var adminUser = await userManager.FindByNameAsync("admin");
+        if (adminUser == null)
+        {
+            var adminPass = Environment.GetEnvironmentVariable("ADMIN_DEFAULT_PASSWORD") ?? "Admin123*";
+            adminUser = new Kullanici
+            {
+                UserName = "admin",
+                AdSoyad = "Sistem Yöneticisi",
+                Email = "admin@qrmenu.local",
+                EmailConfirmed = true,
+                AktifMi = true,
+                Rol = QRMenu.Core.Enums.KullaniciRol.Admin
+            };
+            var createRes = await userManager.CreateAsync(adminUser, adminPass);
+            if (createRes.Succeeded)
+            {
+                await userManager.AddToRoleAsync(adminUser, "Admin");
+                Log.Information("İlk kurulum: Varsayılan Admin kullanıcısı oluşturuldu (Kullanıcı: admin).");
+            }
+        }
+
         // Masalarda boş QrToken varsa üret
         var masalar = await db.Masalar.Where(m => string.IsNullOrEmpty(m.QrToken)).ToListAsync();
         if (masalar.Any())

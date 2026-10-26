@@ -34,6 +34,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
+      - ADMIN_DEFAULT_PASSWORD=${ADMIN_DEFAULT_PASSWORD:-Admin123*}
       - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=${POSTGRES_DB:-QRMenu};Username=${POSTGRES_USER:-qrmenu};Password=${POSTGRES_PASSWORD:-qrmenu_secure_pass_123!};Pooling=true;Maximum Pool Size=40;
     volumes:
       - uploads_data:/app/wwwroot/uploads
