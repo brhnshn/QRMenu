@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Projeyi Çek (Checkout)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: ⚙️ .NET 8 Kurulumu
         uses: actions/setup-dotnet@v4
@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: 📥 Projeyi Çek (Checkout)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: ⚙️ .NET 8 Kurulumu
         uses: actions/setup-dotnet@v4
