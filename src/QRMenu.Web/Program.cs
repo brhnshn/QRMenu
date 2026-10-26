@@ -92,10 +92,12 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
 });
+#if DEBUG
 if (builder.Environment.IsDevelopment())
 {
     mvcBuilder.AddRazorRuntimeCompilation();
 }
+#endif
 
 // ASP.NET Identity
 builder.Services.AddIdentity<Kullanici, IdentityRole>(options =>
