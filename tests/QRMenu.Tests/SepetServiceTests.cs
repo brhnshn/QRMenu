@@ -131,6 +131,21 @@ namespace QRMenu.Tests
         }
 
         [Fact]
+        public async Task AddItemAsync_UruneAitOlmayanOpsiyon_HataFirlatir()
+        {
+            var context = CreateInMemoryContext();
+            await SeedDataAsync(context);
+            var service = CreateService(context);
+
+            var sepet = await service.GetOrCreateSepetAsync(100);
+
+            // Opsiyon 999 ürüne ait değil
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.AddItemAsync(sepet.Id, 101, 1, new List<int> { 999 }));
+            Assert.Contains("ürüne ait değil", ex.Message);
+        }
+
+        [Fact]
         public async Task RemoveItemAsync_Should_Remove_And_Update_Total()
         {
             // Arrange

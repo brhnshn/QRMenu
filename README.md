@@ -14,28 +14,28 @@ Proje, bağımlılıkları en aza indiren, sürdürülebilir, test edilebilir ve
 
 ```mermaid
 graph TD
-    Web[QRMenu.Web - MVC, SignalR, Razor Views] --> Data[QRMenu.Data - EF Core, Postgres, Seed]
+    Web[QRMenu.Web - MVC, SignalR, Razor Views] --> Data[QRMenu.Data - EF Core, Postgres, Seed, Services]
     Web --> Core[QRMenu.Core - Domain, Interfaces, Business Logic]
     Data --> Core
 ```
 
 ### 📁 Katman Detayları
 1. **`QRMenu.Core` (Çekirdek Katmanı):**
-   * **Domain Modelleri (Entities):** `Urun`, `Kategori`, `Siparis`, `Sepet`, `Masa`, `Kullanici`, `HappyHour`, `GunSonuRapor` vb. veri modellerini barındırır.
-   * **Arayüzler (Interfaces):** Repository, UnitOfWork ve servislerin soyutlama tanımlarını içerir.
-   * **İş Kuralları (Business Rules):** Diğer katmanlara bağımlılığı olmayan temel sistem kuralları.
+   * **Domain Modelleri (Entities):** `Urun`, `Kategori`, `Siparis`, `Sepet`, `Masa`, `Kullanici`, `HappyHour`, `GunSonuRapor`, `UrunVaryasyon`, `UrunOpsiyon` vb. veri modellerini barındırır.
+   * **Arayüzler (Interfaces):** `ISiparisService`, `ISepetService`, `IOdemeService` gibi servis katmanı soyutlama sözleşmelerini içerir.
+   * **İş Kuralları & Yardımcılar (Business Rules & Helpers):** Zaman dilimi ve Türkiye iş günü dönüşümleri (`DateTimeHelper`), Happy Hour ve opsiyonlu dinamik tutar hesaplamaları (`FiyatHesaplayici`).
 
 2. **`QRMenu.Data` (Veri Katmanı):**
-   * **PostgreSQL Bağlantısı:** Veri tabanı şeması ve konfigürasyonlarını yöneten `AppDbContext`.
-   * **Repository & Unit of Work:** Veri erişim işlemlerinin tek merkezden yönetimini sağlar.
+   * **PostgreSQL Bağlantısı:** Veri tabanı şeması, token unique indexleri ve konfigürasyonlarını yöneten `QRMenuDbContext`.
+   * **Servis Katmanı (Service Layer):** Sipariş durumu makinesi (`SiparisService`), sepet optimizasyonu (`SepetService`) ve ACID uyumlu tahsilat (`OdemeService`).
    * **Seed Data:** Sistem ilk ayağa kalktığında otomatik yüklenen kategoriler, ürünler, masalar ve varsayılan yönetici (Admin) kullanıcısı.
    * **EF Core Migrations:** Veri tabanı güncellemelerinin takibi.
 
 3. **`QRMenu.Web` (Sunum Katmanı):**
    * **Controller & Razor Views:** Rol bazlı paneller (Admin, Garson, Mutfak, Kasa) ve müşteri ara yüzleri.
-   * **SignalR Hubs (`OrderHub`):** Müşteri siparişi, garson çağırma ve kasa tahsilat bildirimlerinin gerçek zamanlı akışını sağlar.
-   * **Middlewares (Ara Yazılımlar):** `SecurityLogMiddleware` (401, 403, 429 hata takibi), Rate Limiting ve Token Doğrulama mekanizmaları.
-   * **Arka Plan Servisleri (HostedServices):** 2 saat işlem görmeyen masaları temizleyen, sahipsiz sepetleri ve eski pasif oturumları silen `OturumTemizleyici`.
+   * **SignalR Hubs (`MenuHub`):** Token tabanlı masa grupları ve personel yetkilendirmesiyle gerçek zamanlı sipariş/çağrı akışı.
+   * **Middlewares (Ara Yazılımlar):** `SecurityLogMiddleware` (401, 403, 429 hata takibi), IP tabanlı Rate Limiting ve Token Doğrulama mekanizmaları.
+   * **Arka Plan Servisleri (HostedServices):** Aktif/ödenmemiş siparişi olmayan pasif oturumları ve sahipsiz sepetleri temizleyen `OturumTemizleyici`.
 
 ---
 
@@ -44,11 +44,11 @@ graph TD
 ### 💻 Backend & Real-time
 * **.NET 8.0 SDK / C#:** Modern nesne yönelimli backend altyapısı.
 * **ASP.NET Core MVC:** Hızlı, SEO dostu ve esnek web mimarisi.
-* **SignalR:** Gerçek zamanlı çift yönlü veri iletişimi.
+* **SignalR:** Gerçek zamanlı çift yönlü veri iletişimi (`MenuHub`).
 * **Entity Framework Core (EF Core):** PostgreSQL üzerinde Code-First ORM aracı.
 
 ### 🗄️ Veri Tabanı
-* **PostgreSQL (Supabase Entegrasyonu):** İlişkisel veri tabanı motoru.
+* **PostgreSQL (Supabase Entegrasyonu / Docker):** İlişkisel veri tabanı motoru.
 * **AuditLog Interceptor:** Veri tabanı üzerindeki tüm yazma/güncelleme işlemlerinin JSON formatında otomatik loglanması.
 
 ### 🎨 Frontend & UI/UX
@@ -58,16 +58,18 @@ graph TD
 ### 📑 Ekstra Kütüphaneler
 * **ClosedXML:** Z-Raporları ve sipariş verilerinin Excel dosyası olarak dışa aktarımı.
 * **iText7:** Sipariş fişleri, mali raporlar ve güvenlik günlüklerini Türkçe karakter destekli PDF formatında üreten motor.
-* **Google Translation API Helper:** Ürünlerin anlık Türkçe-İngilizce çevirisini yapan entegrasyon.
+* **OptionLocalization:** Menü opsiyonları ve ürün seçenekleri için çok dilli yerelleştirme altyapısı.
 
 ### 🛡️ Güvenlik Katmanı (OWASP Sıkılaştırması)
-* **ASP.NET Identity:** Güvenli Cookie tabanlı oturum yönetimi.
-* **Rate Limiting:** DDoS saldırılarını ve kaba kuvvet giriş denemelerini bloke eden IP bazlı koruma.
-* **ValidateAntiForgeryToken:** Cross-Site Request Forgery (CSRF) koruması.
-* **Strict Cookies:** Çerezlerin `HttpOnly`, `Secure` ve `SameSite=Strict` olarak yapılandırılması.
+* **ASP.NET Identity:** Güçlü parola politikası (min 8 karakter) ve Cookie tabanlı güvenli oturum yönetimi.
+* **Rate Limiting:** DDoS saldırılarını ve kaba kuvvet giriş denemelerini bloke eden IP ve Auth endpoint bazlı koruma.
+* **Token Tabanlı Masalar:** URL tahminini engelleyen ve rotasyon destekleyen kriptografik `QrToken` sistemi (`/qr/t/{token}`).
+* **ValidateAntiForgeryToken:** Cross-Site Request Forgery (CSRF) koruması (tüm Logout ve durum güncelleme POST işlemlerinde).
+* **Strict HTTP Headers:** `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `frame-ancestors 'self'`.
+* **Strict Cookies:** Çerezlerin `HttpOnly`, `Secure` ve `SameSite=Lax` olarak yapılandırılması.
 
 ### 🧪 Test Süreçleri
-* **xUnit & Moq:** Sipariş eşzamanlılığı, indirim zaman aralıkları ve stok kontrolleri gibi kritik akışları test eden **67 adet başarılı (Yeşil) Unit Test**.
+* **xUnit & Moq:** Sipariş eşzamanlılığı, indirim zaman aralıkları, durum makineleri, stok kontrolleri, rol yetkilendirmeleri ve güvenlik başlıklarını test eden **147 adet başarılı (Yeşil) Test** (106 Birim Testi + 41 Entegrasyon Testi).
 
 ---
 
@@ -75,7 +77,7 @@ graph TD
 
 ### 📋 Ön Gereksinimler
 * [**.NET 8.0 SDK**](https://dotnet.microsoft.com/download/dotnet/8.0) yüklenmiş olmalıdır.
-* Çalışan bir [**PostgreSQL**](https://www.postgresql.org/) veri tabanı (yerel veya bulut/Supabase).
+* Çalışan bir [**PostgreSQL**](https://www.postgresql.org/) veri tabanı (yerel, Supabase veya Docker).
 
 ### 1. Projeyi Klonlayın
 ```bash
@@ -83,35 +85,52 @@ git clone https://github.com/brhnshn/QRMenu.git
 cd QRMenu
 ```
 
-### 2. Veri Tabanı Yapılandırması
-`src/QRMenu.Web/appsettings.json` dosyasını açarak `ConnectionStrings` altındaki bağlantı cümlesini kendi veri tabanı bilgilerinize göre güncelleyin:
-```json
-"ConnectionStrings": {
-  "DefaultConnection": "Host=<HOST>;Port=5432;Database=QRMenu;Username=<USER>;Password=<PASSWORD>"
-}
+### 2. Veri Tabanı ve Gizli Bilgiler (User Secrets)
+Yerel geliştirme ortamında parola ve bağlantı dizgilerini repoya girmeden saklamak için `dotnet user-secrets` kullanılması önerilir:
+```bash
+cd "QR MENÜ"
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=QRMenu;Username=postgres;Password=your_password" --project src/QRMenu.Web
 ```
+Veya `src/QRMenu.Web/appsettings.Development.json` dosyasında `ConnectionStrings:DefaultConnection` alanını güncelleyebilirsiniz.
 
-### 3. Migrations Uygulama ve Veri Tabanı Oluşturma
-Veri tabanını şemasını oluşturmak ve başlangıç verilerini (seed) yüklemek için terminalde şu komutu çalıştırın:
+### 3. Migrations Uygulama
+Veri tabanı şemasını oluşturmak ve başlangıç verilerini (seed) yüklemek için:
 ```bash
 dotnet ef database update --project src/QRMenu.Data --startup-project src/QRMenu.Web
 ```
 
-### 4. Projeyi Başlatma
+### 4. İlk Yönetici (Admin) Hesabı Oluşturma
+Sistem CLI üzerinden güvenli bir yönetici hesabı oluşturmayı destekler:
+```bash
+dotnet run --project src/QRMenu.Web -- --create-admin admin "GucluParola123!"
+```
+
+### 5. Projeyi Başlatma
 Sunucuyu yerel ortamda çalıştırmak için:
 ```bash
 dotnet run --project src/QRMenu.Web
 ```
 Tarayıcınızdan `http://localhost:5000` (veya konsolda belirtilen port) adresini ziyaret ederek uygulamaya erişebilirsiniz.
 
-### 5. Unit Testleri Çalıştırma
-Sistemdeki tüm test senaryolarını test etmek için:
+### 🐳 Docker & Docker Compose ile Çalıştırma
+Projeyi PostgreSQL ve Web servisiyle birlikte tek komutla ayağa kaldırmak için:
+1. `.env.example` dosyasını `.env` olarak kopyalayın ve şifrelerinizi belirleyin:
+   ```bash
+   cp .env.example .env
+   ```
+2. Docker Compose'u başlatın:
+   ```bash
+   docker compose up -d --build
+   ```
+Uygulama `http://localhost:8080` adresinde, PostgreSQL ise `5432` portunda çalışacaktır.
+
+### 6. Testleri Çalıştırma
+Sistemdeki tüm 147 test senaryosunu (Birim ve Entegrasyon) çalıştırmak için:
 ```bash
 dotnet test
 ```
 
 ---
-
 
 ## 📂 Proje Dokümantasyonu ve İlerleme Raporları
 

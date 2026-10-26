@@ -40,3 +40,13 @@ docs/Html/
 # Build and Config
 .codex-build/
 .config/
+
+# Uploads & Media
+src/QRMenu.Web/wwwroot/uploads/
+
+# Publish Profiles
+src/QRMenu.Web/Properties/PublishProfiles/FolderProfile.pubxml
+*.pubxml
+
+# Environment
+.env

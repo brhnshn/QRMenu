@@ -121,7 +121,7 @@
                                     <button class="hidden flex-1 text-xs font-bold py-2 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors" id="indir-@item.MasaNo" onclick="indir(@item.MasaNo)">
                                         <i class="bi bi-download"></i> İndir
                                     </button>
-                                    <button class="hidden w-10 text-xs font-bold py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors flex items-center justify-center" id="qryenile-@item.MasaNo" onclick="olustur(@item.MasaNo)" title="Yeniden Oluştur">
+                                    <button class="hidden w-10 text-xs font-bold py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors flex items-center justify-center" id="qryenile-@item.MasaNo" onclick="olustur(@item.MasaNo, true)" title="QR Yenile (Yeni Token)">
                                         <i class="bi bi-arrow-clockwise"></i>
                                     </button>
                                 }
@@ -133,7 +133,7 @@
                                     <button class="flex-1 text-xs font-bold py-2 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors" id="indir-@item.MasaNo" onclick="indir(@item.MasaNo)">
                                         <i class="bi bi-download"></i> İndir
                                     </button>
-                                    <button class="w-10 text-xs font-bold py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors flex items-center justify-center" id="qryenile-@item.MasaNo" onclick="olustur(@item.MasaNo)" title="Yeniden Oluştur">
+                                    <button class="w-10 text-xs font-bold py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors flex items-center justify-center" id="qryenile-@item.MasaNo" onclick="olustur(@item.MasaNo, true)" title="QR Yenile (Yeni Token)">
                                         <i class="bi bi-arrow-clockwise"></i>
                                     </button>
                                 }
@@ -404,11 +404,12 @@
         return currentUrl;
     }
 
-    async function olustur(masaNo) {
+    async function olustur(masaNo, yenile = false) {
         var urlBase = await getQrUrlBase();
         if (!urlBase) return;
 
-        var response = await fetch('/admin/qr-olustur/' + masaNo, {
+        var endpoint = yenile ? ('/admin/qr-yenile/' + masaNo) : ('/admin/qr-olustur/' + masaNo);
+        var response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ BaseUrl: urlBase })

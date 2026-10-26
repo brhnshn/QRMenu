@@ -1,0 +1,36 @@
+# Git & GitHub
+.git
+.github
+.gitignore
+
+# IDE & Editor artifacts
+.vs
+.vscode
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build outputs
+**/bin/
+**/obj/
+**/TestResults/
+
+# Docker & local environment
+Dockerfile
+docker-compose*.yml
+.dockerignore
+.env
+.env.example
+
+# Documentation & Markdown
+*.md
+docs/
+
+# Uploads & local media (volume will mount these)
+**/wwwroot/uploads/**
+!**/wwwroot/uploads/.gitkeep
+
+# Sensitive config files
+**/appsettings.Development.json
+**/Properties/PublishProfiles/

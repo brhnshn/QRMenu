@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using QRMenu.Core.DTOs;
 using QRMenu.Core.Entities;
+using QRMenu.Core.Helpers;
 using QRMenu.Core.Interfaces;
 using QRMenu.Data.Data;
 
@@ -116,8 +117,20 @@ namespace QRMenu.Data.Services
 
             if (opsiyonIds != null && opsiyonIds.Count > 0)
             {
+                var distinctOpsiyonIds = opsiyonIds.Distinct().ToList();
+                var eslesenOpsiyonIds = await _context.UrunOpsiyonlar
+                    .Where(uo => uo.UrunId == urunId && distinctOpsiyonIds.Contains(uo.OpsiyonId))
+                    .Select(uo => uo.OpsiyonId)
+                    .ToListAsync();
+
+                // P1.9: Opsiyonların bu ürüne ait olduğunu doğrula
+                if (eslesenOpsiyonIds.Count != distinctOpsiyonIds.Count)
+                {
+                    throw new InvalidOperationException("Seçilen opsiyonlar ürüne ait değil.");
+                }
+
                 var opsiyonlar = await _context.Opsiyonlar
-                    .Where(o => opsiyonIds.Contains(o.Id))
+                    .Where(o => distinctOpsiyonIds.Contains(o.Id))
                     .ToListAsync();
 
                 opsiyonEkFiyat = opsiyonlar.Sum(o => o.EkFiyat);
@@ -126,14 +139,14 @@ namespace QRMenu.Data.Services
                 );
             }
 
-            // Birim fiyat hesapla
-            decimal basePrice = urun.Fiyat;
-            if (forceDiscountRate.HasValue && forceDiscountRate.Value > 0)
-            {
-                basePrice = Math.Round(basePrice * (1 - forceDiscountRate.Value / 100m), 2);
-            }
-            
-            decimal birimFiyat = basePrice + (varyasyon?.EkFiyat ?? 0) + opsiyonEkFiyat;
+            // Birim fiyat hesapla (P1.2: Happy Hour toplam tutara uygulanır)
+            decimal varyasyonEkFiyat = varyasyon?.EkFiyat ?? 0m;
+            decimal birimFiyat = FiyatHesaplayici.BirimFiyatHesapla(
+                urun.Fiyat,
+                varyasyonEkFiyat,
+                opsiyonEkFiyat,
+                forceDiscountRate ?? 0m,
+                forceDiscountRate.HasValue && forceDiscountRate.Value > 0);
 
             // Aynı ürün + aynı opsiyonlarla zaten sepette var mı?
             var mevcutDetay = await _context.SepetDetaylar

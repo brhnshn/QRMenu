@@ -154,14 +154,9 @@ namespace QRMenu.Tests
         [InlineData(SiparisDurum.Onaylandi, SiparisDurum.Hazirlaniyor)]
         [InlineData(SiparisDurum.Hazirlaniyor, SiparisDurum.Hazir)]
         [InlineData(SiparisDurum.Hazir, SiparisDurum.TeslimEdildi)]
-        [InlineData(SiparisDurum.TeslimEdildi, SiparisDurum.TamOdendi)]
-        [InlineData(SiparisDurum.TeslimEdildi, SiparisDurum.KismiOdendi)]
-        [InlineData(SiparisDurum.KismiOdendi, SiparisDurum.TamOdendi)]
         [InlineData(SiparisDurum.Onaylandi, SiparisDurum.Iptal)]
         [InlineData(SiparisDurum.Hazirlaniyor, SiparisDurum.Iptal)]
         [InlineData(SiparisDurum.TeslimEdildi, SiparisDurum.Iptal)]
-        [InlineData(SiparisDurum.TeslimEdildi, SiparisDurum.Iade)]
-        [InlineData(SiparisDurum.TamOdendi, SiparisDurum.Iade)]
         public async Task DurumGuncelle_GecerliGecis_Basarili(SiparisDurum mevcutDurum, SiparisDurum yeniDurum)
         {
             var context = CreateInMemoryContext();
@@ -185,6 +180,36 @@ namespace QRMenu.Tests
 
             Assert.Equal(yeniDurum, result.Durum);
             Assert.NotNull(result.GuncellemeTarihi);
+        }
+
+        [Theory]
+        [InlineData(SiparisDurum.TeslimEdildi, SiparisDurum.TamOdendi)]
+        [InlineData(SiparisDurum.TeslimEdildi, SiparisDurum.KismiOdendi)]
+        [InlineData(SiparisDurum.KismiOdendi, SiparisDurum.TamOdendi)]
+        [InlineData(SiparisDurum.TeslimEdildi, SiparisDurum.Iade)]
+        [InlineData(SiparisDurum.TamOdendi, SiparisDurum.Iade)]
+        public async Task DurumGuncelle_OdemeDurumlari_KasaIslemiDisindaHataFirlatir(SiparisDurum mevcutDurum, SiparisDurum yeniDurum)
+        {
+            var context = CreateInMemoryContext();
+            var service = CreateService(context);
+
+            var masa = new Masa { MasaNo = 1, AktifMi = true };
+            context.Masalar.Add(masa);
+            await context.SaveChangesAsync();
+
+            var siparis = new Siparis
+            {
+                MasaId = masa.Id,
+                Durum = mevcutDurum,
+                ToplamTutar = 50m,
+                RowVersion = new byte[] { 1 }
+            };
+            context.Siparisler.Add(siparis);
+            await context.SaveChangesAsync();
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.DurumGuncelleAsync(siparis.Id, yeniDurum));
+            Assert.Equal("Bu durum yalnızca kasa işlemiyle ayarlanabilir.", ex.Message);
         }
 
         [Theory]
@@ -393,6 +418,120 @@ namespace QRMenu.Tests
             var gecisler = service.GecerliGecisler(SiparisDurum.Iptal);
 
             Assert.Empty(gecisler);
+        }
+
+        [Fact]
+        public async Task SiparisOlustur_GunKapaliIse_HataFirlatir()
+        {
+            var context = CreateInMemoryContext();
+            var service = CreateService(context);
+            var (sepetId, _, _) = await SeedSepetDataAsync(context);
+
+            var bugun = QRMenu.Core.Helpers.DateTimeHelper.GetTurkeyBusinessDayUtc(DateTime.UtcNow);
+            context.GunSonuRaporlari.Add(new GunSonuRapor
+            {
+                Tarih = bugun,
+                ToplamCiro = 100,
+                KapanisTarihi = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.SiparisOlusturAsync(sepetId));
+            Assert.Contains("Gün sonu kapatılmış", ex.Message);
+        }
+
+        [Fact]
+        public async Task SiparisOlustur_HappyHourDisinda_FiyatYenidenHesaplanir()
+        {
+            var context = CreateInMemoryContext();
+            var service = CreateService(context);
+            var (sepetId, _, _) = await SeedSepetDataAsync(context);
+
+            // Sepetteki fiyata indirimli yazılmış olsun
+            var sepet = await context.Sepetler.Include(s => s.SepetDetaylar).FirstAsync(s => s.Id == sepetId);
+            foreach (var d in sepet.SepetDetaylar)
+            {
+                d.BirimFiyat = 1m; // İndirimli kaydedilmiş
+            }
+            await context.SaveChangesAsync();
+
+            // Happy Hour tanımlı değil veya saat dışında -> sunucuda ürünün gerçek fiyatından hesaplanmalı
+            var siparis = await service.SiparisOlusturAsync(sepetId);
+
+            // 10 + 20 = 30 TL olmalı, sepetteki 1+1=2 TL değil!
+            Assert.Equal(30m, siparis.ToplamTutar);
+        }
+
+        [Fact]
+        public async Task SiparisDetayIptal_StokIadeEdilir()
+        {
+            var context = CreateInMemoryContext();
+            var service = CreateService(context);
+            var (sepetId, _, _) = await SeedSepetDataAsync(context);
+
+            var siparis = await service.SiparisOlusturAsync(sepetId);
+            var detay = await context.SiparisDetaylar.FirstAsync(sd => sd.SiparisId == siparis.Id);
+
+            var urunOncekiStok = (await context.Urunler.FindAsync(detay.UrunId))!.StokAdet;
+
+            await service.SiparisDetayIptalEtAsync(new List<QRMenu.Core.DTOs.SiparisDetayIptalDto>
+            {
+                new() { SiparisDetayId = detay.Id, Adet = 1 }
+            });
+
+            var urunSonrakiStok = (await context.Urunler.FindAsync(detay.UrunId))!.StokAdet;
+            Assert.Equal(urunOncekiStok + 1, urunSonrakiStok);
+        }
+
+        [Fact]
+        public async Task SiparisDetayIptal_KalanlarTamOdendiIse_SiparisTamOdendiOlur()
+        {
+            var context = CreateInMemoryContext();
+            var service = CreateService(context);
+            var (sepetId, _, _) = await SeedSepetDataAsync(context);
+
+            var siparis = await service.SiparisOlusturAsync(sepetId);
+            var detaylar = await context.SiparisDetaylar.Where(sd => sd.SiparisId == siparis.Id).ToListAsync();
+
+            // İlk kalem ödenmiş olsun
+            detaylar[0].Durum = SiparisDurum.TamOdendi;
+            await context.SaveChangesAsync();
+
+            // İkinci kalem iptal edilsin
+            await service.SiparisDetayIptalEtAsync(new List<QRMenu.Core.DTOs.SiparisDetayIptalDto>
+            {
+                new() { SiparisDetayId = detaylar[1].Id, Adet = detaylar[1].Adet }
+            });
+
+            var guncelSiparis = await context.Siparisler.FindAsync(siparis.Id);
+            Assert.Equal(SiparisDurum.TamOdendi, guncelSiparis!.Durum);
+        }
+
+        [Fact]
+        public async Task ManuelSiparis_VaryasyonluUrun_DogruStokVeFiyat()
+        {
+            var context = CreateInMemoryContext();
+            var service = CreateService(context);
+
+            var masa = new Masa { MasaNo = 10, AktifMi = true };
+            context.Masalar.Add(masa);
+            var urun = new Urun { Ad = "Pizza", Fiyat = 100m, AktifMi = true, StokAdet = 10 };
+            context.Urunler.Add(urun);
+            await context.SaveChangesAsync();
+
+            var varyasyon = new UrunVaryasyon { UrunId = urun.Id, Ad = "Büyük Boy", EkFiyat = 50m, StokAdet = 5, AktifMi = true };
+            context.UrunVaryasyonlar.Add(varyasyon);
+            await context.SaveChangesAsync();
+
+            var siparis = await service.ManuelSiparisOlusturAsync(masa.Id, new List<QRMenu.Core.DTOs.ManuelSiparisDetayDto>
+            {
+                new() { UrunId = urun.Id, UrunVaryasyonId = varyasyon.Id, Adet = 2 }
+            });
+
+            Assert.Equal(300m, siparis.ToplamTutar); // (100 + 50) * 2
+            var guncelVaryasyon = await context.UrunVaryasyonlar.FindAsync(varyasyon.Id);
+            Assert.Equal(3, guncelVaryasyon!.StokAdet); // 5 - 2 = 3
         }
     }
 }

@@ -84,20 +84,25 @@ namespace QRMenu.Web.Controllers
                     .Take(200)
                     .ToListAsync();
 
-                var bugunUtc = DateTime.UtcNow.Date;
-                var bugunKayitQuery = _context.Siparisler
+                var (startUtc, endUtc) = QRMenu.Core.Helpers.DateTimeHelper.GetTurkeyDayUtcRange();
+
+                // Ciroyu Odemeler tablosundan OdemeTarihi aralığına göre topla
+                ViewBag.GunlukCiro = await _context.Odemeler
                     .AsNoTracking()
-                    .Where(s =>
-                        (s.Durum == SiparisDurum.TamOdendi || s.Durum == SiparisDurum.Iade) &&
-                        (s.GuncellemeTarihi ?? s.OlusturmaTarihi).Date == bugunUtc);
+                    .Where(o => o.OdemeTarihi >= startUtc && o.OdemeTarihi < endUtc)
+                    .SumAsync(o => (decimal?)o.Tutar) ?? 0m;
 
-                ViewBag.GunlukCiro = await bugunKayitQuery
-                    .Where(s => s.Durum == SiparisDurum.TamOdendi)
-                    .SumAsync(s => (decimal?)s.ToplamTutar) ?? 0m;
+                var bugunTamOdendiQuery = _context.Siparisler
+                    .AsNoTracking()
+                    .Where(s => s.Durum == SiparisDurum.TamOdendi &&
+                                (s.GuncellemeTarihi ?? s.OlusturmaTarihi) >= startUtc &&
+                                (s.GuncellemeTarihi ?? s.OlusturmaTarihi) < endUtc);
 
-                ViewBag.IslemSayisi = await bugunKayitQuery.CountAsync();
-                ViewBag.OrtalamaMasaTutari = await bugunKayitQuery
-                    .AverageAsync(s => (decimal?)s.ToplamTutar) ?? 0m;
+                var islemSayisi = await bugunTamOdendiQuery.CountAsync();
+                ViewBag.IslemSayisi = islemSayisi;
+                ViewBag.OrtalamaMasaTutari = islemSayisi > 0
+                    ? (await bugunTamOdendiQuery.AverageAsync(s => (decimal?)s.ToplamTutar) ?? 0m)
+                    : 0m;
 
                 return View(siparisler);
             }
@@ -229,10 +234,15 @@ namespace QRMenu.Web.Controllers
 
                 return Json(new { success = false, message = "Geçerli ödenecek ürün bulunamadı." });
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Tahsilat işlemi iş kuralı hatası");
+                return Json(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Tahsilat işlemi sırasında hata oluştu");
-                return StatusCode(500, new { success = false, message = "Islem sirasinda hata olustu." });
+                return Json(new { success = false, message = "İşlem sırasında bir hata oluştu." });
             }
         }
 
@@ -290,10 +300,15 @@ namespace QRMenu.Web.Controllers
                 );
                 return Json(new { success = true });
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Kasa seçili kalem iptal iş kuralı hatası");
+                return Json(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Kasa seçili kalem iptal işlemi sırasında hata oluştu");
-                return StatusCode(500, new { success = false, message = "Islem sirasinda hata olustu." });
+                return Json(new { success = false, message = "İşlem sırasında bir hata oluştu." });
             }
         }
 

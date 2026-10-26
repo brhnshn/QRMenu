@@ -1,4 +1,4 @@
-﻿@model QRMenu.Core.Entities.Sepet
+@model QRMenu.Core.Entities.Sepet
 @{
     ViewData["Title"] = "Sepetim";
     Layout = null;
@@ -19,26 +19,7 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet" />
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        "on-primary":"#ffefec","surface":"#f8f6f5","primary":"#a23718","secondary":"#765600",
-                        "surface-container-lowest":"#ffffff","surface-container-low":"#f2f0f0",
-                        "surface-container":"#eae8e7","outline":"#777776","secondary-container":"#ffca57",
-                        "on-secondary":"#fff1dc","primary-fixed":"#fd7954","outline-variant":"#aeadac",
-                        "on-surface":"#2e2f2f","on-secondary-container":"#5d4300","primary-container":"#fd7954",
-                        "on-surface-variant":"#5c5b5b","surface-container-high":"#e4e2e2",
-                        "surface-container-highest":"#dedcdc","primary-dim":"#922c0c",
-                        "error":"#b31b25","on-error":"#ffefee","background":"#f8f6f5"
-                    },
-                    fontFamily: { "headline":["Plus Jakarta Sans"],"body":["Be Vietnam Pro"],"label":["Plus Jakarta Sans"] },
-                    borderRadius: {"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},
-                }
-            }
-        }
-    </script>
+    <script src="~/js/tailwind-config.js" asp-append-version="true"></script>
     <style>
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
         .no-scrollbar::-webkit-scrollbar { display: none; }

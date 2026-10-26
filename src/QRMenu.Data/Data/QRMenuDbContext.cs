@@ -42,6 +42,8 @@ namespace QRMenu.Data.Data
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.MasaNo).IsRequired();
                 entity.HasIndex(e => e.MasaNo).IsUnique();
+                entity.Property(e => e.QrToken).HasMaxLength(64);
+                entity.HasIndex(e => e.QrToken).IsUnique();
             });
 
             // ===== KATEGORİ =====

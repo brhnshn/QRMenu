@@ -484,11 +484,18 @@ namespace QRMenu.Data.Migrations
                     b.Property<string>("QrKodUrl")
                         .HasColumnType("text");
 
+                    b.Property<string>("QrToken")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BolgeId");
 
                     b.HasIndex("MasaNo")
+                        .IsUnique();
+
+                    b.HasIndex("QrToken")
                         .IsUnique();
 
                     b.ToTable("Masalar", (string)null);

@@ -217,7 +217,20 @@
                                         })
                                 ).Replace("'", "&#39;");
 
-                                <div class="urun-card group bg-surface-container-lowest rounded-xl overflow-hidden flex flex-col cursor-pointer active:scale-[0.99]" data-kategori="@kategori.Id" data-urunad="@urun.Ad.ToLower(trCulture)" data-id="@urun.Id" data-ad="@urun.Ad" data-fiyat="@urun.Fiyat.ToString("F2", CultureInfo.InvariantCulture)" data-opsiyonlar='@Html.Raw(opsiyonlarJson)'>
+                                var varyasyonlarJson = JsonSerializer.Serialize(
+                                    urun.Varyasyonlar
+                                        .Where(v => v.AktifMi)
+                                        .OrderBy(v => v.SiraNo)
+                                        .Select(v => new
+                                        {
+                                            id = v.Id,
+                                            ad = v.Ad,
+                                            ekFiyat = v.EkFiyat,
+                                            stokAdet = v.StokAdet
+                                        })
+                                ).Replace("'", "&#39;");
+
+                                <div class="urun-card group bg-surface-container-lowest rounded-xl overflow-hidden flex flex-col cursor-pointer active:scale-[0.99]" data-kategori="@kategori.Id" data-urunad="@urun.Ad.ToLower(trCulture)" data-id="@urun.Id" data-ad="@urun.Ad" data-fiyat="@urun.Fiyat.ToString("F2", CultureInfo.InvariantCulture)" data-opsiyonlar="@opsiyonlarJson" data-varyasyonlar="@varyasyonlarJson">
                                     <div class="relative h-44 w-full overflow-hidden bg-gradient-to-br from-[#fd7954]/20 to-[#ffca57]/30">
                                         <img src="/Garson/UrunGorsel/@urun.Id" alt="@urun.Ad" class="w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
                                         <div class="absolute inset-0 hidden items-center justify-center bg-gradient-to-br from-[#fd7954]/20 to-[#ffca57]/30">
@@ -232,7 +245,7 @@
                                         <p class="text-sm text-on-surface-variant line-clamp-2">Kategori: @kategori.Ad</p>
                                         <div class="mt-2 flex items-center justify-between">
                                             <span class="text-xs font-bold text-secondary tracking-widest uppercase">Ürün</span>
-                                            <button type="button" class="add-product w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center active:scale-95" data-id="@urun.Id" data-ad="@urun.Ad" data-fiyat="@urun.Fiyat.ToString("F2", CultureInfo.InvariantCulture)" data-opsiyonlar='@Html.Raw(opsiyonlarJson)'>
+                                            <button type="button" class="add-product w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center active:scale-95" data-id="@urun.Id" data-ad="@urun.Ad" data-fiyat="@urun.Fiyat.ToString("F2", CultureInfo.InvariantCulture)" data-opsiyonlar="@opsiyonlarJson" data-varyasyonlar="@varyasyonlarJson">
                                                 <span class="material-symbols-outlined text-2xl">add</span>
                                             </button>
                                         </div>
@@ -341,6 +354,16 @@
             }
         }
 
+        function parseVaryasyonlar(raw) {
+            if (!raw) return [];
+            try {
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch {
+                return [];
+            }
+        }
+
         function normalizeOpsiyonlar(opsiyonlar) {
             return (opsiyonlar || [])
                 .map(o => ({
@@ -362,9 +385,9 @@
             return Number(item.fiyat) + opsiyonToplam(item.opsiyonlar);
         }
 
-        function cartKeyOlustur(urunId, opsiyonIds) {
+        function cartKeyOlustur(urunId, varyasyonId, opsiyonIds) {
             const sorted = [...(opsiyonIds || [])].sort((a, b) => a - b);
-            return `${urunId}:${sorted.join('-')}`;
+            return `${urunId}:v${varyasyonId || 0}:${sorted.join('-')}`;
         }
 
         function trCurrency(value) {
@@ -445,10 +468,14 @@
             });
         }
 
-        function addUrun(urunId, ad, fiyat, opsiyonlar = []) {
+        function addUrun(urunId, ad, fiyat, opsiyonlar = [], varyasyon = null) {
             const normalizedOpsiyonlar = normalizeOpsiyonlar(opsiyonlar);
             const opsiyonIds = normalizedOpsiyonlar.map(o => o.id);
-            const cartKey = cartKeyOlustur(urunId, opsiyonIds);
+            const varyasyonId = varyasyon ? varyasyon.id : null;
+            const varyasyonAd = varyasyon ? varyasyon.ad : null;
+            const urunGosterimAd = varyasyonAd ? `${ad} (${varyasyonAd})` : ad;
+            const birimFiyat = Number(fiyat) + (varyasyon ? Number(varyasyon.ekFiyat || 0) : 0);
+            const cartKey = cartKeyOlustur(urunId, varyasyonId, opsiyonIds);
             const mevcut = cart.find(x => x.cartKey === cartKey);
 
             if (mevcut) {
@@ -457,8 +484,9 @@
                 cart.push({
                     cartKey,
                     urunId,
-                    ad,
-                    fiyat,
+                    urunVaryasyonId: varyasyonId,
+                    ad: urunGosterimAd,
+                    fiyat: birimFiyat,
                     adet: 1,
                     opsiyonIds,
                     opsiyonlar: normalizedOpsiyonlar
@@ -484,14 +512,15 @@
             updateCartView();
         }
 
-        function urunEklemeAkisi(urunId, ad, fiyat, opsiyonlar) {
+        function urunEklemeAkisi(urunId, ad, fiyat, opsiyonlar, varyasyonlar) {
             const mevcutOpsiyonlar = normalizeOpsiyonlar(opsiyonlar);
-            if (mevcutOpsiyonlar.length === 0) {
-                addUrun(urunId, ad, fiyat, []);
+            const mevcutVaryasyonlar = Array.isArray(varyasyonlar) ? varyasyonlar : [];
+            if (mevcutOpsiyonlar.length === 0 && mevcutVaryasyonlar.length === 0) {
+                addUrun(urunId, ad, fiyat, [], null);
                 return;
             }
 
-            aktifOpsiyonUrun = { urunId, ad, fiyat, opsiyonlar: mevcutOpsiyonlar };
+            aktifOpsiyonUrun = { urunId, ad, fiyat, opsiyonlar: mevcutOpsiyonlar, varyasyonlar: mevcutVaryasyonlar };
             showOpsiyonModal();
         }
 
@@ -504,13 +533,44 @@
             const grouped = {};
             zorunluRadioGruplari = [];
 
+            title.textContent = `${aktifOpsiyonUrun.ad} - Seçimler`;
+            body.innerHTML = '';
+
+            // Varyasyonlar (varsa zorunlu seçim)
+            if (aktifOpsiyonUrun.varyasyonlar && aktifOpsiyonUrun.varyasyonlar.length > 0) {
+                let varyasyonHtml = `
+                    <div class="mb-5 border-b border-surface-container-high pb-4">
+                        <div class="flex items-center gap-2 mb-3">
+                            <h4 class="font-bold text-on-surface">Porsiyon / Boyut</h4>
+                            <span class="text-xs text-error font-bold">(Zorunlu)</span>
+                        </div>
+                        <div class="grid gap-2">
+                `;
+                aktifOpsiyonUrun.varyasyonlar.forEach((v, idx) => {
+                    const ekFiyat = Number(v.ekFiyat || 0);
+                    const priceTag = ekFiyat > 0 ? `+${ekFiyat.toFixed(2)} TL` : (ekFiyat < 0 ? `${ekFiyat.toFixed(2)} TL` : 'Standart');
+                    varyasyonHtml += `
+                        <label class="opsiyon-row flex items-center justify-between bg-surface-container-low rounded-xl px-3 py-3 cursor-pointer hover:bg-surface-container-high">
+                            <div class="flex items-center gap-3">
+                                <input class="varyasyon-input" type="radio" name="urun_varyasyon_secim" value="${v.id}" data-ekfiyat="${ekFiyat}" ${idx === 0 ? 'checked' : ''} />
+                                <span class="font-medium">${escapeHtml(v.ad)}</span>
+                            </div>
+                            <span class="text-sm font-bold text-secondary">${priceTag}</span>
+                        </label>
+                    `;
+                });
+                varyasyonHtml += '</div></div>';
+                body.innerHTML += varyasyonHtml;
+
+                body.querySelectorAll('.varyasyon-input').forEach(input => {
+                    input.addEventListener('change', updateOpsiyonModalToplam);
+                });
+            }
+
             aktifOpsiyonUrun.opsiyonlar.forEach(o => {
                 if (!grouped[o.grup]) grouped[o.grup] = [];
                 grouped[o.grup].push(o);
             });
-
-            title.textContent = `${aktifOpsiyonUrun.ad} - Opsiyon Seç`;
-            body.innerHTML = '';
 
             let grupIndex = 0;
             Object.entries(grouped).forEach(([grupAdi, opsiyonList]) => {
@@ -572,11 +632,18 @@
             const submitBtn = document.getElementById('btnOpsiyonSepeteEkle');
 
             let toplam = Number(aktifOpsiyonUrun.fiyat);
+            const seciliVaryasyon = document.querySelector('#opsiyonModalBody .varyasyon-input:checked');
+            if (seciliVaryasyon) {
+                toplam += Number(seciliVaryasyon.getAttribute('data-ekfiyat') || 0);
+            }
+
             document.querySelectorAll('#opsiyonModalBody .opsiyon-input:checked').forEach(input => {
                 toplam += Number(input.getAttribute('data-ekfiyat') || 0);
             });
 
-            const zorunluTamam = zorunluRadioGruplari.every(groupName =>
+            const varyasyonZorunlu = aktifOpsiyonUrun.varyasyonlar && aktifOpsiyonUrun.varyasyonlar.length > 0;
+            const varyasyonSecili = !varyasyonZorunlu || !!seciliVaryasyon;
+            const zorunluTamam = varyasyonSecili && zorunluRadioGruplari.every(groupName =>
                 document.querySelector(`#opsiyonModalBody input[name="${groupName}"]:checked`)
             );
 
@@ -590,11 +657,18 @@
         function confirmOpsiyonEkle() {
             if (!aktifOpsiyonUrun) return;
 
+            let seciliVaryasyonObj = null;
+            const seciliVaryasyonInput = document.querySelector('#opsiyonModalBody .varyasyon-input:checked');
+            if (seciliVaryasyonInput) {
+                const vId = Number(seciliVaryasyonInput.value);
+                seciliVaryasyonObj = (aktifOpsiyonUrun.varyasyonlar || []).find(v => v.id === vId) || null;
+            }
+
             const selectedIds = Array.from(document.querySelectorAll('#opsiyonModalBody .opsiyon-input:checked'))
                 .map(input => Number(input.value));
             const selectedOpsiyonlar = aktifOpsiyonUrun.opsiyonlar.filter(o => selectedIds.includes(o.id));
 
-            addUrun(aktifOpsiyonUrun.urunId, aktifOpsiyonUrun.ad, Number(aktifOpsiyonUrun.fiyat), selectedOpsiyonlar);
+            addUrun(aktifOpsiyonUrun.urunId, aktifOpsiyonUrun.ad, Number(aktifOpsiyonUrun.fiyat), selectedOpsiyonlar, seciliVaryasyonObj);
             closeOpsiyonModal();
         }
 
@@ -657,7 +731,7 @@
 
             const payload = {
                 masaId: masaId,
-                urunler: cart.map(x => ({ urunId: x.urunId, adet: x.adet, opsiyonIds: x.opsiyonIds }))
+                urunler: cart.map(x => ({ urunId: x.urunId, urunVaryasyonId: x.urunVaryasyonId, adet: x.adet, opsiyonIds: x.opsiyonIds }))
             };
 
             try {
@@ -700,7 +774,8 @@
                     const ad = btn.getAttribute('data-ad') || '';
                     const fiyat = parseFloat(btn.getAttribute('data-fiyat') || '0');
                     const opsiyonlar = parseOpsiyonlar(btn.getAttribute('data-opsiyonlar'));
-                    urunEklemeAkisi(urunId, ad, fiyat, opsiyonlar);
+                    const varyasyonlar = parseVaryasyonlar(btn.getAttribute('data-varyasyonlar'));
+                    urunEklemeAkisi(urunId, ad, fiyat, opsiyonlar, varyasyonlar);
                 });
             });
         }
@@ -713,7 +788,8 @@
                     const ad = card.getAttribute('data-ad') || '';
                     const fiyat = parseFloat(card.getAttribute('data-fiyat') || '0');
                     const opsiyonlar = parseOpsiyonlar(card.getAttribute('data-opsiyonlar'));
-                    urunEklemeAkisi(urunId, ad, fiyat, opsiyonlar);
+                    const varyasyonlar = parseVaryasyonlar(card.getAttribute('data-varyasyonlar'));
+                    urunEklemeAkisi(urunId, ad, fiyat, opsiyonlar, varyasyonlar);
                 });
             });
         }

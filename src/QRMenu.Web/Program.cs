@@ -51,7 +51,7 @@ builder.Services.AddDbContext<QRMenuDbContext>((sp, options) =>
         MinPoolSize = 0,
         ConnectionIdleLifetime = 60,
         ConnectionPruningInterval = 10,
-        SslMode = environment.IsDevelopment() ? SslMode.Prefer : SslMode.Disable
+        SslMode = environment.IsDevelopment() ? SslMode.Prefer : SslMode.Require
     };
 
     options.UseNpgsql(csb.ConnectionString, npgsqlOptions =>
@@ -80,6 +80,11 @@ builder.Services.AddScoped<IUrunService, UrunService>();
 builder.Services.AddScoped<ISepetService, SepetService>();
 builder.Services.AddScoped<ISiparisService, SiparisService>();
 builder.Services.AddScoped<IOdemeService, OdemeService>();
+builder.Services.AddScoped<IUrunYonetimService, UrunYonetimService>();
+builder.Services.AddScoped<IMasaYonetimService, MasaYonetimService>();
+builder.Services.AddScoped<IKullaniciYonetimService, KullaniciYonetimService>();
+builder.Services.AddScoped<IHappyHourYonetimService, HappyHourYonetimService>();
+builder.Services.AddScoped<IRaporYonetimService, RaporYonetimService>();
 builder.Services.AddScoped<QRMenu.Web.Helpers.IRazorViewRenderer, QRMenu.Web.Helpers.RazorViewRenderer>();
 
 // MVC
@@ -96,7 +101,7 @@ if (builder.Environment.IsDevelopment())
 builder.Services.AddIdentity<Kullanici, IdentityRole>(options =>
 {
     options.Password.RequireDigit = true;
-    options.Password.RequiredLength = 6;
+    options.Password.RequiredLength = 8;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequireUppercase = false;
     options.Password.RequireLowercase = false;
@@ -172,7 +177,7 @@ builder.Services.AddRateLimiter(options =>
 
     options.AddPolicy("TokenBasedPolicy", context =>
     {
-        var token = context.Request.Cookies["qrmenu_token"] ?? "anonymous";
+        var token = context.Request.Cookies["qrmenu_token"] ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
         return RateLimitPartition.GetFixedWindowLimiter(token, _ =>
             new FixedWindowRateLimiterOptions
             {
@@ -185,7 +190,7 @@ builder.Services.AddRateLimiter(options =>
 
     options.AddPolicy("GarsonCagirPolicy", context =>
     {
-        var token = context.Request.Cookies["qrmenu_token"] ?? "anonymous";
+        var token = context.Request.Cookies["qrmenu_token"] ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
         return RateLimitPartition.GetFixedWindowLimiter($"garson_{token}", _ =>
             new FixedWindowRateLimiterOptions
             {
@@ -198,7 +203,7 @@ builder.Services.AddRateLimiter(options =>
 
     options.AddPolicy("SiparisLimiti", context =>
     {
-        var token = context.Request.Cookies["qrmenu_token"] ?? "anonymous";
+        var token = context.Request.Cookies["qrmenu_token"] ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
         return RateLimitPartition.GetFixedWindowLimiter($"siparis_{token}", _ =>
             new FixedWindowRateLimiterOptions
             {
@@ -208,22 +213,107 @@ builder.Services.AddRateLimiter(options =>
             });
     });
 
-    options.AddPolicy("RecoveryLimitPolicy", context =>
+    options.AddPolicy("AuthIpRateLimitPolicy", context =>
     {
         var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown_ip";
-        return RateLimitPartition.GetFixedWindowLimiter($"recovery_{ip}", _ =>
+        return RateLimitPartition.GetFixedWindowLimiter($"auth_{ip}", _ =>
             new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(15),
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
+    });
+
+    options.AddPolicy("QrRateLimitPolicy", context =>
+    {
+        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown_ip";
+        return RateLimitPartition.GetFixedWindowLimiter($"qr_{ip}", _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             });
     });
 });
 
+// Health Checks
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
+// CLI: --create-admin <kullanici> <parola>
+if (args.Length >= 3 && args[0] == "--create-admin")
+{
+    var adminUser = args[1];
+    var adminPass = args[2];
+    using (var scope = app.Services.CreateScope())
+    {
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<Kullanici>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+        if (!await roleManager.RoleExistsAsync("Admin"))
+        {
+            await roleManager.CreateAsync(new IdentityRole("Admin"));
+        }
+
+        var user = await userManager.FindByNameAsync(adminUser);
+        if (user == null)
+        {
+            user = new Kullanici
+            {
+                UserName = adminUser,
+                AdSoyad = "Sistem Yöneticisi",
+                Email = $"{adminUser}@qrmenu.local",
+                EmailConfirmed = true,
+                AktifMi = true,
+                Rol = QRMenu.Core.Enums.KullaniciRol.Admin
+            };
+            var result = await userManager.CreateAsync(user, adminPass);
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(user, "Admin");
+                Console.WriteLine($"[Admin CLI] Admin kullanıcısı '{adminUser}' başarıyla oluşturuldu.");
+            }
+            else
+            {
+                Console.WriteLine($"[Admin CLI] Hata: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            }
+        }
+        else
+        {
+            var token = await userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await userManager.ResetPasswordAsync(user, token, adminPass);
+            if (result.Succeeded)
+            {
+                user.Rol = QRMenu.Core.Enums.KullaniciRol.Admin;
+                user.AktifMi = true;
+                await userManager.UpdateAsync(user);
+                if (!await userManager.IsInRoleAsync(user, "Admin"))
+                {
+                    await userManager.AddToRoleAsync(user, "Admin");
+                }
+                Console.WriteLine($"[Admin CLI] Mevcut '{adminUser}' kullanıcısının parolası güncellendi ve Admin rolü doğrulandı.");
+            }
+            else
+            {
+                Console.WriteLine($"[Admin CLI] Hata: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            }
+        }
+    }
+    return;
+}
+
 // ===== MIDDLEWARE PIPELINE =====
+var forwardedOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+forwardedOptions.KnownNetworks.Clear();
+forwardedOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedOptions);
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -239,24 +329,24 @@ else
 // Guvenlik basliklari
 app.Use(async (context, next) =>
 {
-    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("X-Frame-Options", "SAMEORIGIN");
     context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    context.Response.Headers.Append("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 
+    // TODO: cdn.tailwindcss.com (Play CDN) prodüksiyon için uygun değildir.
+    // İleride derlenmiş statik CSS oluşturma pipeline'ı eklenmelidir.
     var csp = "default-src 'self'; " +
               "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; " +
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; " +
               "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; " +
               "img-src 'self' data: https: blob:; " +
               "media-src 'self' https: blob:; " +
-              "connect-src 'self' wss: https:;";
+              "connect-src 'self' wss: https://translate.googleapis.com; " +
+              "frame-ancestors 'self';";
 
     context.Response.Headers.Append("Content-Security-Policy", csp);
     await next();
-});
-
-app.UseForwardedHeaders(new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
 
 app.UseHttpsRedirection();
@@ -276,6 +366,9 @@ app.UseAuthorization();
 // Token dogrulama middleware (musteri istekleri icin)
 app.UseTokenValidation();
 
+// Health Check endpoint
+app.MapHealthChecks("/health");
+
 // ===== ROUTING =====
 app.MapControllerRoute(
     name: "default",
@@ -294,8 +387,15 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
-        db.Database.Migrate();
-        Log.Information("Veritabani migration basarili.");
+        if (db.Database.IsRelational())
+        {
+            db.Database.Migrate();
+            Log.Information("Veritabani migration basarili.");
+        }
+        else
+        {
+            db.Database.EnsureCreated();
+        }
 
         string[] roller = ["Admin", "Garson", "Kasa", "Mutfak", "Barista"];
         foreach (var rol in roller)
@@ -304,6 +404,18 @@ using (var scope = app.Services.CreateScope())
             {
                 await roleManager.CreateAsync(new IdentityRole(rol));
             }
+        }
+
+        // Masalarda boş QrToken varsa üret
+        var masalar = await db.Masalar.Where(m => string.IsNullOrEmpty(m.QrToken)).ToListAsync();
+        if (masalar.Any())
+        {
+            foreach (var masa in masalar)
+            {
+                masa.QrToken = QRMenu.Core.Helpers.QrTokenGenerator.GenerateToken();
+            }
+            await db.SaveChangesAsync();
+            Log.Information("{Count} masaya QR token atandı.", masalar.Count);
         }
     }
     catch (Exception ex)
@@ -325,3 +437,5 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+public partial class Program { }

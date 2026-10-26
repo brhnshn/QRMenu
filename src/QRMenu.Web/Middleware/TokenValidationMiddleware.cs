@@ -8,6 +8,7 @@ namespace QRMenu.Web.Middleware
         private readonly RequestDelegate _next;
         private readonly ILogger<TokenValidationMiddleware> _logger;
         private readonly IMemoryCache _cache;
+        private readonly bool _legacyQrEnabled;
         private static readonly TimeSpan SessionRefreshInterval = TimeSpan.FromSeconds(60);
 
         private static readonly string[] ExcludedPaths = new[]
@@ -25,11 +26,12 @@ namespace QRMenu.Web.Middleware
             "/hubs"          // SignalR hub bağlantıları
         };
 
-        public TokenValidationMiddleware(RequestDelegate next, ILogger<TokenValidationMiddleware> logger, IMemoryCache cache)
+        public TokenValidationMiddleware(RequestDelegate next, ILogger<TokenValidationMiddleware> logger, IMemoryCache cache, IConfiguration configuration)
         {
             _next = next;
             _logger = logger;
             _cache = cache;
+            _legacyQrEnabled = configuration.GetValue<bool>("Security:LegacyQrEnabled");
         }
 
         public async Task InvokeAsync(HttpContext context, ITokenService tokenService)
@@ -66,7 +68,7 @@ namespace QRMenu.Web.Middleware
             if (string.IsNullOrEmpty(rawToken))
             {
                 _logger.LogWarning("Token cookie bulunamadı. Path: {Path}", path);
-                await WriteUnauthorized(context, "Geçersiz oturum. Lütfen QR kodu tekrar okutun.");
+                await WriteUnauthorized(context, "Geçersiz oturum. Lütfen QR kodu tekrar okutun.", _legacyQrEnabled);
                 return;
             }
 
@@ -77,7 +79,7 @@ namespace QRMenu.Web.Middleware
             if (oturum == null)
             {
                 _logger.LogWarning("Geçersiz veya süresi dolmuş token. Path: {Path}", path);
-                await WriteUnauthorized(context, "Oturum süresi dolmuş. Lütfen QR kodu tekrar okutun.");
+                await WriteUnauthorized(context, "Oturum süresi dolmuş. Lütfen QR kodu tekrar okutun.", _legacyQrEnabled);
                 return;
             }
 
@@ -98,7 +100,7 @@ namespace QRMenu.Web.Middleware
             await _next(context);
         }
 
-        private static async Task WriteUnauthorized(HttpContext context, string message)
+        private static async Task WriteUnauthorized(HttpContext context, string message, bool legacyEnabled)
         {
             var isAjax = context.Request.Headers["Content-Type"].ToString().Contains("application/json")
                       || context.Request.Headers["Accept"].ToString().Contains("application/json")
@@ -119,6 +121,47 @@ namespace QRMenu.Web.Middleware
                 var masaNoValue = !string.IsNullOrWhiteSpace(masaNo) && int.TryParse(masaNo, out _)
                     ? masaNo
                     : "";
+
+                var legacyInputHtml = legacyEnabled ? $@"
+                <div class=""pt-2 flex flex-col items-center gap-3"">
+                    <input id=""masaNoInput"" type=""number"" min=""1"" inputmode=""numeric"" value=""{masaNoValue}"" placeholder=""Masa numarası"" class=""w-44 text-center px-4 py-2 rounded-xl border border-outline-variant bg-white text-on-surface font-headline font-bold"" />
+                    <button type=""button"" onclick=""goQr()"" class=""inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-primary text-on-primary font-headline font-bold tracking-wide"">
+                        Masaya Geç
+                    </button>
+                </div>" : "";
+
+                var legacyScriptHtml = legacyEnabled ? @"
+        async function goQr() {
+            var el = document.getElementById('masaNoInput');
+            var val = el ? parseInt(el.value, 10) : NaN;
+            if (!Number.isFinite(val) || val <= 0) {
+                showToast('Lütfen geçerli bir masa numarası girin.');
+                return;
+            }
+
+            try {
+                var response = await fetch('/qr/validate/' + val, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    showToast('Masa doğrulanırken bir hata oluştu.');
+                    return;
+                }
+
+                var data = await response.json();
+                if (!data || data.success !== true) {
+                    showToast((data && data.message) ? data.message : 'Masa doğrulanamadı.');
+                    return;
+                }
+
+                window.location.href = '/qr/' + val;
+            } catch (e) {
+                showToast('Bağlantı hatası. Lütfen tekrar deneyin.');
+            }
+        }" : "";
+
                 var html = $@"<!DOCTYPE html>
 <html lang=""tr"">
 <head>
@@ -260,12 +303,7 @@ namespace QRMenu.Web.Middleware
                 <p class=""text-on-surface-variant font-body leading-relaxed max-w-[300px] mx-auto"">
                     Güvenliğiniz ve güncel menüye erişiminiz için lütfen masanızdaki QR kodunu tekrar okutunuz.
                 </p>
-                <div class=""pt-2 flex flex-col items-center gap-3"">
-                    <input id=""masaNoInput"" type=""number"" min=""1"" inputmode=""numeric"" value=""{masaNoValue}"" placeholder=""Masa numarası"" class=""w-44 text-center px-4 py-2 rounded-xl border border-outline-variant bg-white text-on-surface font-headline font-bold"" />
-                    <button type=""button"" onclick=""goQr()"" class=""inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-primary text-on-primary font-headline font-bold tracking-wide"">
-                        Masaya Geç
-                    </button>
-                </div>
+                {legacyInputHtml}
             </div>
 
 
@@ -290,37 +328,7 @@ namespace QRMenu.Web.Middleware
                 toast.classList.remove('show');
             }}, 2200);
         }}
-
-        async function goQr() {{
-            var el = document.getElementById('masaNoInput');
-            var val = el ? parseInt(el.value, 10) : NaN;
-            if (!Number.isFinite(val) || val <= 0) {{
-                showToast('Lütfen geçerli bir masa numarası girin.');
-                return;
-            }}
-
-            try {{
-                var response = await fetch('/qr/validate/' + val, {{
-                    method: 'GET',
-                    headers: {{ 'Accept': 'application/json' }}
-                }});
-
-                if (!response.ok) {{
-                    showToast('Masa doğrulanırken bir hata oluştu.');
-                    return;
-                }}
-
-                var data = await response.json();
-                if (!data || data.success !== true) {{
-                    showToast((data && data.message) ? data.message : 'Masa doğrulanamadı.');
-                    return;
-                }}
-
-                window.location.href = '/qr/' + val;
-            }} catch (e) {{
-                showToast('Bağlantı hatası. Lütfen tekrar deneyin.');
-            }}
-        }}
+{legacyScriptHtml}
     </script>
 </body>
 </html>";

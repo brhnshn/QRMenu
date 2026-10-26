@@ -8,8 +8,10 @@ using QRMenu.Core.Entities;
 using QRMenu.Core.Enums;
 using QRMenu.Core.Interfaces;
 using QRMenu.Web.Hubs;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using QRMenu.Core.Helpers;
 
 namespace QRMenu.Web.Controllers
 {
@@ -224,6 +226,11 @@ namespace QRMenu.Web.Controllers
             {
                 return Json(new { success = false, message = ex.Message });
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Sipariş oluşturulurken beklenmeyen bir hata oluştu.");
+                return Json(new { success = false, message = "İşlem sırasında bir hata oluştu." });
+            }
         }
 
         /// <summary>
@@ -257,30 +264,6 @@ namespace QRMenu.Web.Controllers
                     durum = sd.Durum.ToString()
                 })
             });
-        }
-
-        /// <summary>
-        /// Sipariş durumu güncelle: POST /siparis/durum-guncelle (AJAX)
-        /// </summary>
-        [Authorize(Policy = "RequireStaff")]
-        [HttpPost("/siparis/durum-guncelle")]
-        public async Task<IActionResult> DurumGuncelle([FromBody] DurumGuncelleRequest request)
-        {
-            try
-            {
-                var siparis = await _siparisService.DurumGuncelleAsync(request.SiparisId, request.YeniDurum);
-                return Json(new
-                {
-                    success = true,
-                    siparisId = siparis.Id,
-                    durum = siparis.Durum.ToString(),
-                    message = $"Sipariş durumu güncellendi: {siparis.Durum}"
-                });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Json(new { success = false, message = ex.Message });
-            }
         }
 
         /// <summary>
@@ -398,12 +381,14 @@ namespace QRMenu.Web.Controllers
                     .ToList();
 
                 var memoryPairMap = memoryCards.Select(c => c.eslesmeId).ToList();
-                var expiresAtUtc = DateTime.UtcNow.AddMinutes(3);
+                var nowUtc = DateTime.UtcNow;
+                var expiresAtUtc = nowUtc.AddMinutes(3);
                 var carkToken = CreateGameToken(new GameTokenPayload
                 {
                     SiparisId = siparis.Id,
                     OturumId = oturumId.Value,
                     OyunTipi = "CARKIFELEK",
+                    CreatedAtUtc = nowUtc,
                     ExpiresAtUtc = expiresAtUtc
                 });
                 var hafizaToken = CreateGameToken(new GameTokenPayload
@@ -411,6 +396,7 @@ namespace QRMenu.Web.Controllers
                     SiparisId = siparis.Id,
                     OturumId = oturumId.Value,
                     OyunTipi = "HAFIZA",
+                    CreatedAtUtc = nowUtc,
                     ExpiresAtUtc = expiresAtUtc,
                     HafizaEslesmeSirasi = memoryPairMap
                 });
@@ -419,6 +405,7 @@ namespace QRMenu.Web.Controllers
                     SiparisId = siparis.Id,
                     OturumId = oturumId.Value,
                     OyunTipi = "KAZIKAZAN",
+                    CreatedAtUtc = nowUtc,
                     ExpiresAtUtc = expiresAtUtc
                 });
 
@@ -498,7 +485,8 @@ namespace QRMenu.Web.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "Oyun seçimleri yüklenirken hata oluştu. SiparisId={Id}", id);
+                return Json(new { success = false, message = "İşlem sırasında bir hata oluştu." });
             }
         }
 
@@ -513,7 +501,16 @@ namespace QRMenu.Web.Controllers
                 var oturumId = GetOturumId();
                 if (oturumId == null) return Unauthorized();
 
+                // P5.2: Gün kapalı kontrolü
+                var businessDate = DateTimeHelper.GetTurkeyBusinessDayUtc(DateTime.UtcNow);
+                var gunKapali = await _db.GunSonuRaporlari.AnyAsync(r => r.Tarih == businessDate);
+                if (gunKapali)
+                {
+                    return Json(new { success = false, message = "Gün sonu kapatılmış, oyun oynanamaz." });
+                }
+
                 var siparis = await _db.Siparisler
+                    .Include(s => s.SiparisDetaylar)
                     .FirstOrDefaultAsync(s => s.Id == id && s.OturumId == oturumId.Value);
 
                 if (siparis == null)
@@ -525,6 +522,12 @@ namespace QRMenu.Web.Controllers
                 if (siparis.OyunOynandiMi)
                     return Json(new { success = false, message = "Bu sipariş için daha önce şansınızı denediniz." });
 
+                // P5.2: Kısmen veya tamamen ödenmiş kalem varsa oyunu reddet
+                if (siparis.SiparisDetaylar.Any(d => d.Durum == SiparisDurum.TamOdendi || d.Durum == SiparisDurum.KismiOdendi))
+                {
+                    return Json(new { success = false, message = "Kısmen veya tamamen ödenmiş siparişlerde oyun oynanamaz." });
+                }
+
                 if (!TryReadGameToken(request.OyunToken, out var tokenPayload) || tokenPayload == null)
                     return Json(new { success = false, message = "Geçersiz oyun oturumu. Lütfen oyunu tekrar açın." });
 
@@ -535,11 +538,55 @@ namespace QRMenu.Web.Controllers
                     return Json(new { success = false, message = "Oyun süresi doldu. Lütfen tekrar deneyin." });
 
                 var secilenTip = tokenPayload.OyunTipi;
+
+                // P5.1: Hafıza oyunu için süre ve hamle kontrolü
+                if (secilenTip == "HAFIZA")
+                {
+                    var gecenSure = (DateTime.UtcNow - tokenPayload.CreatedAtUtc).TotalSeconds;
+                    if (gecenSure < 5)
+                    {
+                        return Json(new { success = false, message = "Oyun çok kısa sürede tamamlandı. Lütfen geçerli bir süreyle oynayın." });
+                    }
+
+                    if (!request.BasariliMi)
+                    {
+                        siparis.OyunOynandiMi = true;
+                        await _db.SaveChangesAsync();
+                        return Json(new { success = true, kazandiMi = false, message = "Bu turda kazanamadınız. Bir dahaki sefere bol şans!" });
+                    }
+
+                    var validMoves = ValidateMemoryMoves(tokenPayload.HafizaEslesmeSirasi, request.HafizaHamleleri);
+                    if (!validMoves)
+                    {
+                        siparis.OyunOynandiMi = true;
+                        await _db.SaveChangesAsync();
+                        return Json(new { success = true, kazandiMi = false, message = "Hafıza oyunu doğrulanamadı. Ödül verilemedi." });
+                    }
+                }
+
+                // P5.2: Concurrency koruması - OyunOynandiMi atomik olarak ayarlanır
+                if (_db.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory")
+                {
+                    var etkilenen = await _db.Siparisler
+                        .Where(s => s.Id == id && !s.OyunOynandiMi)
+                        .ExecuteUpdateAsync(s => s.SetProperty(x => x.OyunOynandiMi, true));
+
+                    if (etkilenen == 0)
+                        return Json(new { success = false, message = "Bu sipariş için daha önce şansınızı denediniz." });
+
+                    siparis.OyunOynandiMi = true;
+                }
+                else
+                {
+                    if (siparis.OyunOynandiMi)
+                        return Json(new { success = false, message = "Bu sipariş için daha önce şansınızı denediniz." });
+
+                    siparis.OyunOynandiMi = true;
+                }
+
                 var oyun = await _db.OyunAyarlar
                     .Include(o => o.Oduller)
                     .FirstOrDefaultAsync(o => o.AktifMi && o.Tip == secilenTip);
-
-                siparis.OyunOynandiMi = true;
 
                 if (oyun == null || !oyun.Oduller.Any())
                 {
@@ -547,24 +594,9 @@ namespace QRMenu.Web.Controllers
                     return Json(new { success = true, kazandiMi = false, message = "Seçtiğiniz oyunda şu an ödül havuzu yok." });
                 }
 
-                if (!request.BasariliMi)
-                {
-                    await _db.SaveChangesAsync();
-                    return Json(new { success = true, kazandiMi = false, message = "Bu turda kazanamadınız. Bir dahaki sefere bol şans!" });
-                }
-
-                if (secilenTip == "HAFIZA")
-                {
-                    var validMoves = ValidateMemoryMoves(tokenPayload.HafizaEslesmeSirasi, request.HafizaHamleleri);
-                    if (!validMoves)
-                    {
-                        await _db.SaveChangesAsync();
-                        return Json(new { success = true, kazandiMi = false, message = "Hafıza oyunu doğrulanamadı. Ödül verilemedi." });
-                    }
-                }
-
+                // P5.1: Sonuç sunucuda RandomNumberGenerator ile belirlenir
                 var oduller = oyun.Oduller.OrderBy(o => o.Id).ToList();
-                var sansDegeri = (decimal)Random.Shared.NextDouble() * 100M;
+                var sansDegeri = (decimal)RandomNumberGenerator.GetInt32(0, 100000) / 1000M; // 0..100%
                 decimal kumulatif = 0;
                 OyunOdul? kazanilanOdul = null;
                 var hedefIndex = 0;
@@ -582,39 +614,15 @@ namespace QRMenu.Web.Controllers
 
                 if (kazanilanOdul == null && oduller.Any())
                 {
-                    // Fallback to the last available reward just in case due to float precision
                     kazanilanOdul = oduller.Last();
+                    hedefIndex = oduller.Count - 1;
                 }
 
-                if (kazanilanOdul == null)
+                // Boş dilim / boş sonuç kontrolü
+                if (kazanilanOdul == null || (kazanilanOdul.IndirimYuzdesi <= 0 && kazanilanOdul.IndirimTutari <= 0))
                 {
-                    var bosIndex = oduller.FindIndex(o => o.IndirimYuzdesi <= 0 && o.IndirimTutari <= 0);
-                    if (bosIndex >= 0)
-                    {
-                        var bosEtiket = secilenTip == "CARKIFELEK" ? "Boş Dilim" : "Boş Sonuç";
-                        var bosMesaj = secilenTip == "CARKIFELEK"
-                            ? "Bu tur boş dilim geldi. Bu siparişte ekstra indirim uygulanmadı."
-                            : "Bu tur boş sonuç geldi. Bu siparişte ekstra indirim uygulanmadı.";
-
-                        await _db.SaveChangesAsync();
-                        return Json(new
-                        {
-                            success = true,
-                            kazandiMi = false,
-                            oyunTipi = secilenTip,
-                            hedefIndex = bosIndex,
-                            odulTanim = string.IsNullOrWhiteSpace(oduller[bosIndex].OdulTanim) ? bosEtiket : oduller[bosIndex].OdulTanim,
-                            message = bosMesaj
-                        });
-                    }
-
-                    await _db.SaveChangesAsync();
-                    return Json(new { success = true, kazandiMi = false, message = "Bu turda ödül çıkmadı." });
-                }
-
-                // Oyunlarda tanımlanan boş sonuç: indirim alanları 0 ise ödül verilmez.
-                if (kazanilanOdul.IndirimYuzdesi <= 0 && kazanilanOdul.IndirimTutari <= 0)
-                {
+                    var bosIndex = kazanilanOdul != null ? hedefIndex : oduller.FindIndex(o => o.IndirimYuzdesi <= 0 && o.IndirimTutari <= 0);
+                    if (bosIndex < 0) bosIndex = 0;
                     var bosEtiket = secilenTip == "CARKIFELEK" ? "Boş Dilim" : "Boş Sonuç";
                     var bosMesaj = secilenTip == "CARKIFELEK"
                         ? "Bu tur boş dilim geldi. Bu siparişte ekstra indirim uygulanmadı."
@@ -626,23 +634,61 @@ namespace QRMenu.Web.Controllers
                         success = true,
                         kazandiMi = false,
                         oyunTipi = secilenTip,
-                        hedefIndex,
-                        odulTanim = string.IsNullOrWhiteSpace(kazanilanOdul.OdulTanim) ? bosEtiket : kazanilanOdul.OdulTanim,
+                        hedefIndex = bosIndex,
+                        odulTanim = string.IsNullOrWhiteSpace(oduller[bosIndex].OdulTanim) ? bosEtiket : oduller[bosIndex].OdulTanim,
                         message = bosMesaj
                     });
                 }
 
+                // P5.2: İndirimi yalnızca ödenmemiş kalemlere uygula ve ToplamTutar'ı yeniden hesapla
+                var odenmemisKalemler = siparis.SiparisDetaylar
+                    .Where(d => d.Durum != SiparisDurum.Iptal && d.Durum != SiparisDurum.Iade &&
+                                d.Durum != SiparisDurum.TamOdendi && d.Durum != SiparisDurum.KismiOdendi)
+                    .ToList();
+
                 decimal kazanilanIndirimTutari = 0;
+                var eskiToplam = odenmemisKalemler.Sum(d => d.BirimFiyat * d.Adet);
+
                 if (kazanilanOdul.IndirimYuzdesi > 0)
                 {
-                    kazanilanIndirimTutari = (siparis.ToplamTutar * kazanilanOdul.IndirimYuzdesi) / 100;
+                    foreach (var d in odenmemisKalemler)
+                    {
+                        d.BirimFiyat = Math.Round(d.BirimFiyat * (1 - kazanilanOdul.IndirimYuzdesi / 100m), 2, MidpointRounding.AwayFromZero);
+                    }
+                    var yeniToplam = odenmemisKalemler.Sum(d => d.BirimFiyat * d.Adet);
+                    kazanilanIndirimTutari = Math.Max(0, eskiToplam - yeniToplam);
                 }
                 else if (kazanilanOdul.IndirimTutari > 0)
                 {
-                    kazanilanIndirimTutari = kazanilanOdul.IndirimTutari;
+                    kazanilanIndirimTutari = Math.Min(eskiToplam, kazanilanOdul.IndirimTutari);
+                    if (eskiToplam > 0)
+                    {
+                        decimal kalanIndirim = kazanilanIndirimTutari;
+                        for (int i = 0; i < odenmemisKalemler.Count; i++)
+                        {
+                            var d = odenmemisKalemler[i];
+                            decimal kalemToplam = d.BirimFiyat * d.Adet;
+                            decimal pay = i == odenmemisKalemler.Count - 1
+                                ? kalanIndirim
+                                : Math.Round(kazanilanIndirimTutari * (kalemToplam / eskiToplam), 2, MidpointRounding.AwayFromZero);
+
+                            pay = Math.Min(pay, kalanIndirim);
+                            kalanIndirim -= pay;
+
+                            if (d.Adet > 0)
+                            {
+                                var birimIndirim = pay / d.Adet;
+                                d.BirimFiyat = Math.Max(0, Math.Round(d.BirimFiyat - birimIndirim, 2, MidpointRounding.AwayFromZero));
+                            }
+                        }
+                    }
                 }
 
-                siparis.ToplamTutar -= kazanilanIndirimTutari;
+                // Siparişin toplam tutarını güncel kalemlerden yeniden hesapla
+                siparis.ToplamTutar = siparis.SiparisDetaylar
+                    .Where(d => d.Durum != SiparisDurum.Iptal && d.Durum != SiparisDurum.Iade)
+                    .Sum(d => d.BirimFiyat * d.Adet);
+
                 if (siparis.ToplamTutar < 0) siparis.ToplamTutar = 0;
 
                 _db.KazanilanIndirimler.Add(new KazanilanIndirim
@@ -673,9 +719,14 @@ namespace QRMenu.Web.Controllers
                     yeniTutar = siparis.ToplamTutar
                 });
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 return Json(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Oyun sonuçlandırılırken hata oluştu. SiparisId={Id}", id);
+                return Json(new { success = false, message = "İşlem sırasında bir hata oluştu." });
             }
         }
 
@@ -712,6 +763,7 @@ namespace QRMenu.Web.Controllers
         public int SiparisId { get; set; }
         public int OturumId { get; set; }
         public string OyunTipi { get; set; } = string.Empty;
+        public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
         public DateTime ExpiresAtUtc { get; set; }
         public List<int>? HafizaEslesmeSirasi { get; set; }
     }

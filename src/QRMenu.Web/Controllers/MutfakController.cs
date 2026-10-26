@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QRMenu.Core.Entities;
 using QRMenu.Data.Data;
@@ -102,6 +102,10 @@ namespace QRMenu.Web.Controllers
                 if (!Enum.TryParse<SiparisDurum>(request.YeniDurum, out var durum))
                     return Json(new { success = false, message = "Geçersiz durum." });
 
+                // P2.1: Mutfak yalnızca Hazirlaniyor ve Hazir durumlarına geçiş yapabilir
+                if (durum != SiparisDurum.Hazirlaniyor && durum != SiparisDurum.Hazir)
+                    return Json(new { success = false, message = "Bu işlem için yetkiniz yok." });
+
                 // ISiparisService ile güvenli durum değişimi yapılıyor
                 var eskiDurum = await _context.Siparisler
                     .Where(s => s.Id == siparisId)
@@ -173,12 +177,18 @@ namespace QRMenu.Web.Controllers
                     _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi"),
                     _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisGuncellendi")
                 );
+
                 return Json(new { success = true });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Mutfak sipariş durum güncelleme iş kuralı hatası");
+                return Json(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Mutfak sipariş durum güncelleme hatası");
-                return Json(new { success = false, message = ex.Message });
+                return Json(new { success = false, message = "İşlem sırasında bir hata oluştu." });
             }
         }
 
@@ -235,10 +245,15 @@ namespace QRMenu.Web.Controllers
                 );
                 return Json(new { success = true });
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Mutfak sipariş detay iptal iş kuralı hatası");
+                return Json(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Mutfak sipariş detay iptal hatası");
-                return Json(new { success = false, message = ex.Message });
+                return Json(new { success = false, message = "İşlem sırasında bir hata oluştu." });
             }
         }
     }

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using QRMenu.Data.Data;
 
 namespace QRMenu.Web.Services
@@ -54,6 +54,11 @@ namespace QRMenu.Web.Services
 
             var inaktifOturumlar = await context.Oturumlar
                 .Where(o => o.SonIslemTarihi < sinir && o.AktifMi)
+                .Where(o => !context.Siparisler.Any(s =>
+                    s.OturumId == o.Id &&
+                    s.Durum != QRMenu.Core.Enums.SiparisDurum.TamOdendi &&
+                    s.Durum != QRMenu.Core.Enums.SiparisDurum.Iptal &&
+                    s.Durum != QRMenu.Core.Enums.SiparisDurum.Iade))
                 .ToListAsync();
 
             if (inaktifOturumlar.Count > 0)
@@ -72,7 +77,7 @@ namespace QRMenu.Web.Services
 
                 await context.SaveChangesAsync();
                 pasifeAlinanOturumSayisi = inaktifOturumlar.Count;
-                _logger.LogInformation("İş 1: {Count} inaktif oturum pasife alındı (2 saat üzeri).", inaktifOturumlar.Count);
+                _logger.LogInformation("İş 1: {Count} inaktif oturum pasife alındı (2 saat üzeri, açık siparişi olmayan).", inaktifOturumlar.Count);
             }
 
             var tokenSiniri = DateTime.UtcNow - TimeSpan.FromDays(7);
@@ -104,32 +109,9 @@ namespace QRMenu.Web.Services
                 _logger.LogInformation("İş 3: {Count} sahipsiz sepet temizlendi.", sahipsizSepetler.Count);
             }
 
-            var simdikiZaman = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, turkeyTz).TimeOfDay;
-            var aktifHappyHourlar = await context.HappyHourlar.Where(h => h.AktifMi).ToListAsync();
-            foreach (var hh in aktifHappyHourlar)
-            {
-                if (hh.BaslangicSaati <= hh.BitisSaati)
-                {
-                    if (simdikiZaman > hh.BitisSaati)
-                    {
-                        hh.AktifMi = false;
-                        pasifeAlinanHappyHourSayisi++;
-                        _logger.LogInformation("Happy Hour süresi doldu ve pasife alındı.");
-                    }
-                }
-                else
-                {
-                    if (simdikiZaman > hh.BitisSaati && simdikiZaman < hh.BaslangicSaati)
-                    {
-                        hh.AktifMi = false;
-                        pasifeAlinanHappyHourSayisi++;
-                        _logger.LogInformation("Happy Hour (gece geçişli) süresi doldu ve pasife alındı.");
-                    }
-                }
-            }
-
-            if (pasifeAlinanHappyHourSayisi > 0)
-                await context.SaveChangesAsync();
+            // P3.5: Happy Hour'lar zaman penceresi bittiğinde pasife ALINMAZ.
+            // Happy Hour saatlik bir kuraldır ve her gün belirlenen saat aralığında çalışır.
+            // AktifMi yalnızca yönetici tarafından değiştirilmelidir.
 
             var trNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, turkeyTz);
             _logger.LogInformation(

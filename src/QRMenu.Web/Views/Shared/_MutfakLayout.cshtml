@@ -9,96 +9,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@pageTitle</title>
-    <script>
-        // Tailwind CDN'in canlı ortam uyarısını gizle
-        (function() {
-            const orgWarn = console.warn;
-            console.warn = function(...args) {
-                if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) return;
-                orgWarn.apply(console, args);
-            };
-        })();
-    </script>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="~/js/tailwind-config.js" asp-append-version="true"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
-
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        'on-secondary-fixed': '#453100',
-                        surface: '#f8f6f5',
-                        'on-surface': '#2e2f2f',
-                        'surface-bright': '#f8f6f5',
-                        'surface-dim': '#d5d4d4',
-                        'on-tertiary': '#f5f2f1',
-                        'inverse-surface': '#0e0e0e',
-                        'primary-dim': '#922c0c',
-                        'surface-container-lowest': '#ffffff',
-                        'on-primary': '#ffefec',
-                        'inverse-on-surface': '#9e9d9c',
-                        'secondary-fixed': '#ffca57',
-                        'tertiary-container': '#ffffff',
-                        primary: '#a23718',
-                        outline: '#777776',
-                        'on-error-container': '#570008',
-                        'on-surface-variant': '#5c5b5b',
-                        'tertiary-dim': '#504f4f',
-                        'on-secondary': '#fff1dc',
-                        'inverse-primary': '#fd7954',
-                        'secondary-fixed-dim': '#f6ba2d',
-                        background: '#f8f6f5',
-                        'surface-container-highest': '#dedcdc',
-                        'surface-container-high': '#e4e2e2',
-                        'secondary-dim': '#674b00',
-                        'on-background': '#2e2f2f',
-                        'on-primary-fixed-variant': '#581200',
-                        'secondary-container': '#ffca57',
-                        'surface-variant': '#dedcdc',
-                        'error-dim': '#9f0519',
-                        'tertiary-fixed': '#ffffff',
-                        'primary-fixed': '#fd7954',
-                        'on-tertiary-container': '#636262',
-                        'on-primary-fixed': '#000000',
-                        'on-primary-container': '#480d00',
-                        tertiary: '#5c5b5b',
-                        'on-tertiary-fixed-variant': '#6e6d6d',
-                        'error-container': '#fb5151',
-                        secondary: '#765600',
-                        'on-secondary-container': '#5d4300',
-                        'primary-container': '#fd7954',
-                        error: '#b31b25',
-                        'primary-fixed-dim': '#ec6d49',
-                        'on-tertiary-fixed': '#505050',
-                        'tertiary-fixed-dim': '#f3f0f0',
-                        'on-secondary-fixed-variant': '#694c00',
-                        'surface-tint': '#a23718',
-                        'surface-container': '#eae8e7',
-                        'on-error': '#ffefee',
-                        'surface-container-low': '#f2f0f0',
-                        'outline-variant': '#aeadac'
-                    },
-                    borderRadius: {
-                        DEFAULT: '0.25rem',
-                        lg: '0.5rem',
-                        xl: '0.75rem',
-                        full: '9999px'
-                    },
-                    fontFamily: {
-                        headline: ['Plus Jakarta Sans', 'sans-serif'],
-                        body: ['Be Vietnam Pro', 'sans-serif'],
-                        label: ['Plus Jakarta Sans', 'sans-serif']
-                    }
-                }
-            }
-        };
-    </script>
 
     <script>
         (function () {
@@ -258,10 +175,13 @@
         </nav>
 
         <div class="mt-auto pt-6 border-t border-outline-variant/30 space-y-3">
-            <a href="/Auth/Logout" class="flex items-center gap-3 px-4 py-3 text-[#2e2f2f]/70 hover:text-[#2e2f2f] hover:bg-[#eae8e7] rounded-xl transition-all duration-300 font-semibold">
-                <span class="material-symbols-outlined">logout</span>
-                <span class="text-sm">Çıkış</span>
-            </a>
+            <form id="mutfakLogoutForm" method="post" action="/Auth/Logout" class="m-0 p-0">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="w-full text-left flex items-center gap-3 px-4 py-3 text-[#2e2f2f]/70 hover:text-[#2e2f2f] hover:bg-[#eae8e7] rounded-xl transition-all duration-300 font-semibold border-0 bg-transparent cursor-pointer">
+                    <span class="material-symbols-outlined">logout</span>
+                    <span class="text-sm">Çıkış</span>
+                </button>
+            </form>
         </div>
     </aside>
 

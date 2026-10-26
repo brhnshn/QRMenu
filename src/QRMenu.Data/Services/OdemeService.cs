@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using QRMenu.Core.Entities;
 using QRMenu.Core.Enums;
+using QRMenu.Core.Helpers;
 using QRMenu.Core.Interfaces;
 using QRMenu.Data.Data;
 
@@ -11,8 +12,6 @@ namespace QRMenu.Data.Services
     {
         private readonly QRMenuDbContext _context;
         private readonly ILogger<OdemeService> _logger;
-        private static readonly TimeZoneInfo _turkeyTz = TimeZoneInfo.FindSystemTimeZoneById(
-            OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
 
         public OdemeService(QRMenuDbContext context, ILogger<OdemeService> logger)
         {
@@ -40,37 +39,65 @@ namespace QRMenu.Data.Services
 
             try
             {
+                // P1.11: Geçersiz ödeme tipi kontrolü
+                if (!Enum.TryParse<OdemeTipi>(odemeTipi, true, out var tip))
+                {
+                    _logger.LogWarning("Geçersiz ödeme tipi ile ödeme denendi: {OdemeTipi}", odemeTipi);
+                    return false;
+                }
+
                 if (useTransaction)
                 {
-                    // ReadCommitted seviyesi ile Transaction oluştur
                     transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
                 }
 
-                // Seçilen ürünleri bul ve "TamOdendi" (ya da Parçalı Ödendi? Ürün bazında TamÖdendi yapıyoruz) durumuna çek
+                // P1.5: Gün sonu kapatılmış mı kontrolü - Ödeme tarihine (şimdi) göre
+                var bugunRaporTarihi = DateTimeHelper.GetTurkeyBusinessDayUtc(DateTime.UtcNow);
+                var kapaliGunVar = await _context.GunSonuRaporlari.AnyAsync(r => r.Tarih == bugunRaporTarihi);
+                if (kapaliGunVar)
+                    throw new InvalidOperationException("Gün sonu raporu kapatılmış, ödeme işlemi yapılamaz.");
+
+                // Seçilen ürünleri bul
+                var distinctIds = siparisDetayIds.Distinct().ToList();
                 var detaylar = await _context.SiparisDetaylar
                     .Include(sd => sd.Siparis)
-                    .Where(sd => siparisDetayIds.Contains(sd.Id) && sd.Siparis.MasaId == masaId)
+                    .Where(sd => distinctIds.Contains(sd.Id) && sd.Siparis.MasaId == masaId)
                     .ToListAsync();
 
-                if (!detaylar.Any())
+                if (!detaylar.Any() || detaylar.Count != distinctIds.Count)
                     throw new InvalidOperationException("Ödenecek ürün bulunamadı.");
 
-                var kapaliGunTarihleri = detaylar
-                    .Select(d => d.Siparis.OlusturmaTarihi)
-                    .Distinct()
-                    .Select(t => DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(t, DateTimeKind.Utc), _turkeyTz).Date, DateTimeKind.Utc))
-                    .ToList();
+                // P1.4: Yalnızca TeslimEdildi ve KismiOdendi kalemler ödenebilir
+                if (detaylar.Any(d => d.Durum != SiparisDurum.TeslimEdildi && d.Durum != SiparisDurum.KismiOdendi))
+                {
+                    _logger.LogWarning("Ödeme başarısız: Teslim edilmemiş veya zaten ödenmiş/iptal kalemler içeriyor.");
+                    return false;
+                }
 
-                var kapaliGunVar = await _context.GunSonuRaporlari
-                    .AnyAsync(r => kapaliGunTarihleri.Contains(r.Tarih));
+                // P1.3: Concurrency kilidi ve durum güncelleme
+                if (_context.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory")
+                {
+                    var etkilenen = await _context.SiparisDetaylar
+                        .Where(d => distinctIds.Contains(d.Id) && (d.Durum == SiparisDurum.TeslimEdildi || d.Durum == SiparisDurum.KismiOdendi))
+                        .ExecuteUpdateAsync(s => s.SetProperty(d => d.Durum, SiparisDurum.TamOdendi));
 
-                if (kapaliGunVar)
-                    throw new InvalidOperationException("Gün sonu raporu kapatılmış siparişlerde ödeme işlemi yapılamaz.");
+                    if (etkilenen != distinctIds.Count)
+                    {
+                        if (transaction != null) await transaction.RollbackAsync();
+                        return false;
+                    }
+                }
+                else
+                {
+                    foreach (var d in detaylar)
+                    {
+                        d.Durum = SiparisDurum.TamOdendi;
+                    }
+                }
 
                 decimal odenenTutar = 0;
                 var siparisBazliTutarlar = new Dictionary<int, decimal>();
 
-                // Siparişe uygulanan indirimleri ödeme anında satır tutarlarına oransal dağıt.
                 var siparisIdler = detaylar
                     .Select(d => d.SiparisId)
                     .Distinct()
@@ -88,81 +115,103 @@ namespace QRMenu.Data.Services
                     })
                     .ToDictionaryAsync(x => x.SiparisId, x => x.BazToplam);
 
-                var siparisOranlari = detaylar
+                var siparisMap = detaylar
                     .Select(d => d.Siparis)
-                    .Where(s => s != null)
-                    .DistinctBy(s => s!.Id)
-                    .ToDictionary(
-                        s => s!.Id,
-                        s =>
-                        {
-                            var bazToplam = siparisBazToplamlari.TryGetValue(s!.Id, out var toplam)
-                                ? toplam
-                                : 0m;
+                    .DistinctBy(s => s.Id)
+                    .ToDictionary(s => s.Id, s => s);
 
-                            if (bazToplam <= 0) return 1m;
-                            return s.ToplamTutar / bazToplam;
-                        });
-
-                foreach (var detay in detaylar)
+                foreach (var siparisId in siparisIdler)
                 {
-                    if (detay.Durum == SiparisDurum.TamOdendi || detay.Durum == SiparisDurum.Iptal) continue;
+                    var siparis = siparisMap[siparisId];
+                    var siparisDetaylari = detaylar.Where(d => d.SiparisId == siparisId).ToList();
 
-                    detay.Durum = SiparisDurum.TamOdendi;
-                    var oran = siparisOranlari.TryGetValue(detay.SiparisId, out var value) ? value : 1m;
-                    var tutar = (detay.BirimFiyat * detay.Adet) * oran;
-                    odenenTutar += tutar;
-                    
-                    if (!siparisBazliTutarlar.ContainsKey(detay.SiparisId))
-                        siparisBazliTutarlar[detay.SiparisId] = 0;
-                    siparisBazliTutarlar[detay.SiparisId] += tutar;
+                    var bazToplam = siparisBazToplamlari.TryGetValue(siparisId, out var bToplam) ? bToplam : 0m;
+                    decimal oran = (bazToplam > 0) ? (siparis.ToplamTutar / bazToplam) : 1m;
+
+                    var oncekiOdemeler = await _context.Odemeler
+                        .Where(o => o.SiparisId == siparisId)
+                        .SumAsync(o => o.Tutar);
+
+                    // Bu siparişte bu işlemden sonra ödenmemiş kalem kalıyor mu?
+                    var kalanKalemSayisi = await _context.SiparisDetaylar
+                        .Where(sd => sd.SiparisId == siparisId &&
+                                     !distinctIds.Contains(sd.Id) &&
+                                     sd.Durum != SiparisDurum.TamOdendi &&
+                                     sd.Durum != SiparisDurum.Iptal &&
+                                     sd.Durum != SiparisDurum.Iade)
+                        .CountAsync();
+
+                    decimal siparisBuOdemeTutari;
+                    if (kalanKalemSayisi == 0)
+                    {
+                        // Kuruş farkı kalmaması için siparişin kalan borcunun tamamı ödenir
+                        siparisBuOdemeTutari = siparis.ToplamTutar - oncekiOdemeler;
+                    }
+                    else
+                    {
+                        decimal kalemlerToplami = 0m;
+                        foreach (var d in siparisDetaylari)
+                        {
+                            var kalemTutar = Math.Round((d.BirimFiyat * d.Adet) * oran, 2, MidpointRounding.AwayFromZero);
+                            kalemlerToplami += kalemTutar;
+                        }
+                        siparisBuOdemeTutari = kalemlerToplami;
+                    }
+
+                    if (siparisBuOdemeTutari > 0)
+                    {
+                        siparisBazliTutarlar[siparisId] = siparisBuOdemeTutari;
+                        odenenTutar += siparisBuOdemeTutari;
+                    }
                 }
 
-                if (odenenTutar > 0)
+                // P1.4: Ödenecek tutar <= 0 ise false dön
+                if (odenenTutar <= 0)
                 {
-                    var tip = Enum.TryParse<OdemeTipi>(odemeTipi, out var result) ? result : OdemeTipi.Nakit;
-                    
-                    foreach (var kvp in siparisBazliTutarlar)
+                    if (transaction != null) await transaction.RollbackAsync();
+                    return false;
+                }
+
+                // Odeme kayıtlarını oluştur
+                foreach (var kvp in siparisBazliTutarlar)
+                {
+                    var odeme = new Odeme
                     {
-                        var odeme = new Odeme
-                        {
-                            SiparisId = kvp.Key,
-                            Tutar = kvp.Value,
-                            OdemeTipi = tip,
-                            OdemeTarihi = DateTime.UtcNow
-                        };
-                        _context.Odemeler.Add(odeme);
-                    }
+                        SiparisId = kvp.Key,
+                        Tutar = kvp.Value,
+                        OdemeTipi = tip,
+                        OdemeTarihi = DateTime.UtcNow
+                    };
+                    _context.Odemeler.Add(odeme);
                 }
 
                 await _context.SaveChangesAsync();
 
+                // P1.3: Sipariş durumlarını ve RowVersion güncelle
                 var etkilenenSiparisIdler = siparisBazliTutarlar.Keys.ToList();
+                var nowUtc = DateTime.UtcNow;
 
-                // Şimdi etkilenen siparişleri kontrol et, tamamı ödendiyse ana siparişi "TamOdendi" yap
-                var odemeBekleyenSiparisIdler = await _context.SiparisDetaylar
-                    .Where(sd => etkilenenSiparisIdler.Contains(sd.SiparisId) &&
-                                 sd.Durum != SiparisDurum.TamOdendi &&
-                                 sd.Durum != SiparisDurum.Iptal &&
-                                 sd.Durum != SiparisDurum.Iade)
-                    .Select(sd => sd.SiparisId)
-                    .Distinct()
-                    .ToListAsync();
-
-                var tamamlananSiparisIdler = etkilenenSiparisIdler
-                    .Except(odemeBekleyenSiparisIdler)
-                    .ToList();
-
-                if (tamamlananSiparisIdler.Any())
+                foreach (var siparisId in etkilenenSiparisIdler)
                 {
-                    var tamamlananSiparisler = await _context.Siparisler
-                        .Where(s => tamamlananSiparisIdler.Contains(s.Id))
-                        .ToListAsync();
+                    var sip = siparisMap[siparisId];
 
-                    foreach (var sip in tamamlananSiparisler)
+                    var odemeBekleyenVarMi = await _context.SiparisDetaylar
+                        .AnyAsync(sd => sd.SiparisId == siparisId &&
+                                        sd.Durum != SiparisDurum.TamOdendi &&
+                                        sd.Durum != SiparisDurum.Iptal &&
+                                        sd.Durum != SiparisDurum.Iade);
+
+                    if (!odemeBekleyenVarMi)
                     {
                         sip.Durum = SiparisDurum.TamOdendi;
                     }
+                    else
+                    {
+                        sip.Durum = SiparisDurum.KismiOdendi;
+                    }
+
+                    sip.GuncellemeTarihi = nowUtc;
+                    sip.RowVersion = Guid.NewGuid().ToByteArray();
                 }
 
                 await _context.SaveChangesAsync();

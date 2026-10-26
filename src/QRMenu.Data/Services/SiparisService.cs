@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using QRMenu.Core.DTOs;
 using QRMenu.Core.Entities;
 using QRMenu.Core.Enums;
+using QRMenu.Core.Helpers;
 using QRMenu.Core.Interfaces;
 using QRMenu.Data.Data;
 using System.Data;
@@ -106,6 +107,9 @@ namespace QRMenu.Data.Services
                 if (!sepet.SepetDetaylar.Any())
                     throw new InvalidOperationException("Sepet boş, sipariş oluşturulamaz.");
 
+                if (await GunKapaliMiAsync(DateTime.UtcNow))
+                    throw new InvalidOperationException("Gün sonu kapatılmış, yeni sipariş alınamaz.");
+
                 var nowUtc = DateTime.UtcNow;
                 var siparisGunu = TurkeyBusinessDay(nowUtc);
                 var gunlukSiparisNo = await GetNextGunlukSiparisNoAsync(siparisGunu);
@@ -117,31 +121,82 @@ namespace QRMenu.Data.Services
                 string? hhNot = null;
                 var yeniDetaylar = new List<SiparisDetay>();
 
+                // Tüm sepet detaylarındaki opsiyon Id'lerini topla ve DB'den güncel fiyatlarını tek sorguda çek
+                var allOpsiyonIds = new HashSet<int>();
+                foreach (var detay in sepet.SepetDetaylar)
+                {
+                    if (!string.IsNullOrEmpty(detay.SeciliOpsiyonlar) && detay.SeciliOpsiyonlar != "[]")
+                    {
+                        try
+                        {
+                            using var doc = System.Text.Json.JsonDocument.Parse(detay.SeciliOpsiyonlar);
+                            foreach (var elem in doc.RootElement.EnumerateArray())
+                            {
+                                if (elem.TryGetProperty("Id", out var idProp) && idProp.TryGetInt32(out var opId))
+                                {
+                                    allOpsiyonIds.Add(opId);
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+
+                Dictionary<int, decimal> liveOpsiyonFiyatlari = new();
+                if (allOpsiyonIds.Count > 0)
+                {
+                    liveOpsiyonFiyatlari = await _context.Opsiyonlar
+                        .Where(o => allOpsiyonIds.Contains(o.Id))
+                        .ToDictionaryAsync(o => o.Id, o => o.EkFiyat);
+                }
+
                 // Tutarı hesapla ve detay listesini hazırla
                 foreach (var detay in sepet.SepetDetaylar)
                 {
-                    // Sepette kullanıcıya ne gösterildiyse onu kullan.
                     await StokDusAsync(detay.UrunId, detay.UrunVaryasyonId, detay.Adet);
 
-                    decimal birimFiyat = detay.BirimFiyat;
-
-                    // Sadece fişte "Happy Hour uygulandı" notunu göstermek için indirimi tespit et
-                    decimal purePrice = detay.Urun.Fiyat;
-                    try {
-                        if (!string.IsNullOrEmpty(detay.SeciliOpsiyonlar) && detay.SeciliOpsiyonlar != "[]") {
-                            var opsJson = System.Text.Json.JsonDocument.Parse(detay.SeciliOpsiyonlar);
-                            foreach(var ops in opsJson.RootElement.EnumerateArray()) {
-                                purePrice += ops.GetProperty("EkFiyat").GetDecimal();
-                            }
-                        }
-                    } catch {}
-
-                    if (birimFiyat < purePrice) 
+                    decimal varyasyonEkFiyat = detay.UrunVaryasyon?.EkFiyat ?? 0m;
+                    if (detay.UrunVaryasyonId.HasValue && detay.UrunVaryasyon == null)
                     {
-                        var uygulananIndirim = Math.Round((1 - birimFiyat / purePrice) * 100, 0);
-                        if(hhNot == null) hhNot = $"🎉 Happy Hour -%{uygulananIndirim} uygulandı.";
+                        var v = await _context.UrunVaryasyonlar.FirstOrDefaultAsync(x => x.Id == detay.UrunVaryasyonId.Value);
+                        varyasyonEkFiyat = v?.EkFiyat ?? 0m;
                     }
 
+                    decimal opsiyonEkFiyat = 0m;
+                    if (!string.IsNullOrEmpty(detay.SeciliOpsiyonlar) && detay.SeciliOpsiyonlar != "[]")
+                    {
+                        try
+                        {
+                            using var opsJson = System.Text.Json.JsonDocument.Parse(detay.SeciliOpsiyonlar);
+                            foreach (var ops in opsJson.RootElement.EnumerateArray())
+                            {
+                                if (ops.TryGetProperty("Id", out var idProp) && idProp.TryGetInt32(out var opId) && liveOpsiyonFiyatlari.TryGetValue(opId, out var liveEkFiyat))
+                                {
+                                    opsiyonEkFiyat += liveEkFiyat;
+                                }
+                                else if (ops.TryGetProperty("EkFiyat", out var ekFiyatProp))
+                                {
+                                    opsiyonEkFiyat += ekFiyatProp.GetDecimal();
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+
+                    bool hhUygulanabilir = hh.IndirimOrani > 0 && (!hh.UrunIds.Any() || hh.UrunIds.Contains(detay.UrunId));
+                    decimal birimFiyat = FiyatHesaplayici.BirimFiyatHesapla(
+                        detay.Urun.Fiyat,
+                        varyasyonEkFiyat,
+                        opsiyonEkFiyat,
+                        hh.IndirimOrani,
+                        hhUygulanabilir);
+
+                    if (hhUygulanabilir && hhNot == null)
+                    {
+                        hhNot = $"🎉 Happy Hour -%{hh.IndirimOrani} uygulandı.";
+                    }
+
+                    detay.BirimFiyat = birimFiyat;
                     tumTutar += (birimFiyat * detay.Adet);
 
                     yeniDetaylar.Add(new SiparisDetay
@@ -149,7 +204,7 @@ namespace QRMenu.Data.Services
                         UrunId = detay.UrunId,
                         UrunVaryasyonId = detay.UrunVaryasyonId,
                         Adet = detay.Adet,
-                        BirimFiyat = birimFiyat, // İndirimli fiyatı yansıt
+                        BirimFiyat = birimFiyat,
                         SeciliOpsiyonlar = detay.SeciliOpsiyonlar,
                         Durum = SiparisDurum.Onaylandi
                     });
@@ -217,6 +272,13 @@ namespace QRMenu.Data.Services
                 if (useTransaction)
                     transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
+                if (await GunKapaliMiAsync(DateTime.UtcNow))
+                    throw new InvalidOperationException("Gün sonu kapatılmış, yeni sipariş alınamaz.");
+
+                var masa = await _context.Masalar.FindAsync(masaId);
+                if (masa == null || !masa.AktifMi)
+                    throw new InvalidOperationException($"Masa bulunamadı veya pasif: {masaId}");
+
                 decimal toplamTutar = 0;
                 var siparisDetaylar = new List<SiparisDetay>();
                 var indirimUygulandi = false;
@@ -233,7 +295,6 @@ namespace QRMenu.Data.Services
                     if (urunDB == null || !urunDB.AktifMi)
                         throw new InvalidOperationException($"Ürün bulunamadı veya pasif: {item.UrunId}");
 
-                    decimal birimFiyat = urunDB.Fiyat;
                     UrunVaryasyon? varyasyon = null;
                     if (item.UrunVaryasyonId.HasValue)
                     {
@@ -242,26 +303,43 @@ namespace QRMenu.Data.Services
 
                         if (varyasyon == null || !varyasyon.AktifMi)
                             throw new InvalidOperationException($"Urun varyasyonu bulunamadi veya pasif: {item.UrunVaryasyonId}");
-
-                        birimFiyat += varyasyon.EkFiyat;
                     }
 
-                    await StokDusAsync(item.UrunId, item.UrunVaryasyonId, item.Adet);
                     string? seciliOpsiyonlarJson = null;
-
+                    decimal opsiyonEkFiyat = 0m;
                     if (item.OpsiyonIds != null && item.OpsiyonIds.Any())
                     {
-                        var opsiyonlar = await _context.Opsiyonlar
-                            .Where(o => item.OpsiyonIds.Contains(o.Id))
+                        var distinctOpsiyonIds = item.OpsiyonIds.Distinct().ToList();
+                        var eslesenOpsiyonIds = await _context.UrunOpsiyonlar
+                            .Where(uo => uo.UrunId == item.UrunId && distinctOpsiyonIds.Contains(uo.OpsiyonId))
+                            .Select(uo => uo.OpsiyonId)
                             .ToListAsync();
-                        
-                        birimFiyat += opsiyonlar.Sum(o => o.EkFiyat);
+
+                        if (eslesenOpsiyonIds.Count != distinctOpsiyonIds.Count)
+                        {
+                            throw new InvalidOperationException("Seçilen opsiyonlar ürüne ait değil.");
+                        }
+
+                        var opsiyonlar = await _context.Opsiyonlar
+                            .Where(o => distinctOpsiyonIds.Contains(o.Id))
+                            .ToListAsync();
+
+                        opsiyonEkFiyat = opsiyonlar.Sum(o => o.EkFiyat);
                         seciliOpsiyonlarJson = System.Text.Json.JsonSerializer.Serialize(opsiyonlar.Select(o => new { o.Id, o.Ad, o.EkFiyat }));
                     }
 
-                    if (hh.IndirimOrani > 0 && (!hh.UrunIds.Any() || hh.UrunIds.Contains(item.UrunId)))
+                    await StokDusAsync(item.UrunId, item.UrunVaryasyonId, item.Adet);
+
+                    bool hhUygulanabilir = hh.IndirimOrani > 0 && (!hh.UrunIds.Any() || hh.UrunIds.Contains(item.UrunId));
+                    decimal birimFiyat = FiyatHesaplayici.BirimFiyatHesapla(
+                        urunDB.Fiyat,
+                        varyasyon?.EkFiyat ?? 0m,
+                        opsiyonEkFiyat,
+                        hh.IndirimOrani,
+                        hhUygulanabilir);
+
+                    if (hhUygulanabilir)
                     {
-                        birimFiyat = Math.Round(birimFiyat * (1 - hh.IndirimOrani / 100m), 2);
                         indirimUygulandi = true;
                     }
 
@@ -344,8 +422,8 @@ namespace QRMenu.Data.Services
             if (siparis == null)
                 throw new InvalidOperationException("Sipariş bulunamadı.");
 
-            if (await GunKapaliMiAsync(siparis.OlusturmaTarihi))
-                throw new InvalidOperationException("Bu siparişin gün sonu raporu kapatılmış; durum değiştirilemez.");
+            if (await GunKapaliMiAsync(DateTime.UtcNow))
+                throw new InvalidOperationException("Gün sonu raporu kapatılmış, durum değiştirilemez.");
 
             var gecerliGecisler = GecerliGecisler(siparis.Durum);
             if (!gecerliGecisler.Contains(yeniDurum))
@@ -355,18 +433,22 @@ namespace QRMenu.Data.Services
                     $"İzin verilen: {string.Join(", ", gecerliGecisler)}");
             }
 
+            if (yeniDurum == SiparisDurum.TamOdendi || yeniDurum == SiparisDurum.KismiOdendi || yeniDurum == SiparisDurum.Iade)
+                throw new InvalidOperationException("Bu durum yalnızca kasa işlemiyle ayarlanabilir.");
+
             var eskiDurum = siparis.Durum;
             siparis.Durum = yeniDurum;
             siparis.GuncellemeTarihi = DateTime.UtcNow;
             siparis.RowVersion = Guid.NewGuid().ToByteArray();
 
-            // Alt ürünlerin (iptal ya da ödenmiş olmayan) durumlarını da ana siparişle eşzamanlı güncelle
-            foreach(var detay in siparis.SiparisDetaylar)
+            // Sadece iptal veya ödenmiş olmayan detaylar güncellenir ve stoğu iade edilir
+            var etkilenecekDetaylar = siparis.SiparisDetaylar
+                .Where(d => d.Durum != SiparisDurum.Iptal && d.Durum != SiparisDurum.TamOdendi && d.Durum != SiparisDurum.Iade)
+                .ToList();
+
+            foreach (var detay in etkilenecekDetaylar)
             {
-                if (detay.Durum != SiparisDurum.Iptal && detay.Durum != SiparisDurum.TamOdendi && detay.Durum != SiparisDurum.Iade)
-                {
-                    detay.Durum = yeniDurum;
-                }
+                detay.Durum = yeniDurum;
             }
 
             try
@@ -379,7 +461,7 @@ namespace QRMenu.Data.Services
 
                         if (StokIadesiGerekiyor(eskiDurum, yeniDurum))
                         {
-                            foreach (var detay in siparis.SiparisDetaylar)
+                            foreach (var detay in etkilenecekDetaylar)
                                 await StokIadeAsync(detay.UrunId, detay.UrunVaryasyonId, detay.Adet);
                         }
 
@@ -391,7 +473,7 @@ namespace QRMenu.Data.Services
                 {
                     if (StokIadesiGerekiyor(eskiDurum, yeniDurum))
                     {
-                        foreach (var detay in siparis.SiparisDetaylar)
+                        foreach (var detay in etkilenecekDetaylar)
                             await StokIadeAsync(detay.UrunId, detay.UrunVaryasyonId, detay.Adet);
                     }
 
@@ -555,11 +637,8 @@ namespace QRMenu.Data.Services
                     .DistinctBy(s => s.Id)
                     .ToList();
 
-                foreach (var siparis in siparisler)
-                {
-                    if (await GunKapaliMiAsync(siparis.OlusturmaTarihi))
-                        throw new InvalidOperationException("Gün sonu raporu kapatılmış siparişlerde iptal işlemi yapılamaz.");
-                }
+                if (await GunKapaliMiAsync(DateTime.UtcNow))
+                    throw new InvalidOperationException("Gün sonu raporu kapatılmış, iptal işlemi yapılamaz.");
 
                 var eskiBazToplamlar = siparisler.ToDictionary(
                     s => s.Id,
@@ -584,6 +663,7 @@ namespace QRMenu.Data.Services
                         continue;
 
                     degisenSiparisler.Add(detay.SiparisId);
+                    await StokIadeAsync(detay.UrunId, detay.UrunVaryasyonId, iptalAdet);
 
                     if (iptalAdet >= detay.Adet)
                     {
@@ -617,13 +697,17 @@ namespace QRMenu.Data.Services
 
                 foreach (var siparis in siparisler.Where(s => degisenSiparisler.Contains(s.Id)))
                 {
-                    var aktifKaldiMi = siparis.SiparisDetaylar.Any(sd =>
-                        sd.Durum != SiparisDurum.Iptal &&
-                        sd.Durum != SiparisDurum.Iade);
+                    var kalanDetaylar = siparis.SiparisDetaylar
+                        .Where(sd => sd.Durum != SiparisDurum.Iptal && sd.Durum != SiparisDurum.Iade)
+                        .ToList();
 
-                    if (!aktifKaldiMi)
+                    if (!kalanDetaylar.Any())
                     {
                         siparis.Durum = SiparisDurum.Iptal;
+                    }
+                    else if (kalanDetaylar.All(sd => sd.Durum == SiparisDurum.TamOdendi))
+                    {
+                        siparis.Durum = SiparisDurum.TamOdendi;
                     }
 
                     var eskiBaz = eskiBazToplamlar.TryGetValue(siparis.Id, out var value) ? value : 0m;
@@ -669,15 +753,13 @@ namespace QRMenu.Data.Services
 
         private async Task<bool> GunKapaliMiAsync(DateTime utcTarih)
         {
-            var yerelGun = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utcTarih, DateTimeKind.Utc), _turkeyTz).Date;
-            var raporTarihi = DateTime.SpecifyKind(yerelGun, DateTimeKind.Utc);
+            var raporTarihi = DateTimeHelper.GetTurkeyBusinessDayUtc(utcTarih);
             return await _context.GunSonuRaporlari.AnyAsync(r => r.Tarih == raporTarihi);
         }
 
         private static DateTime TurkeyBusinessDay(DateTime utcNow)
         {
-            var yerelGun = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utcNow, DateTimeKind.Utc), _turkeyTz).Date;
-            return DateTime.SpecifyKind(yerelGun, DateTimeKind.Utc);
+            return DateTimeHelper.GetTurkeyBusinessDayUtc(utcNow);
         }
 
         private async Task<int> GetNextGunlukSiparisNoAsync(DateTime siparisGunu)
@@ -808,9 +890,7 @@ namespace QRMenu.Data.Services
             if (happyHour == null)
                 return (0m, new HashSet<int>());
 
-            var turkey = TimeZoneInfo.FindSystemTimeZoneById(
-                OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
-            var simdiki = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, turkey).TimeOfDay;
+            var simdiki = DateTimeHelper.GetTurkeyNow().TimeOfDay;
 
             bool aktif;
             if (happyHour.BaslangicSaati <= happyHour.BitisSaati)

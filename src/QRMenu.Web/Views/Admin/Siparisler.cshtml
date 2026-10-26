@@ -578,6 +578,13 @@
                     document.getElementById('mdlMasaNo').innerText = sData.masaNo ? "Masa " + sData.masaNo : "Belirtilmemiş";
                     document.getElementById('mdlToplamTutar').innerText = "₺" + parseFloat(sData.toplamTutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 });
 
+                    function escapeHtml(str) {
+                        if (!str) return '';
+                        const div = document.createElement('div');
+                        div.textContent = str;
+                        return div.innerHTML;
+                    }
+
                     var htmlUrun = "";
                     if(sData.detaylar && sData.detaylar.length > 0) {
                         sData.detaylar.forEach(d => {
@@ -586,7 +593,7 @@
                                 try {
                                     var ops = JSON.parse(d.opsiyonlar);
                                     if(ops.length > 0) {
-                                        opsText = `<div class="text-[10px] font-bold text-on-surface-variant opacity-60 mt-1 uppercase tracking-widest"><span class="material-symbols-outlined text-[10px] mr-1">sell</span> ${ops.map(x => x.Ad).join(", ")}</div>`;
+                                        opsText = `<div class="text-[10px] font-bold text-on-surface-variant opacity-60 mt-1 uppercase tracking-widest"><span class="material-symbols-outlined text-[10px] mr-1">sell</span> ${ops.map(x => escapeHtml(x.Ad)).join(", ")}</div>`;
                                     }
                                 } catch(e) {}
                             }
@@ -594,7 +601,7 @@
                             htmlUrun += `
                             <div class="flex justify-between items-center p-4 bg-surface-container-low rounded-2xl border border-surface-container">
                                 <div>
-                                    <div class="text-xs font-black text-on-surface uppercase tracking-widest"><span class="text-primary mr-2">${d.adet}x</span> ${d.urunAd || 'Ürün'}</div>
+                                    <div class="text-xs font-black text-on-surface uppercase tracking-widest"><span class="text-primary mr-2">${d.adet}x</span> ${escapeHtml(d.urunAd || 'Ürün')}</div>
                                     ${opsText}
                                 </div>
                                 <div class="text-xs font-black text-on-surface">₺${(d.adet * d.birimFiyat).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>

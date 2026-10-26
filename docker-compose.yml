@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: qrmenu_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-QRMenu}
+      POSTGRES_USER: ${POSTGRES_USER:-qrmenu}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-qrmenu_secure_pass_123!}
+    ports:
+      # Güvenlik (P4.8): Yalnızca yerel makineden erişime izin ver (0.0.0.0'a açma)
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-qrmenu} -d ${POSTGRES_DB:-QRMenu}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - qrmenu_network
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qrmenu_web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=${POSTGRES_DB:-QRMenu};Username=${POSTGRES_USER:-qrmenu};Password=${POSTGRES_PASSWORD:-qrmenu_secure_pass_123!};Pooling=true;Maximum Pool Size=40;
+    volumes:
+      - uploads_data:/app/wwwroot/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - qrmenu_network
+
+networks:
+  qrmenu_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  uploads_data:

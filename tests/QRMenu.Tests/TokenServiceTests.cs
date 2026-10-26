@@ -230,8 +230,8 @@ namespace QRMenu.Tests
 
             // Assert
             var allSessions = context.Oturumlar.ToList();
-            Assert.Single(allSessions.Where(s => s.AktifMi)); // Sadece 1 aktif kalmalı
-            Assert.Single(allSessions.Where(s => !s.AktifMi)); // 1 pasife düşmeli
+            Assert.Single(allSessions, s => s.AktifMi); // Sadece 1 aktif kalmalı
+            Assert.Single(allSessions, s => !s.AktifMi); // 1 pasife düşmeli
         }
     }
 }

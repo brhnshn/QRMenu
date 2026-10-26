@@ -187,6 +187,8 @@ namespace QRMenu.Web.Controllers
                 .Include(k => k.Urunler.Where(u => u.AktifMi))
                     .ThenInclude(u => u.UrunOpsiyonlar)
                         .ThenInclude(uo => uo.Opsiyon)
+                .Include(k => k.Urunler.Where(u => u.AktifMi))
+                    .ThenInclude(u => u.Varyasyonlar.Where(v => v.AktifMi))
                 .AsSplitQuery()
                 .Where(k => k.AktifMi)
                 .OrderBy(k => k.SiraNo)
@@ -243,6 +245,7 @@ namespace QRMenu.Web.Controllers
                 var dtos = request.Urunler.Select(u => new QRMenu.Core.DTOs.ManuelSiparisDetayDto
                 {
                     UrunId = u.UrunId,
+                    UrunVaryasyonId = u.UrunVaryasyonId,
                     Adet = u.Adet,
                     OpsiyonIds = u.OpsiyonIds
                 }).ToList();
@@ -264,58 +267,16 @@ namespace QRMenu.Web.Controllers
                 );
                 return Json(new { success = true, siparisId = siparis.Id });
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Garson manuel sipariş iş kuralı hatası");
+                return Json(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Garson manuel sipariş hatası");
-                return Json(new { success = false, message = ex.Message });
+                return Json(new { success = false, message = "İşlem sırasında bir hata oluştu." });
             }
-        }
-
-        [HttpPost("/Garson/Masa/UrunIptal/{detayId:int}")]
-        public async Task<IActionResult> UrunIptal(int detayId)
-        {
-            var detay = await _context.SiparisDetaylar
-                .Include(sd => sd.Siparis)
-                    .ThenInclude(s => s.Masa)
-                .AsSplitQuery()
-                .FirstOrDefaultAsync(sd => sd.Id == detayId);
-
-            if (detay == null)
-                return Json(new { success = false, message = "Ürün bulunamadı." });
-
-            if (detay.Durum == SiparisDurum.Iptal)
-                return Json(new { success = false, message = "Ürün zaten iptal edilmiş." });
-
-            if (detay.Siparis.Durum != SiparisDurum.Hazir && detay.Siparis.Durum != SiparisDurum.TeslimEdildi)
-                return Json(new { success = false, message = "Yalnızca hazır veya teslim edilmiş sipariş iptal edilebilir." });
-
-            detay.Durum = SiparisDurum.Iptal;
-
-            var tumHalenAktifMi = await _context.SiparisDetaylar
-                .AnyAsync(sd => sd.SiparisId == detay.SiparisId && sd.Id != detayId && sd.Durum != SiparisDurum.Iptal);
-
-            if (!tumHalenAktifMi)
-            {
-                detay.Siparis.Durum = SiparisDurum.Iptal;
-            }
-
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation("Garson ürünü iptal etti. SiparisDetayId={DetayId}", detayId);
-
-            var masaId = detay.Siparis.MasaId;
-            var masaNo = detay.Siparis.Masa?.MasaNo ?? 0;
-
-            await Task.WhenAll(
-                _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisIptal", masaNo),
-                _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisIptal", masaNo),
-                _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisIptal", masaNo),
-                _menuHub.Clients.Group(SignalRGroups.Kitchen).SendAsync("SiparisGuncellendi"),
-                _menuHub.Clients.Group(SignalRGroups.Waiter).SendAsync("SiparisGuncellendi"),
-                _menuHub.Clients.Group(SignalRGroups.Cashier).SendAsync("SiparisGuncellendi"),
-                _menuHub.Clients.Group(SignalRGroups.Table(masaId)).SendAsync("SiparisGuncellendi")
-            );
-            return Json(new { success = true });
         }
 
         [HttpGet("/Garson/SiparisDetay/{id:int}")]
@@ -410,10 +371,15 @@ namespace QRMenu.Web.Controllers
                 );
                 return Json(new { success = true });
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Garson sipariş detay iptal iş kuralı hatası");
+                return Json(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Garson sipariş detay iptal hatası");
-                return Json(new { success = false, message = ex.Message });
+                return Json(new { success = false, message = "İşlem sırasında bir hata oluştu." });
             }
         }
 
@@ -425,6 +391,12 @@ namespace QRMenu.Web.Controllers
                 if (!Enum.TryParse<SiparisDurum>(request.YeniDurum, out var enumDurum))
                 {
                     return Json(new { success = false, message = "Geçersiz durum." });
+                }
+
+                // P2.1: Garson yalnızca TeslimEdildi ve Iptal durumlarına geçiş yapabilir
+                if (enumDurum != SiparisDurum.TeslimEdildi && enumDurum != SiparisDurum.Iptal)
+                {
+                    return Json(new { success = false, message = "Bu işlem için yetkiniz yok." });
                 }
 
                 if (enumDurum == SiparisDurum.Iptal)
@@ -495,9 +467,15 @@ namespace QRMenu.Web.Controllers
 
                 return Json(new { success = true });
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Garson durum güncelleme iş kuralı hatası");
+                return Json(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "Garson durum güncelleme hatası");
+                return Json(new { success = false, message = "İşlem sırasında bir hata oluştu." });
             }
         }
 
@@ -697,6 +675,7 @@ namespace QRMenu.Web.Controllers
     public class ManuelSiparisItem
     {
         public int UrunId { get; set; }
+        public int? UrunVaryasyonId { get; set; }
         public int Adet { get; set; }
         public List<int>? OpsiyonIds { get; set; }
     }
